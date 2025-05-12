@@ -125,13 +125,36 @@ pub struct ResumenInsercion {
     errores: Vec<String>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct PaginacionParams {
+    pub pagina: i32,
+    pub registros_por_pagina: i32,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PaginacionInfo {
+    pub pagina_actual: i32,
+    pub total_paginas: i32,
+    pub total_registros: i64,
+    pub registros_por_pagina: i32,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ResultadoPaginado<T> {
+    pub datos: Vec<T>,
+    pub paginacion: PaginacionInfo,
+}
+
 #[tauri::command]
 async fn obtener_estudiantes(
     filtro: Option<FiltroEstudiantes>,
+    paginacion: PaginacionParams,
     state: State<'_, AppState>,
-) -> Result<Vec<Estudiante>, String> {
+) -> Result<ResultadoPaginado<Estudiante>, String> {
     let mut db = state.db.lock().await;
-    let mut query = String::from(
+    
+    // Construir la consulta base
+    let mut query_base = String::from(
         "SELECT e.id, e.cedula, e.nombres, e.apellidos, e.genero, e.fecha_nacimiento, \
         e.id_grado_secciones, e.fecha_ingreso, e.municipionac, e.paisnac, e.entidadfed, \
         e.ciudadnac, e.estadonac, e.id_grado, g.nombre_grado, e.id_seccion, s.nombre_seccion, \
@@ -145,25 +168,26 @@ async fn obtener_estudiantes(
     
     let mut param_values: Vec<ParamValue> = Vec::new();
 
+    // Aplicar filtros
     if let Some(f) = filtro {
         if let Some(cedula_str) = f.cedula {
-            query.push_str(&format!(" AND CAST(e.cedula AS TEXT) LIKE ${}", param_values.len() + 1));
+            query_base.push_str(&format!(" AND CAST(e.cedula AS TEXT) LIKE ${}", param_values.len() + 1));
             param_values.push(ParamValue::String(format!("{}%", cedula_str)));
         }
         if let Some(apellidos) = f.apellidos {
-            query.push_str(&format!(" AND e.apellidos ILIKE ${}", param_values.len() + 1));
+            query_base.push_str(&format!(" AND e.apellidos ILIKE ${}", param_values.len() + 1));
             param_values.push(ParamValue::String(format!("{}%", apellidos)));
         }
         if let Some(grado_num) = f.grado {
-            query.push_str(&format!(" AND e.id_grado = ${}", param_values.len() + 1));
+            query_base.push_str(&format!(" AND e.id_grado = ${}", param_values.len() + 1));
             param_values.push(ParamValue::I32(grado_num));
         }
         if let Some(modalidad_num) = f.modalidad {
-            query.push_str(&format!(" AND e.id_modalidad = ${}", param_values.len() + 1));
+            query_base.push_str(&format!(" AND e.id_modalidad = ${}", param_values.len() + 1));
             param_values.push(ParamValue::I32(modalidad_num));
         }
         if let Some(estado) = f.estado {
-            query.push_str(&format!(" AND TRIM(LOWER(e.estado::text)) = LOWER(TRIM(${}))", param_values.len() + 1));
+            query_base.push_str(&format!(" AND TRIM(LOWER(e.estado::text)) = LOWER(TRIM(${}))", param_values.len() + 1));
             let estado_formateado = match estado.to_lowercase().as_str() {
                 "activo" => "Activo",
                 "retirado" => "Retirado",
@@ -173,8 +197,25 @@ async fn obtener_estudiantes(
         }
     }
 
+    // Obtener el total de registros
+    let query_count = format!("SELECT COUNT(*) FROM ({}) as subquery", query_base);
+    let params: Vec<&(dyn ToSql + Sync)> = param_values.iter().map(|v| v.as_tosql()).collect();
+    let total_registros: i64 = db.query_one(&query_count, &params).await.map_err(|e| e.to_string())?.get(0);
+
+    // Calcular información de paginación
+    let total_paginas = (total_registros as f64 / paginacion.registros_por_pagina as f64).ceil() as i32;
+    let offset = (paginacion.pagina - 1) * paginacion.registros_por_pagina;
+
+    // Añadir paginación a la consulta
+    let query_final = format!(
+        "{} ORDER BY e.apellidos, e.nombres LIMIT {} OFFSET {}",
+        query_base,
+        paginacion.registros_por_pagina,
+        offset
+    );
+
     // LOGS DE DEPURACIÓN
-    println!("[DEBUG] Query final: {}", query);
+    println!("[DEBUG] Query final: {}", query_final);
     for (i, param) in param_values.iter().enumerate() {
         match param {
             ParamValue::I64(v) => println!("[DEBUG] Param {}: I64({})", i+1, v),
@@ -183,9 +224,8 @@ async fn obtener_estudiantes(
         }
     }
 
-    let params: Vec<&(dyn ToSql + Sync)> = param_values.iter().map(|v| v.as_tosql()).collect();
-
-    let rows = db.query(&query, &params).await.map_err(|e| e.to_string())?;
+    // Ejecutar la consulta paginada
+    let rows = db.query(&query_final, &params).await.map_err(|e| e.to_string())?;
 
     let estudiantes = rows
         .iter()
@@ -215,12 +255,19 @@ async fn obtener_estudiantes(
         })
         .collect::<Vec<_>>();
 
-    println!("[DEBUG] Resultados encontrados: {}", estudiantes.len());
-    for (i, est) in estudiantes.iter().enumerate() {
-        println!("[DEBUG] Estudiante {}: {{ id: {}, cedula: {}, apellidos: {}, nombres: {}, id_grado: {:?}, id_modalidad: {:?}, estado: {:?} }}", i+1, est.id, est.cedula, est.apellidos, est.nombres, est.id_grado, est.id_modalidad, est.estado);
-    }
+    // Crear la información de paginación
+    let paginacion_info = PaginacionInfo {
+        pagina_actual: paginacion.pagina,
+        total_paginas,
+        total_registros,
+        registros_por_pagina: paginacion.registros_por_pagina,
+    };
 
-    Ok(estudiantes)
+    // Devolver el resultado paginado
+    Ok(ResultadoPaginado {
+        datos: estudiantes,
+        paginacion: paginacion_info,
+    })
 }
 
 #[tauri::command]

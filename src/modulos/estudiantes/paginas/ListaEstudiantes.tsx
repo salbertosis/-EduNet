@@ -5,6 +5,7 @@ import { FormularioEstudiante } from '../componentes/FormularioEstudiante';
 import * as XLSX from 'xlsx';
 import { useMensajeGlobal } from '../../../componentes/MensajeGlobalContext';
 import { ModalConfirmar } from '../../../componentes/ModalConfirmar';
+import { Paginacion } from '../../../componentes/Paginacion';
 
 interface Estudiante {
   id: number;
@@ -31,6 +32,13 @@ interface ResumenInsercion {
   errores: string[];
 }
 
+interface PaginacionInfo {
+  paginaActual: number;
+  totalPaginas: number;
+  totalRegistros: number;
+  registrosPorPagina: number;
+}
+
 export function ListaEstudiantes() {
   const [estudiantes, setEstudiantes] = useState<Estudiante[]>([]);
   const [filtros, setFiltros] = useState<FiltroEstudiantes>({});
@@ -40,26 +48,41 @@ export function ListaEstudiantes() {
   const [modalidades, setModalidades] = useState<{ id_modalidad: number; nombre_modalidad: string }[]>([]);
   const [resumenInsercion, setResumenInsercion] = useState<ResumenInsercion | null>(null);
   const [modalBorrar, setModalBorrar] = useState<{ abierto: boolean, estudiante?: Estudiante }>({ abierto: false });
+  const [paginacion, setPaginacion] = useState<PaginacionInfo>({
+    paginaActual: 1,
+    totalPaginas: 1,
+    totalRegistros: 0,
+    registrosPorPagina: 10
+  });
   const { mostrarMensaje } = useMensajeGlobal();
 
   const cargarEstudiantes = async () => {
     try {
-      console.log('Filtros enviados al backend:', filtros);
-      Object.entries(filtros).forEach(([k, v]) => {
-        console.log(`Filtro ${k}: valor=${v}, tipo=${typeof v}`);
-      });
-      const resultado = await invoke<Estudiante[]>('obtener_estudiantes', {
+      const resultado = await invoke<{ datos: Estudiante[], paginacion: PaginacionInfo }>('obtener_estudiantes', {
         filtro: Object.keys(filtros).length > 0 ? filtros : null,
+        paginacion: {
+          pagina: paginacion.paginaActual || 1,
+          registros_por_pagina: paginacion.registrosPorPagina || 10
+        }
       });
-      setEstudiantes(resultado);
+      setEstudiantes(resultado.datos);
+      const paginacionBackend = resultado.paginacion;
+      const paginacionFrontend = {
+        paginaActual: paginacionBackend['pagina_actual'],
+        totalPaginas: paginacionBackend['total_paginas'],
+        totalRegistros: paginacionBackend['total_registros'],
+        registrosPorPagina: paginacionBackend['registros_por_pagina']
+      };
+      setPaginacion(paginacionFrontend);
     } catch (error) {
       console.error('Error al cargar estudiantes:', error);
+      mostrarMensaje('Error al cargar estudiantes', 'error');
     }
   };
 
   useEffect(() => {
     cargarEstudiantes();
-  }, [filtros]);
+  }, [filtros, paginacion.paginaActual]);
 
   useEffect(() => {
     // Cargar grados y modalidades al montar
@@ -81,6 +104,12 @@ export function ListaEstudiantes() {
       }
       return { ...prev, [campo]: valor };
     });
+    // Resetear a la primera página cuando cambian los filtros
+    setPaginacion(prev => ({ ...prev, paginaActual: 1 }));
+  };
+
+  const handleCambiarPagina = (nuevaPagina: number) => {
+    setPaginacion(prev => ({ ...prev, paginaActual: nuevaPagina }));
   };
 
   const handleEliminar = async (id: number) => {
@@ -248,66 +277,40 @@ export function ListaEstudiantes() {
       {/* Tabla de estudiantes */}
       <div className="bg-white dark:bg-dark-800 rounded-xl shadow-soft overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-dark-700">
             <thead className="bg-gray-50 dark:bg-dark-700">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Cédula
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Apellidos
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Nombres
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Grado
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Sección
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Modalidad
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Acciones
-                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cédula</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nombres</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Apellidos</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Grado</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Sección</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Modalidad</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Acciones</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-dark-700">
-              {estudiantes.map((estudiante) => (
+            <tbody className="bg-white dark:bg-dark-800 divide-y divide-gray-200 dark:divide-dark-700">
+              {Array.isArray(estudiantes) && estudiantes.map((estudiante) => (
                 <tr key={estudiante.id} className="hover:bg-gray-50 dark:hover:bg-dark-700">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                    {estudiante.cedula}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                    {estudiante.apellidos}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                    {estudiante.nombres}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                    {estudiante.nombre_grado || '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                    {estudiante.nombre_seccion || '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                    {estudiante.nombre_modalidad || '-'}
-                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{estudiante.cedula}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{estudiante.nombres}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{estudiante.apellidos}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{estudiante.nombre_grado}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{estudiante.nombre_seccion}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{estudiante.nombre_modalidad}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button
                       onClick={() => {
                         setEstudianteSeleccionado(estudiante);
                         setMostrarFormulario(true);
                       }}
-                      className="text-primary-600 dark:text-primary-400 hover:text-primary-900 dark:hover:text-primary-300 mr-4"
+                      className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-300 mr-4"
                     >
                       <Pencil className="w-5 h-5" />
                     </button>
                     <button
                       onClick={() => setModalBorrar({ abierto: true, estudiante })}
-                      className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
+                      className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
                     >
                       <Trash2 className="w-5 h-5" />
                     </button>
@@ -317,6 +320,18 @@ export function ListaEstudiantes() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Paginación */}
+      <div className="flex justify-between items-center bg-white dark:bg-dark-800 p-4 rounded-xl shadow-soft">
+        <div className="text-sm text-gray-700 dark:text-gray-300">
+          Mostrando {estudiantes.length} de {paginacion.totalRegistros} registros
+        </div>
+        <Paginacion
+          paginaActual={paginacion.paginaActual}
+          totalPaginas={paginacion.totalPaginas}
+          onCambiarPagina={handleCambiarPagina}
+        />
       </div>
 
       {/* Modal de formulario */}

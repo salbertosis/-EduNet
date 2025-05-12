@@ -3,6 +3,8 @@ import { invoke } from '@tauri-apps/api/tauri';
 import { Search, Plus, Pencil, Trash2, FileSpreadsheet } from 'lucide-react';
 import { FormularioEstudiante } from '../componentes/FormularioEstudiante';
 import * as XLSX from 'xlsx';
+import { useMensajeGlobal } from '../../../componentes/MensajeGlobalContext';
+import { ModalConfirmar } from '../../../componentes/ModalConfirmar';
 
 interface Estudiante {
   id: number;
@@ -37,6 +39,8 @@ export function ListaEstudiantes() {
   const [grados, setGrados] = useState<{ id_grado: number; nombre_grado: string }[]>([]);
   const [modalidades, setModalidades] = useState<{ id_modalidad: number; nombre_modalidad: string }[]>([]);
   const [resumenInsercion, setResumenInsercion] = useState<ResumenInsercion | null>(null);
+  const [modalBorrar, setModalBorrar] = useState<{ abierto: boolean, estudiante?: Estudiante }>({ abierto: false });
+  const { mostrarMensaje } = useMensajeGlobal();
 
   const cargarEstudiantes = async () => {
     try {
@@ -80,13 +84,20 @@ export function ListaEstudiantes() {
   };
 
   const handleEliminar = async (id: number) => {
-    if (confirm('¿Está seguro de eliminar este estudiante?')) {
-      try {
-        await invoke('eliminar_estudiante', { id });
-        cargarEstudiantes();
-      } catch (error) {
-        console.error('Error al eliminar estudiante:', error);
-      }
+    // Ya no se usa confirm, ahora se usa el modal
+    // Esta función se mantiene para compatibilidad, pero no se llama directamente
+  };
+
+  const handleConfirmarBorrar = async () => {
+    if (!modalBorrar.estudiante) return;
+    try {
+      await invoke('eliminar_estudiante', { id: modalBorrar.estudiante.id });
+      mostrarMensaje(`Estudiante "${modalBorrar.estudiante.nombres} ${modalBorrar.estudiante.apellidos}" eliminado correctamente`, "exito");
+      setModalBorrar({ abierto: false });
+      cargarEstudiantes();
+    } catch (err) {
+      mostrarMensaje("Error al eliminar estudiante: " + err, "error");
+      setModalBorrar({ abierto: false });
     }
   };
 
@@ -100,35 +111,29 @@ export function ListaEstudiantes() {
   const handleExcelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) {
-      alert('No se seleccionó ningún archivo');
-      console.log('No se seleccionó ningún archivo');
+      mostrarMensaje('No se seleccionó ningún archivo', 'error');
       return;
     }
-    console.log('Archivo seleccionado:', file.name);
     const reader = new FileReader();
     reader.onload = async (evt) => {
       const data = evt.target?.result;
-      console.log('Leyendo archivo...');
       try {
         const workbook = XLSX.read(data, { type: 'binary' });
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
         let estudiantes = XLSX.utils.sheet_to_json(sheet);
-        // Conversión de fechas
         estudiantes = (estudiantes as Record<string, any>[]).map(est => ({
           ...est,
           fecha_nacimiento: typeof est.fecha_nacimiento === 'number' ? excelDateToISO(est.fecha_nacimiento) : est.fecha_nacimiento,
           fecha_ingreso: typeof est.fecha_ingreso === 'number' ? excelDateToISO(est.fecha_ingreso) : est.fecha_ingreso,
           fecha_retiro: typeof est.fecha_retiro === 'number' ? excelDateToISO(est.fecha_retiro) : est.fecha_retiro,
         }));
-        console.log('Estudiantes leídos del Excel (fechas convertidas):', estudiantes);
         const resumen = await invoke<ResumenInsercion>('insertar_estudiantes_masivo', { estudiantes });
-        console.log('Resumen de la inserción:', resumen);
         setResumenInsercion(resumen);
+        mostrarMensaje(`Importación finalizada: ${resumen.insertados} insertados, ${resumen.duplicados} duplicados.`, 'exito');
         cargarEstudiantes();
       } catch (err) {
-        alert('Error al procesar o insertar estudiantes: ' + err);
-        console.error('Error al procesar o insertar estudiantes:', err);
+        mostrarMensaje('Error al procesar o insertar estudiantes: ' + err, 'error');
       }
     };
     reader.readAsBinaryString(file);
@@ -301,7 +306,7 @@ export function ListaEstudiantes() {
                       <Pencil className="w-5 h-5" />
                     </button>
                     <button
-                      onClick={() => handleEliminar(estudiante.id)}
+                      onClick={() => setModalBorrar({ abierto: true, estudiante })}
                       className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
                     >
                       <Trash2 className="w-5 h-5" />
@@ -381,6 +386,14 @@ export function ListaEstudiantes() {
           </div>
         </div>
       )}
+
+      {/* Modal de confirmación para borrar */}
+      <ModalConfirmar
+        abierto={modalBorrar.abierto}
+        mensaje={modalBorrar.estudiante ? `¿Estás seguro de que deseas eliminar a "${modalBorrar.estudiante.nombres} ${modalBorrar.estudiante.apellidos}"?` : ''}
+        onConfirmar={handleConfirmarBorrar}
+        onCancelar={() => setModalBorrar({ abierto: false })}
+      />
     </div>
   );
 }

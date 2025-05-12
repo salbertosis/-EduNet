@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/tauri';
+import { useMensajeGlobal } from '../../../componentes/MensajeGlobalContext';
 
 interface Estudiante {
   id: number;
@@ -55,6 +56,7 @@ export function FormularioEstudiante({ estudiante, onGuardar, onCancelar }: Form
   const [success, setSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [periodosEscolares, setPeriodosEscolares] = useState<{ id_periodo: number; periodo_escolar: string }[]>([]);
+  const { mostrarMensaje } = useMensajeGlobal();
 
   useEffect(() => {
     if (estudiante) {
@@ -100,23 +102,47 @@ export function FormularioEstudiante({ estudiante, onGuardar, onCancelar }: Form
     setSuccess(null);
 
     try {
+      const cleanData = {
+        cedula: formData.cedula,
+        nombres: formData.nombres,
+        apellidos: formData.apellidos,
+        genero: formData.genero,
+        fecha_nacimiento: formData.fecha_nacimiento,
+        fecha_ingreso: formData.fecha_ingreso,
+        municipionac: formData.municipionac,
+        paisnac: formData.paisnac,
+        entidadfed: formData.entidadfed,
+        ciudadnac: formData.ciudadnac,
+        estadonac: formData.estadonac,
+        id_grado: formData.id_grado,
+        id_seccion: formData.id_seccion,
+        id_modalidad: formData.id_modalidad,
+        id_periodoactual: formData.id_periodoactual,
+        estado: formData.estado,
+        fecha_retiro: formData.fecha_retiro ? formData.fecha_retiro : null,
+      };
+      console.log('[DEBUG] cleanData a enviar:', cleanData);
       if (estudiante?.id) {
         await invoke('actualizar_estudiante', {
           id: estudiante.id,
-          estudiante: formData,
+          estudiante: cleanData,
         });
+        mostrarMensaje('Estudiante actualizado correctamente', 'exito');
         setSuccess('Estudiante actualizado correctamente');
       } else {
         await invoke('crear_estudiante', {
-          estudiante: formData,
+          estudiante: cleanData,
         });
+        mostrarMensaje('Estudiante creado correctamente', 'exito');
         setSuccess('Estudiante creado correctamente');
       }
     } catch (err) {
       console.error('Error al guardar estudiante:', err);
       if (typeof err === 'string' && err.includes('cédula')) {
+        mostrarMensaje(err, 'error');
         setError(err);
       } else {
+        mostrarMensaje('Error al guardar el estudiante. Por favor, intente nuevamente.', 'error');
         setError('Error al guardar el estudiante. Por favor, intente nuevamente.');
       }
     } finally {

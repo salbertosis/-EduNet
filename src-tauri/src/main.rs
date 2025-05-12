@@ -10,6 +10,7 @@ use tokio::sync::Mutex;
 use chrono::NaiveDate;
 use postgres_types::{ToSql, FromSql};
 use serde_json;
+use std::collections::HashSet;
 // Eliminada importación no usada: bytes::BytesMut
 
 #[derive(Debug, Serialize, Deserialize, Clone, ToSql, FromSql)]
@@ -129,7 +130,7 @@ async fn obtener_estudiantes(
     filtro: Option<FiltroEstudiantes>,
     state: State<'_, AppState>,
 ) -> Result<Vec<Estudiante>, String> {
-    let db = state.db.lock().await;
+    let mut db = state.db.lock().await;
     let mut query = String::from(
         "SELECT e.id, e.cedula, e.nombres, e.apellidos, e.genero, e.fecha_nacimiento, \
         e.id_grado_secciones, e.fecha_ingreso, e.municipionac, e.paisnac, e.entidadfed, \
@@ -224,16 +225,14 @@ async fn obtener_estudiantes(
 
 #[tauri::command]
 async fn verificar_cedula_duplicada(
+    db: &tokio_postgres::Client,
     cedula: i64,
     id_excluir: Option<i32>,
-    state: State<'_, AppState>,
 ) -> Result<bool, String> {
-    let db = state.db.lock().await;
     let query = match id_excluir {
         Some(_) => "SELECT COUNT(*) FROM estudiantes WHERE cedula = $1 AND id != $2",
         None => "SELECT COUNT(*) FROM estudiantes WHERE cedula = $1",
     };
-    
     let row = match id_excluir {
         Some(id) => {
             db.query_one(query, &[&cedula, &id]).await
@@ -242,7 +241,6 @@ async fn verificar_cedula_duplicada(
             db.query_one(query, &[&cedula]).await
         }
     }.map_err(|e| e.to_string())?;
-
     let count: i64 = row.get(0);
     Ok(count > 0)
 }
@@ -252,21 +250,22 @@ async fn crear_estudiante(
     estudiante: NuevoEstudiante,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
-    // Verificar si la cédula ya existe
-    let cedula_duplicada = verificar_cedula_duplicada(estudiante.cedula, None, state.clone()).await?;
+    println!("[DEBUG] Datos recibidos en crear_estudiante: {:#?}", estudiante);
+    let mut db = state.db.lock().await;
+    let cedula_duplicada = verificar_cedula_duplicada(&*db, estudiante.cedula, None).await?;
     if cedula_duplicada {
         return Err("Ya existe un estudiante con esta cédula".to_string());
     }
-
-    let db = state.db.lock().await;
-    db.execute(
+    match db.execute(
         "INSERT INTO estudiantes (cedula, nombres, apellidos, genero, fecha_nacimiento, id_grado_secciones, fecha_ingreso, municipionac, paisnac, entidadfed, ciudadnac, estadonac, id_grado, id_seccion, id_modalidad, id_periodoactual, estado, fecha_retiro) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)",
         &[&estudiante.cedula, &estudiante.nombres, &estudiante.apellidos, &estudiante.genero, &estudiante.fecha_nacimiento, &estudiante.id_grado_secciones, &estudiante.fecha_ingreso, &estudiante.municipionac, &estudiante.paisnac, &estudiante.entidadfed, &estudiante.ciudadnac, &estudiante.estadonac, &estudiante.id_grado, &estudiante.id_seccion, &estudiante.id_modalidad, &estudiante.id_periodoactual, &estudiante.estado, &estudiante.fecha_retiro]
-    )
-    .await
-    .map_err(|e| e.to_string())?;
-
-    Ok(())
+    ).await {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            println!("[ERROR] Error al insertar estudiante: {}", e);
+            Err(e.to_string())
+        }
+    }
 }
 
 #[tauri::command]
@@ -275,20 +274,17 @@ async fn actualizar_estudiante(
     estudiante: NuevoEstudiante,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
-    // Verificar si la cédula ya existe (excluyendo el estudiante actual)
-    let cedula_duplicada = verificar_cedula_duplicada(estudiante.cedula, Some(id), state.clone()).await?;
+    let mut db = state.db.lock().await;
+    let cedula_duplicada = verificar_cedula_duplicada(&*db, estudiante.cedula, Some(id)).await?;
     if cedula_duplicada {
         return Err("Ya existe otro estudiante con esta cédula".to_string());
     }
-
-    let db = state.db.lock().await;
     db.execute(
         "UPDATE estudiantes SET cedula=$1, nombres=$2, apellidos=$3, genero=$4, fecha_nacimiento=$5, id_grado_secciones=$6, fecha_ingreso=$7, municipionac=$8, paisnac=$9, entidadfed=$10, ciudadnac=$11, estadonac=$12, id_grado=$13, id_seccion=$14, id_modalidad=$15, id_periodoactual=$16, estado=$17, fecha_retiro=$18 WHERE id=$19",
         &[&estudiante.cedula, &estudiante.nombres, &estudiante.apellidos, &estudiante.genero, &estudiante.fecha_nacimiento, &estudiante.id_grado_secciones, &estudiante.fecha_ingreso, &estudiante.municipionac, &estudiante.paisnac, &estudiante.entidadfed, &estudiante.ciudadnac, &estudiante.estadonac, &estudiante.id_grado, &estudiante.id_seccion, &estudiante.id_modalidad, &estudiante.id_periodoactual, &estudiante.estado, &estudiante.fecha_retiro, &id]
     )
     .await
     .map_err(|e| e.to_string())?;
-
     Ok(())
 }
 
@@ -297,7 +293,7 @@ async fn eliminar_estudiante(
     id: i32,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
-    let db = state.db.lock().await;
+    let mut db = state.db.lock().await;
     db.execute(
         "DELETE FROM estudiantes WHERE id = $1",
         &[&id],
@@ -310,7 +306,7 @@ async fn eliminar_estudiante(
 
 #[tauri::command]
 async fn contar_estudiantes(state: State<'_, AppState>) -> Result<i64, String> {
-    let db = state.db.lock().await;
+    let mut db = state.db.lock().await;
     let row = db
         .query_one("SELECT COUNT(*) FROM estudiantes", &[])
         .await
@@ -321,7 +317,7 @@ async fn contar_estudiantes(state: State<'_, AppState>) -> Result<i64, String> {
 
 #[tauri::command]
 async fn listar_periodos_escolares(state: State<'_, AppState>) -> Result<Vec<PeriodoEscolar>, String> {
-    let db = state.db.lock().await;
+    let mut db = state.db.lock().await;
     let query = "SELECT id_periodo, periodo_escolar FROM periodos_escolares ORDER BY id_periodo ASC";
     let rows = db.query(query, &[]).await.map_err(|e| e.to_string())?;
 
@@ -335,7 +331,7 @@ async fn listar_periodos_escolares(state: State<'_, AppState>) -> Result<Vec<Per
 
 #[tauri::command]
 async fn listar_grados(state: State<'_, AppState>) -> Result<Vec<Grado>, String> {
-    let db = state.db.lock().await;
+    let mut db = state.db.lock().await;
     let query = "SELECT id_grado, nombre_grado FROM grados ORDER BY id_grado ASC";
     let rows = db.query(query, &[]).await.map_err(|e| e.to_string())?;
     let grados = rows.iter().map(|row| Grado {
@@ -347,7 +343,7 @@ async fn listar_grados(state: State<'_, AppState>) -> Result<Vec<Grado>, String>
 
 #[tauri::command]
 async fn listar_modalidades(state: State<'_, AppState>) -> Result<Vec<Modalidad>, String> {
-    let db = state.db.lock().await;
+    let mut db = state.db.lock().await;
     let query = "SELECT id_modalidad, nombre_modalidad FROM modalidades ORDER BY id_modalidad ASC";
     let rows = db.query(query, &[]).await.map_err(|e| e.to_string())?;
     let modalidades = rows.iter().map(|row| Modalidad {
@@ -357,54 +353,83 @@ async fn listar_modalidades(state: State<'_, AppState>) -> Result<Vec<Modalidad>
     Ok(modalidades)
 }
 
+// Nueva función para obtener todas las cédulas existentes
+async fn obtener_cedulas_existentes(db: &tokio_postgres::Client) -> Result<HashSet<i64>, String> {
+    let rows = db.query("SELECT cedula FROM estudiantes", &[]).await.map_err(|e| e.to_string())?;
+    Ok(rows.iter().map(|row| row.get::<_, i64>(0)).collect())
+}
+
 #[tauri::command]
 async fn insertar_estudiantes_masivo(
     estudiantes: Vec<serde_json::Value>,
     state: State<'_, AppState>,
 ) -> Result<ResumenInsercion, String> {
+    println!("[DEBUG] insertando estudiantes masivo, recibidos: {}", estudiantes.len());
+    for (i, est) in estudiantes.iter().enumerate() {
+        println!("[DEBUG] Estudiante {}: {:?}", i, est);
+    }
     let mut db = state.db.lock().await;
-    let trans = db.transaction().await.map_err(|e| e.to_string())?;
-    
+    let mut cedulas_existentes = obtener_cedulas_existentes(&*db).await?;
+    let trans = db.transaction().await.map_err(|e| {
+        println!("[ERROR] Error al iniciar transacción: {}", e);
+        e.to_string()
+    })?;
     let mut resumen = ResumenInsercion {
         total_registros: estudiantes.len(),
         insertados: 0,
         duplicados: 0,
         errores: Vec::new(),
     };
-    
     for (index, est_json) in estudiantes.iter().enumerate() {
+        println!("[DEBUG] Procesando estudiante {}: {:?}", index + 1, est_json);
         let estudiante: NuevoEstudiante = match serde_json::from_value(est_json.clone()) {
             Ok(est) => est,
             Err(e) => {
-                resumen.errores.push(format!("Fila {}: Error al deserializar - {}", index + 1, e));
+                let msg = format!("Fila {}: Error al deserializar - {}", index + 1, e);
+                println!("[ERROR] {}", msg);
+                resumen.errores.push(msg);
                 continue;
             }
         };
-            
-        // Verificar si la cédula ya existe
-        let cedula_duplicada = verificar_cedula_duplicada(estudiante.cedula, None, state.clone()).await?;
-        if cedula_duplicada {
+        println!("[DEBUG] Estudiante deserializado: {:?}", estudiante);
+        if cedulas_existentes.contains(&estudiante.cedula) {
+            let msg = format!("Fila {}: Cédula duplicada {}", index + 1, estudiante.cedula);
+            println!("[WARN] {}", msg);
             resumen.duplicados += 1;
-            resumen.errores.push(format!("Fila {}: Cédula duplicada {}", index + 1, estudiante.cedula));
+            resumen.errores.push(msg);
             continue;
         }
-        
+        println!("[DEBUG] Insertando estudiante en la base de datos...");
         match trans.execute(
             "INSERT INTO estudiantes (cedula, nombres, apellidos, genero, fecha_nacimiento, id_grado_secciones, fecha_ingreso, municipionac, paisnac, entidadfed, ciudadnac, estadonac, id_grado, id_seccion, id_modalidad, id_periodoactual, estado, fecha_retiro) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)",
             &[&estudiante.cedula, &estudiante.nombres, &estudiante.apellidos, &estudiante.genero, &estudiante.fecha_nacimiento, &estudiante.id_grado_secciones, &estudiante.fecha_ingreso, &estudiante.municipionac, &estudiante.paisnac, &estudiante.entidadfed, &estudiante.ciudadnac, &estudiante.estadonac, &estudiante.id_grado, &estudiante.id_seccion, &estudiante.id_modalidad, &estudiante.id_periodoactual, &estudiante.estado, &estudiante.fecha_retiro]
         ).await {
-            Ok(_) => resumen.insertados += 1,
-            Err(e) => resumen.errores.push(format!("Fila {}: Error al insertar - {}", index + 1, e)),
+            Ok(_) => {
+                println!("[DEBUG] Insertado estudiante {}: cedula={}", index + 1, estudiante.cedula);
+                resumen.insertados += 1;
+                cedulas_existentes.insert(estudiante.cedula);
+            },
+            Err(e) => {
+                let msg = format!("Fila {}: Error al insertar - {}", index + 1, e);
+                println!("[ERROR] {}", msg);
+                resumen.errores.push(msg);
+            },
         }
     }
-    
-    // Si no se insertó ningún registro, hacemos rollback
     if resumen.insertados == 0 {
-        trans.rollback().await.map_err(|e| e.to_string())?;
+        println!("[WARN] No se insertó ningún registro, haciendo rollback");
+        trans.rollback().await.map_err(|e| {
+            println!("[ERROR] Error al hacer rollback: {}", e);
+            e.to_string()
+        })?;
     } else {
-        trans.commit().await.map_err(|e| e.to_string())?;
+        println!("[DEBUG] Commit de la transacción");
+        trans.commit().await.map_err(|e| {
+            println!("[ERROR] Error al hacer commit: {}", e);
+            e.to_string()
+        })?;
     }
-    
+    println!("[DEBUG] Resumen: insertados={}, duplicados={}, errores={}", resumen.insertados, resumen.duplicados, resumen.errores.len());
     Ok(resumen)
 }
 

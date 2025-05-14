@@ -21,13 +21,13 @@ export function SelectorTema() {
   return (
     <button
       onClick={() => setTema(tema === 'claro' ? 'oscuro' : 'claro')}
-      className="p-2 rounded-lg bg-gray-100 dark:bg-dark-800 hover:bg-gray-200 dark:hover:bg-dark-700 transition-colors"
+      className="p-3 rounded-xl bg-gradient-to-r from-emerald-700 via-cyan-700 to-blue-700 border-2 border-emerald-400 shadow-lg shadow-emerald-900/20 hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-400"
       aria-label={`Cambiar a tema ${tema === 'claro' ? 'oscuro' : 'claro'}`}
     >
       {tema === 'claro' ? (
-        <Moon className="w-5 h-5 text-gray-700" />
+        <Moon className="w-6 h-6 text-emerald-200 drop-shadow" />
       ) : (
-        <Sun className="w-5 h-5 text-yellow-400" />
+        <Sun className="w-6 h-6 text-yellow-300 drop-shadow" />
       )}
     </button>
   );

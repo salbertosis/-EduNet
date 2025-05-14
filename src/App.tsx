@@ -17,17 +17,17 @@ function MensajeGlobalModal() {
 export function App() {
   return (
     <MensajeGlobalProvider>
-      <Router>
-        <Routes>
-          <Route path="/" element={<Layout />}>
-            <Route index element={<Navigate to="/dashboard" replace />} />
-            <Route path="dashboard" element={<Dashboard />} />
-            <Route path="estudiantes" element={<ListaEstudiantes />} />
+    <Router>
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="estudiantes" element={<ListaEstudiantes />} />
             <Route path="estudiantes/:id/calificaciones" element={<DetalleCalificacionesPage />} />
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Route>
-        </Routes>
-      </Router>
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Route>
+      </Routes>
+    </Router>
       <MensajeGlobalModal />
     </MensajeGlobalProvider>
   );

@@ -351,25 +351,42 @@ export function DetalleCalificaciones({ estudiante, onVolver }: DetalleCalificac
   // Log antes del renderizado de la tabla
   console.log('[DEBUG] Asignaturas en render:', asignaturas);
 
+  // 1. Agregar función para ceros a la izquierda
+  function padNota(nota: number | undefined): string {
+    if (typeof nota === 'number') return nota.toString().padStart(2, '0');
+    return '';
+  }
+
   return (
-    <div className="max-w-5xl mx-auto p-6 bg-white dark:bg-dark-800 rounded-2xl shadow-lg">
+    <div className="max-w-5xl mx-auto p-4 md:p-8 bg-white dark:bg-dark-800 rounded-2xl shadow-lg">
       {advertenciaPeriodo}
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-primary-600">Calificaciones de {estudiante?.nombres} {estudiante?.apellidos}</h2>
-        <button onClick={onVolver} className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-all">Volver</button>
+      <div className="flex items-center justify-between mb-6 gap-4">
+        {/* Avatar y nombre del estudiante */}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-cyan-600 via-blue-700 to-emerald-700 shadow-lg text-3xl font-bold text-white select-none">
+            {estudiante?.nombres?.[0] ?? ''}
+          </div>
+          <h2 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-gray-900 via-gray-800 to-gray-700 bg-clip-text text-transparent drop-shadow-lg select-none dark:from-emerald-400 dark:via-cyan-400 dark:to-blue-400 dark:bg-gradient-to-r dark:bg-clip-text dark:text-transparent">
+            {estudiante?.nombres} {estudiante?.apellidos}
+          </h2>
+        </div>
+        <button onClick={onVolver} className="px-6 py-2 md:px-8 md:py-2 bg-gradient-to-r from-emerald-600 to-cyan-600 text-white rounded-xl font-semibold shadow-lg hover:scale-105 hover:bg-emerald-700 transition-all">
+          Volver
+        </button>
       </div>
-      <div className="flex gap-2 border-b border-gray-200 dark:border-dark-700 mb-8">
+      <div className="flex gap-2 border-b-2 border-emerald-400 dark:border-emerald-700 mb-8">
         {TABS.map(t => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            className={`px-6 py-3 font-medium rounded-t-lg transition-all duration-200 focus:outline-none ${tab === t.key ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-100' : 'bg-gray-100 dark:bg-dark-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-dark-600'}`}
+            className={`px-4 py-2 font-semibold rounded-t-lg transition-all duration-200 focus:outline-none text-base tracking-wide shadow-sm ${tab === t.key ? 'bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-400 text-white shadow-emerald-800/30' : 'bg-gray-100 dark:bg-dark-700 text-gray-600 dark:text-gray-300 hover:bg-emerald-900/30 hover:text-emerald-300'}`}
+            style={{marginBottom: '-2px'}}
           >
             {t.label}
           </button>
         ))}
       </div>
-      <div>
+      <div className="space-y-6">
         {tab === 'datos' && (
           <section className="space-y-4">
             <h3 className="text-xl font-semibold mb-4">Datos Personales</h3>
@@ -385,29 +402,29 @@ export function DetalleCalificaciones({ estudiante, onVolver }: DetalleCalificac
         )}
         {tab === 'actual' && (
           <section>
-            <h3 className="text-xl font-semibold mb-4">Calificaciones del Año Actual</h3>
+            <h3 className="text-xl font-semibold mb-4 text-emerald-400">Calificaciones del Año Actual</h3>
             <div className="mb-4 flex justify-end">
               <button
-                className="px-4 py-1 text-sm rounded-lg bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-100 hover:bg-primary-200 dark:hover:bg-primary-800 font-semibold transition-all"
+                className="px-4 py-2 text-sm rounded-lg bg-gradient-to-r from-emerald-600 to-cyan-600 text-white font-semibold shadow hover:scale-105 transition-all"
                 onClick={() => setMostrarAjustes(v => !v)}
               >
                 {mostrarAjustes ? 'Ocultar ajustes' : 'Mostrar ajustes'}
               </button>
             </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-dark-700 text-xs">
-                <thead className="bg-gray-100 dark:bg-dark-900">
+            <div className="overflow-x-auto max-h-[60vh]">
+              <table className="min-w-full divide-y divide-emerald-400 dark:divide-cyan-800 text-sm rounded-xl overflow-hidden shadow-lg">
+                <thead className="sticky top-0 z-30 bg-white dark:bg-gradient-to-r dark:from-[#181f2a] dark:via-[#232c3d] dark:to-[#2563eb]">
                   <tr>
-                    <th className="px-2 py-2 text-left">Asignatura</th>
-                    <th className="px-1 py-2 text-left">1er Lapso</th>
-                    {mostrarAjustes && <th className="px-1 py-2 text-left">Ajuste 1</th>}
-                    <th className="px-1 py-2 text-left">2do Lapso</th>
-                    {mostrarAjustes && <th className="px-1 py-2 text-left">Ajuste 2</th>}
-                    <th className="px-1 py-2 text-left">3er Lapso</th>
-                    {mostrarAjustes && <th className="px-1 py-2 text-left">Ajuste 3</th>}
-                    <th className="px-1 py-2 text-left">Final</th>
-                    <th className="px-1 py-2 text-left">Revisión</th>
-                    <th className="px-1 py-2 text-left">Estado</th>
+                    <th className="px-4 py-3 text-center text-emerald-700 dark:text-cyan-200 font-bold uppercase bg-white dark:bg-transparent">ASIGNATURA</th>
+                    <th className="px-2 py-3 text-center text-emerald-700 dark:text-cyan-200 font-bold uppercase bg-white dark:bg-transparent">1ER LAPSO</th>
+                    {mostrarAjustes && <th className="px-2 py-3 text-center text-cyan-700 dark:text-cyan-200 font-bold uppercase bg-white dark:bg-transparent">AJUSTE 1</th>}
+                    <th className="px-2 py-3 text-center text-emerald-700 dark:text-cyan-200 font-bold uppercase bg-white dark:bg-transparent">2DO LAPSO</th>
+                    {mostrarAjustes && <th className="px-2 py-3 text-center text-cyan-700 dark:text-cyan-200 font-bold uppercase bg-white dark:bg-transparent">AJUSTE 2</th>}
+                    <th className="px-2 py-3 text-center text-emerald-700 dark:text-cyan-200 font-bold uppercase bg-white dark:bg-transparent">3ER LAPSO</th>
+                    {mostrarAjustes && <th className="px-2 py-3 text-center text-cyan-700 dark:text-cyan-200 font-bold uppercase bg-white dark:bg-transparent">AJUSTE 3</th>}
+                    <th className="px-2 py-3 text-center text-emerald-700 dark:text-cyan-200 font-bold uppercase bg-white dark:bg-transparent">FINAL</th>
+                    <th className="px-2 py-3 text-center text-emerald-700 dark:text-cyan-200 font-bold uppercase bg-white dark:bg-transparent">REVISIÓN</th>
+                    <th className="px-2 py-3 text-center text-emerald-700 dark:text-cyan-200 font-bold uppercase bg-white dark:bg-transparent">ESTADO</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -416,7 +433,7 @@ export function DetalleCalificaciones({ estudiante, onVolver }: DetalleCalificac
                       <td colSpan={8} className="text-center py-4 text-gray-400">No hay asignaturas registradas para este estudiante.</td>
                     </tr>
                   )}
-                  {asignaturas.map(asig => {
+                  {asignaturas.map((asig, idx) => {
                     const calif = calificaciones.find(c => c.id_asignatura === asig.id_asignatura) || {
                       id_asignatura: asig.id_asignatura,
                       nombre_asignatura: asig.nombre_asignatura,
@@ -430,124 +447,155 @@ export function DetalleCalificaciones({ estudiante, onVolver }: DetalleCalificac
                       revision: ''
                     };
                     return (
-                      <tr key={asig.id_asignatura}>
-                        <td className="px-2 py-2 font-semibold text-green-400 whitespace-nowrap">{asig.nombre_asignatura}</td>
+                      <tr key={asig.id_asignatura} className={
+                        (idx % 2 === 0 ? 'bg-white dark:bg-[#232c3d]' : 'bg-gray-100 dark:bg-[#222b3a]') +
+                        ' transition hover:dark:bg-[#2563eb]/10 hover:bg-emerald-100'
+                      }>
+                        <td className="px-4 py-2 font-bold text-emerald-700 dark:text-cyan-200 whitespace-nowrap">
+                          <div className="flex items-center gap-3">
+                            <span className="flex items-center justify-center w-8 h-8 rounded-lg font-bold text-white text-base shadow" style={{ background: '#2563eb' }}>
+                              {asig.nombre_asignatura?.[0] ?? ''}
+                            </span>
+                            <span className="dark:text-cyan-200 text-emerald-700">{asig.nombre_asignatura}</span>
+                          </div>
+                        </td>
                         {/* Lapso 1 */}
-                        <td className="px-1 py-2">
+                        <td className="px-2 py-2 align-middle text-center">
                           <input
                             type="number"
                             min={0}
                             max={20}
-                            value={(calif as Partial<CalificacionEstudiante>).lapso_1 ?? ''}
+                            value={padNota((calif as Partial<CalificacionEstudiante>).lapso_1 as number)}
                             onChange={e => handleInputChange(asig.id_asignatura, 'lapso_1', e.target.value)}
-                            className="w-10 px-1 py-1 rounded border border-gray-300 dark:border-dark-600 bg-white dark:bg-dark-700 text-center"
+                            className="w-14 h-10 px-2 py-1 rounded-lg border-2 border-emerald-400 dark:border-cyan-700 bg-white dark:bg-[#181f2a] text-center text-sm text-gray-900 dark:text-cyan-100 shadow focus:ring-2 focus:ring-cyan-400 focus:border-cyan-500 transition-all font-normal"
                           />
                         </td>
                         {mostrarAjustes && (
-                          <td className="px-1 py-2">
+                          <td className="px-2 py-2 align-middle text-center">
                             <input
                               type="number"
                               min={0}
                               max={20}
-                              value={(calif as Partial<CalificacionEstudiante>).lapso_1_ajustado ?? ''}
+                              value={padNota((calif as Partial<CalificacionEstudiante>).lapso_1_ajustado as number)}
                               onChange={e => handleInputChange(asig.id_asignatura, 'lapso_1_ajustado', e.target.value)}
-                              className={`w-10 px-1 py-1 rounded border ${errores[`${asig.id_asignatura}_lapso_1_ajustado`] ? 'border-red-500' : 'border-yellow-400 dark:border-yellow-600'} bg-white dark:bg-dark-700 text-center`}
+                              className={`w-14 h-10 px-2 py-1 rounded-lg border-2 ${errores[`${asig.id_asignatura}_lapso_1_ajustado`] ? 'border-red-500' : 'border-cyan-400 dark:border-cyan-600'} bg-white dark:bg-[#181f2a] text-center text-sm text-gray-900 dark:text-cyan-100 shadow focus:ring-2 focus:ring-cyan-400 focus:border-cyan-500 transition-all font-normal`}
                             />
                             {errores[`${asig.id_asignatura}_lapso_1_ajustado`] && <div className="text-xs text-red-500">{errores[`${asig.id_asignatura}_lapso_1_ajustado`]}</div>}
                           </td>
                         )}
                         {/* Lapso 2 */}
-                        <td className="px-1 py-2">
+                        <td className="px-2 py-2 align-middle text-center">
                           <input
                             type="number"
                             min={0}
                             max={20}
-                            value={(calif as Partial<CalificacionEstudiante>).lapso_2 ?? ''}
+                            value={padNota((calif as Partial<CalificacionEstudiante>).lapso_2 as number)}
                             onChange={e => handleInputChange(asig.id_asignatura, 'lapso_2', e.target.value)}
-                            className="w-10 px-1 py-1 rounded border border-gray-300 dark:border-dark-600 bg-white dark:bg-dark-700 text-center"
+                            className="w-14 h-10 px-2 py-1 rounded-lg border-2 border-emerald-400 dark:border-cyan-700 bg-white dark:bg-[#181f2a] text-center text-sm text-gray-900 dark:text-cyan-100 shadow focus:ring-2 focus:ring-cyan-400 focus:border-cyan-500 transition-all font-normal"
                           />
                         </td>
                         {mostrarAjustes && (
-                          <td className="px-1 py-2">
+                          <td className="px-2 py-2 align-middle text-center">
                             <input
                               type="number"
                               min={0}
                               max={20}
-                              value={(calif as Partial<CalificacionEstudiante>).lapso_2_ajustado ?? ''}
+                              value={padNota((calif as Partial<CalificacionEstudiante>).lapso_2_ajustado as number)}
                               onChange={e => handleInputChange(asig.id_asignatura, 'lapso_2_ajustado', e.target.value)}
-                              className={`w-10 px-1 py-1 rounded border ${errores[`${asig.id_asignatura}_lapso_2_ajustado`] ? 'border-red-500' : 'border-yellow-400 dark:border-yellow-600'} bg-white dark:bg-dark-700 text-center`}
+                              className={`w-14 h-10 px-2 py-1 rounded-lg border-2 ${errores[`${asig.id_asignatura}_lapso_2_ajustado`] ? 'border-red-500' : 'border-cyan-400 dark:border-cyan-600'} bg-white dark:bg-[#181f2a] text-center text-sm text-gray-900 dark:text-cyan-100 shadow focus:ring-2 focus:ring-cyan-400 focus:border-cyan-500 transition-all font-normal`}
                             />
                             {errores[`${asig.id_asignatura}_lapso_2_ajustado`] && <div className="text-xs text-red-500">{errores[`${asig.id_asignatura}_lapso_2_ajustado`]}</div>}
                           </td>
                         )}
                         {/* Lapso 3 */}
-                        <td className="px-1 py-2">
+                        <td className="px-2 py-2 align-middle text-center">
                           <input
                             type="number"
                             min={0}
                             max={20}
-                            value={(calif as Partial<CalificacionEstudiante>).lapso_3 ?? ''}
+                            value={padNota((calif as Partial<CalificacionEstudiante>).lapso_3 as number)}
                             onChange={e => handleInputChange(asig.id_asignatura, 'lapso_3', e.target.value)}
-                            className="w-10 px-1 py-1 rounded border border-gray-300 dark:border-dark-600 bg-white dark:bg-dark-700 text-center"
+                            className="w-14 h-10 px-2 py-1 rounded-lg border-2 border-emerald-400 dark:border-cyan-700 bg-white dark:bg-[#181f2a] text-center text-sm text-gray-900 dark:text-cyan-100 shadow focus:ring-2 focus:ring-cyan-400 focus:border-cyan-500 transition-all font-normal"
                           />
                         </td>
                         {mostrarAjustes && (
-                          <td className="px-1 py-2">
+                          <td className="px-2 py-2 align-middle text-center">
                             <input
                               type="number"
                               min={0}
                               max={20}
-                              value={(calif as Partial<CalificacionEstudiante>).lapso_3_ajustado ?? ''}
+                              value={padNota((calif as Partial<CalificacionEstudiante>).lapso_3_ajustado as number)}
                               onChange={e => handleInputChange(asig.id_asignatura, 'lapso_3_ajustado', e.target.value)}
-                              className={`w-10 px-1 py-1 rounded border ${errores[`${asig.id_asignatura}_lapso_3_ajustado`] ? 'border-red-500' : 'border-yellow-400 dark:border-yellow-600'} bg-white dark:bg-dark-700 text-center`}
+                              className={`w-14 h-10 px-2 py-1 rounded-lg border-2 ${errores[`${asig.id_asignatura}_lapso_3_ajustado`] ? 'border-red-500' : 'border-cyan-400 dark:border-cyan-600'} bg-white dark:bg-[#181f2a] text-center text-sm text-gray-900 dark:text-cyan-100 shadow focus:ring-2 focus:ring-cyan-400 focus:border-cyan-500 transition-all font-normal`}
                             />
                             {errores[`${asig.id_asignatura}_lapso_3_ajustado`] && <div className="text-xs text-red-500">{errores[`${asig.id_asignatura}_lapso_3_ajustado`]}</div>}
                           </td>
                         )}
                         {/* Final */}
-                        <td className="px-1 py-2">
+                        <td className="px-1 py-2 w-20 align-middle text-center">
                           <input
-                            type="number"
-                            value={(calif as Partial<CalificacionEstudiante>).nota_final ?? calcularNotaFinal(calif as CalificacionEstudiante)}
+                            type="text"
+                            value={padNota((calif as Partial<CalificacionEstudiante>).nota_final as number) || padNota(calcularNotaFinal(calif as CalificacionEstudiante))}
                             readOnly
-                            className="w-10 px-1 py-1 rounded border border-gray-300 dark:border-dark-600 bg-gray-100 dark:bg-dark-700 text-center text-gray-500"
+                            className="w-14 h-10 px-2 py-1 rounded-lg border-2 border-emerald-400 dark:border-cyan-700 bg-emerald-50 dark:bg-[#232c3d] text-center text-emerald-700 dark:text-cyan-200 font-normal shadow text-sm"
                           />
                         </td>
                         {/* Revisión */}
-                        <td className="px-1 py-2">
+                        <td className="px-1 py-2 w-20 align-middle text-center">
                           <input
                             type="text"
                             value={(calif as Partial<CalificacionEstudiante>).revision ?? ''}
                             onChange={e => handleInputChange(asig.id_asignatura, 'revision', e.target.value)}
-                            className="w-10 px-1 py-1 rounded border border-gray-300 dark:border-dark-600 bg-white dark:bg-dark-700 text-center"
+                            className="w-14 h-10 px-2 py-1 rounded-lg border-2 border-emerald-400 dark:border-cyan-700 bg-white dark:bg-[#181f2a] text-center text-sm text-gray-900 dark:text-cyan-100 shadow focus:ring-2 focus:ring-cyan-400 focus:border-cyan-500 transition-all font-normal"
                           />
                         </td>
                         {/* Estado */}
-                        <td className="px-1 py-2 text-center">
-                          {calcularEstadoAsignatura(calif as CalificacionEstudiante, totalRevisionMenor10)}
+                        <td className="px-1 py-2 w-24 align-middle text-center">
+                          <div className="h-10 flex items-center justify-center">
+                            {(() => {
+                              const estado = calcularEstadoAsignatura(calif as CalificacionEstudiante, totalRevisionMenor10);
+                              if (estado === 'Aprobado')
+                                return <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-600/20 dark:bg-cyan-800/30 text-emerald-700 dark:text-cyan-200 border border-emerald-400 dark:border-cyan-400 shadow">Aprobado</span>;
+                              if (estado === 'Pendiente')
+                                return <span className="px-3 py-1 rounded-full text-xs font-bold bg-yellow-600/20 dark:bg-yellow-800/30 text-yellow-700 dark:text-yellow-200 border border-yellow-400 dark:border-yellow-400 shadow">Pendiente</span>;
+                              if (estado === 'Repite')
+                                return <span className="px-3 py-1 rounded-full text-xs font-bold bg-red-600/20 dark:bg-red-800/30 text-red-700 dark:text-red-200 border border-red-400 dark:border-red-400 shadow">Repite</span>;
+                              if (estado === 'Revisión')
+                                return <span className="px-3 py-1 rounded-full text-xs font-bold bg-cyan-600/20 dark:bg-cyan-800/30 text-cyan-700 dark:text-cyan-200 border border-cyan-400 dark:border-cyan-400 shadow">Revisión</span>;
+                              return '';
+                            })()}
+                          </div>
                         </td>
                       </tr>
                     );
                   })}
                   {/* Fila de promedios */}
-                  <tr className="bg-primary-100 dark:bg-primary-900 font-bold">
-                    <td className="px-2 py-2 text-right">Promedio</td>
-                    <td className="px-1 py-2 text-center">{promedioLapsoConAjuste('lapso_1', 'lapso_1_ajustado')}</td>
-                    {mostrarAjustes && <td className="px-1 py-2 text-center"></td>}
-                    <td className="px-1 py-2 text-center">{promedioLapsoConAjuste('lapso_2', 'lapso_2_ajustado')}</td>
-                    {mostrarAjustes && <td className="px-1 py-2 text-center"></td>}
-                    <td className="px-1 py-2 text-center">{promedioLapsoConAjuste('lapso_3', 'lapso_3_ajustado')}</td>
-                    {mostrarAjustes && <td className="px-1 py-2 text-center"></td>}
-                    <td className="px-1 py-2 text-center">{promedioFinal()}</td>
-                    <td className="px-1 py-2 text-center"></td>
-                    <td className="px-1 py-2 text-center"></td>
+                  <tr className="bg-gradient-to-r from-emerald-900 via-dark-800 to-dark-900 dark:from-[#059669] dark:via-[#2563eb] dark:to-[#181f2a] font-bold">
+                    <td className="px-4 py-2 w-48 text-right text-emerald-700 dark:text-cyan-200 bg-white dark:bg-transparent"></td>
+                    <td className="px-1 py-2 w-20 text-center text-emerald-700 dark:text-cyan-200 bg-white dark:bg-transparent align-middle">
+                      <div className="flex items-center justify-center h-full">{padNota(Number(promedioLapsoConAjuste('lapso_1', 'lapso_1_ajustado')))}</div>
+                    </td>
+                    {mostrarAjustes && <td className="px-1 py-2 w-20 text-center bg-white dark:bg-transparent align-middle"></td>}
+                    <td className="px-1 py-2 w-20 text-center text-emerald-700 dark:text-cyan-200 bg-white dark:bg-transparent align-middle">
+                      <div className="flex items-center justify-center h-full">{padNota(Number(promedioLapsoConAjuste('lapso_2', 'lapso_2_ajustado')))}</div>
+                    </td>
+                    {mostrarAjustes && <td className="px-1 py-2 w-20 text-center bg-white dark:bg-transparent align-middle"></td>}
+                    <td className="px-1 py-2 w-20 text-center text-emerald-700 dark:text-cyan-200 bg-white dark:bg-transparent align-middle">
+                      <div className="flex items-center justify-center h-full">{padNota(Number(promedioLapsoConAjuste('lapso_3', 'lapso_3_ajustado')))}</div>
+                    </td>
+                    {mostrarAjustes && <td className="px-1 py-2 w-20 text-center bg-white dark:bg-transparent align-middle"></td>}
+                    <td className="px-1 py-2 w-20 text-center text-emerald-700 dark:text-cyan-200 bg-white dark:bg-transparent align-middle">
+                      <div className="flex items-center justify-center h-full">{padNota(Number(promedioFinal()))}</div>
+                    </td>
+                    <td className="px-1 py-2 w-20 text-center bg-white dark:bg-transparent align-middle"></td>
+                    <td className="px-1 py-2 w-24 text-center bg-white dark:bg-transparent align-middle"></td>
                   </tr>
                 </tbody>
               </table>
             </div>
             <div className="mt-4 text-right">
-              {mensajeGuardado && <div className="mb-2 text-green-600 font-semibold">{mensajeGuardado}</div>}
-              <button className="px-6 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-all font-semibold" onClick={handleGuardar}>Guardar Cambios</button>
+              {mensajeGuardado && <div className="mb-2 text-green-400 font-semibold">{mensajeGuardado}</div>}
+              <button className="px-8 py-2 bg-gradient-to-r from-emerald-600 to-cyan-600 text-white rounded-xl font-bold shadow-lg hover:scale-105 hover:bg-emerald-700 transition-all" onClick={handleGuardar}>Guardar Cambios</button>
             </div>
           </section>
         )}

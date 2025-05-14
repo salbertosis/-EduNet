@@ -189,20 +189,22 @@ export function ListaEstudiantes() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-emerald-400">Estudiantes</h1>
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => {
-              setEstudianteSeleccionado(null);
-              setMostrarFormulario(true);
-            }}
-            className="flex items-center space-x-2 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
-          >
-            <Plus className="w-5 h-5" />
-            <span>Nuevo Estudiante</span>
-          </button>
-          <label className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors cursor-pointer">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-400 bg-clip-text text-transparent drop-shadow-lg select-none">
+          Estudiantes
+        </h1>
+        <div className="flex items-center space-x-3">
+        <button
+          onClick={() => {
+            setEstudianteSeleccionado(null);
+            setMostrarFormulario(true);
+          }}
+            className="flex items-center space-x-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-cyan-600 text-white rounded-xl font-semibold shadow-lg hover:scale-105 hover:bg-emerald-700 transition-all"
+        >
+          <Plus className="w-5 h-5" />
+          <span>Nuevo Estudiante</span>
+        </button>
+          <label className="flex items-center space-x-2 px-5 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl font-semibold shadow-lg hover:scale-105 hover:bg-green-700 transition-all cursor-pointer">
             <FileSpreadsheet className="w-5 h-5" />
             <span>Cargar Excel</span>
             <input
@@ -233,42 +235,42 @@ export function ListaEstudiantes() {
       {/* Filtros */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 p-4 bg-white dark:bg-dark-800 rounded-xl shadow-soft">
         <div className="space-y-2">
-          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Cédula</label>
+          <label className="text-sm font-semibold text-gray-700 dark:text-emerald-300">Cédula</label>
           <div className="relative">
             <input
               type="text"
               value={filtros.cedula || ''}
               onChange={(e) => handleFiltroChange('cedula', e.target.value.replace(/[^0-9]/g, ''))}
-              className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-dark-600 bg-white dark:bg-dark-700 text-gray-900 dark:text-gray-100"
+              className="w-full pl-10 pr-4 py-2 rounded-xl border-2 border-emerald-400 dark:border-emerald-700 bg-white dark:bg-dark-700 text-gray-900 dark:text-gray-100 shadow focus:ring-2 focus:ring-emerald-400 focus:border-emerald-500 transition-all"
               placeholder="Buscar por cédula..."
             />
-            <Search className="absolute left-3 top-2.5 w-5 h-5 text-gray-400" />
+            <Search className="absolute left-3 top-2.5 w-5 h-5 text-emerald-400" />
           </div>
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Apellidos</label>
+          <label className="text-sm font-semibold text-gray-700 dark:text-emerald-300">Apellidos</label>
           <div className="relative">
             <input
               type="text"
               value={filtros.apellidos || ''}
               onChange={(e) => handleFiltroChange('apellidos', e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-dark-600 bg-white dark:bg-dark-700 text-gray-900 dark:text-gray-100"
+              className="w-full pl-10 pr-4 py-2 rounded-xl border-2 border-emerald-400 dark:border-emerald-700 bg-white dark:bg-dark-700 text-gray-900 dark:text-gray-100 shadow focus:ring-2 focus:ring-emerald-400 focus:border-emerald-500 transition-all"
               placeholder="Buscar por apellidos..."
             />
-            <Search className="absolute left-3 top-2.5 w-5 h-5 text-gray-400" />
+            <Search className="absolute left-3 top-2.5 w-5 h-5 text-emerald-400" />
           </div>
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Grado</label>
+          <label className="text-sm font-semibold text-gray-700 dark:text-emerald-300">Grado</label>
           <select
             value={filtros.grado !== undefined ? filtros.grado.toString() : ''}
             onChange={(e) => {
               const val = e.target.value;
               handleFiltroChange('grado', val);
             }}
-            className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-dark-600 bg-white dark:bg-dark-700 text-gray-900 dark:text-gray-100"
+            className="w-full px-4 py-2 rounded-xl border-2 border-emerald-400 dark:border-emerald-700 bg-white dark:bg-dark-700 text-gray-900 dark:text-gray-100 shadow focus:ring-2 focus:ring-emerald-400 focus:border-emerald-500 transition-all"
           >
             <option value="">Todos</option>
             {grados.map((grado) => (
@@ -278,14 +280,14 @@ export function ListaEstudiantes() {
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Modalidad</label>
+          <label className="text-sm font-semibold text-gray-700 dark:text-emerald-300">Modalidad</label>
           <select
             value={filtros.modalidad !== undefined ? filtros.modalidad.toString() : ''}
             onChange={(e) => {
               const val = e.target.value;
               handleFiltroChange('modalidad', val);
             }}
-            className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-dark-600 bg-white dark:bg-dark-700 text-gray-900 dark:text-gray-100"
+            className="w-full px-4 py-2 rounded-xl border-2 border-emerald-400 dark:border-emerald-700 bg-white dark:bg-dark-700 text-gray-900 dark:text-gray-100 shadow focus:ring-2 focus:ring-emerald-400 focus:border-emerald-500 transition-all"
           >
             <option value="">Todas</option>
             {modalidades.map((mod) => (
@@ -295,11 +297,11 @@ export function ListaEstudiantes() {
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Estado</label>
+          <label className="text-sm font-semibold text-gray-700 dark:text-emerald-300">Estado</label>
           <select
             value={filtros.estado || ''}
             onChange={(e) => handleFiltroChange('estado', e.target.value)}
-            className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-dark-600 bg-white dark:bg-dark-700 text-gray-900 dark:text-gray-100"
+            className="w-full px-4 py-2 rounded-xl border-2 border-emerald-400 dark:border-emerald-700 bg-white dark:bg-dark-700 text-gray-900 dark:text-gray-100 shadow focus:ring-2 focus:ring-emerald-400 focus:border-emerald-500 transition-all"
           >
             <option value="">Todos</option>
             <option value="Activo">Activo</option>
@@ -352,28 +354,28 @@ export function ListaEstudiantes() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 text-center">{estudiante.nombre_seccion}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 text-center">{estudiante.nombre_modalidad}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex gap-2 justify-end">
-                      <button
-                        onClick={() => {
-                          setEstudianteSeleccionado(estudiante);
-                          setMostrarFormulario(true);
-                        }}
+                    <button
+                      onClick={() => {
+                        setEstudianteSeleccionado(estudiante);
+                        setMostrarFormulario(true);
+                      }}
                         className="rounded-full p-2 text-emerald-400 hover:text-white hover:bg-emerald-900/40 hover:shadow-md hover:shadow-emerald-400/30 transition-all"
                         title="Editar"
-                      >
+                    >
                         <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" className="w-5 h-5" viewBox="0 0 20 20"><path d="M17.414 2.586a2 2 0 0 0-2.828 0l-9.9 9.9A2 2 0 0 0 4 14.414V17a1 1 0 0 0 1 1h2.586a2 2 0 0 0 1.414-.586l9.9-9.9a2 2 0 0 0 0-2.828l-2.414-2.414z"/></svg>
-                      </button>
-                      <button
+                    </button>
+                    <button
                         onClick={() => setModalBorrar({ abierto: true, estudiante })}
                         className="rounded-full p-2 text-red-400 hover:text-white hover:bg-red-900/40 hover:shadow-md hover:shadow-red-400/30 transition-all"
                         title="Eliminar"
-                      >
+                    >
                         <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" className="w-5 h-5" viewBox="0 0 20 20"><path d="M6 8a1 1 0 0 1 2 0v6a1 1 0 1 1-2 0V8zm4 0a1 1 0 0 1 2 0v6a1 1 0 1 1-2 0V8z"/><path fillRule="evenodd" d="M4 5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1H4V5zm2-3a4 4 0 0 0-4 4v1a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V6a4 4 0 0 0-4-4H6z" clipRule="evenodd"/></svg>
-                      </button>
+                    </button>
                       <OjoVerDetalles
                         onClick={() => navigate(`/estudiantes/${estudiante.id}/calificaciones`)}
                       />
-                    </td>
-                  </tr>
+                  </td>
+                </tr>
                 ))
               )}
             </tbody>

@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/tauri';
-import { Search, Plus, Pencil, Trash2, FileSpreadsheet } from 'lucide-react';
+import { Search, Plus, Pencil, Trash2, FileSpreadsheet, X } from 'lucide-react';
 import { FormularioEstudiante } from '../componentes/FormularioEstudiante';
 import * as XLSX from 'xlsx';
 import { useMensajeGlobal } from '../../../componentes/MensajeGlobalContext';
 import { ModalConfirmar } from '../../../componentes/ModalConfirmar';
 import { Paginacion } from '../../../componentes/Paginacion';
+import { OjoVerDetalles } from '../../calificaciones/componentes/OjoVerDetalles';
+import { DetalleCalificaciones } from '../../calificaciones/paginas/DetalleCalificaciones';
+import { useNavigate } from 'react-router-dom';
 
 interface Estudiante {
   id: number;
@@ -55,9 +58,14 @@ export function ListaEstudiantes() {
     registrosPorPagina: 10
   });
   const { mostrarMensaje } = useMensajeGlobal();
+  const [cargando, setCargando] = useState(false);
+  const [mostrarDetalleCalificaciones, setMostrarDetalleCalificaciones] = useState(false);
+  const [estudianteDetalle, setEstudianteDetalle] = useState<Estudiante | null>(null);
+  const navigate = useNavigate();
 
   const cargarEstudiantes = async () => {
     try {
+      setCargando(true);
       const resultado = await invoke<{ datos: Estudiante[], paginacion: PaginacionInfo }>('obtener_estudiantes', {
         filtro: Object.keys(filtros).length > 0 ? filtros : null,
         paginacion: {
@@ -77,6 +85,8 @@ export function ListaEstudiantes() {
     } catch (error) {
       console.error('Error al cargar estudiantes:', error);
       mostrarMensaje('Error al cargar estudiantes', 'error');
+    } finally {
+      setCargando(false);
     }
   };
 
@@ -168,10 +178,19 @@ export function ListaEstudiantes() {
     reader.readAsBinaryString(file);
   };
 
+  const handleCambiarRegistrosPorPagina = (cantidad: number) => {
+    setPaginacion(prev => ({ ...prev, registrosPorPagina: cantidad, paginaActual: 1 }));
+  };
+
+  // Chips de filtros activos
+  const filtrosActivos = Object.entries(filtros).filter(([_, v]) => v !== undefined && v !== '');
+
+  const limpiarFiltros = () => setFiltros({});
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Estudiantes</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-emerald-400">Estudiantes</h1>
         <div className="flex items-center space-x-2">
           <button
             onClick={() => {
@@ -195,6 +214,21 @@ export function ListaEstudiantes() {
           </label>
         </div>
       </div>
+
+      {/* Filtros activos como chips y botón limpiar */}
+      {filtrosActivos.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 mb-2">
+          {filtrosActivos.map(([k, v]) => (
+            <span key={k} className="flex items-center bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-200 px-3 py-1 rounded-full text-xs font-medium">
+              {k}: {v}
+              <button onClick={() => setFiltros(prev => ({ ...prev, [k]: undefined }))} className="ml-1 text-primary-500 hover:text-primary-800">
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          ))}
+          <button onClick={limpiarFiltros} className="ml-2 px-3 py-1 bg-gray-200 dark:bg-dark-700 text-gray-700 dark:text-gray-200 rounded-full text-xs font-medium hover:bg-gray-300 dark:hover:bg-dark-600 transition-all">Limpiar filtros</button>
+        </div>
+      )}
 
       {/* Filtros */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 p-4 bg-white dark:bg-dark-800 rounded-xl shadow-soft">
@@ -278,59 +312,84 @@ export function ListaEstudiantes() {
       <div className="bg-white dark:bg-dark-800 rounded-xl shadow-soft overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200 dark:divide-dark-700">
-            <thead className="bg-gray-50 dark:bg-dark-700">
+            <thead className="sticky top-0 z-10 bg-gray-100 dark:bg-dark-900">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cédula</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nombres</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Apellidos</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Grado</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Sección</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Modalidad</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Acciones</th>
+                <th className="px-6 py-3 text-left text-xs font-extrabold text-gray-700 dark:text-green-300 tracking-widest uppercase border-b border-gray-200 dark:border-dark-600">CÉDULA</th>
+                <th className="px-6 py-3 text-left text-xs font-extrabold text-gray-700 dark:text-green-300 tracking-widest uppercase border-b border-gray-200 dark:border-dark-600">NOMBRES</th>
+                <th className="px-6 py-3 text-left text-xs font-extrabold text-gray-700 dark:text-green-300 tracking-widest uppercase border-b border-gray-200 dark:border-dark-600">APELLIDOS</th>
+                <th className="px-6 py-3 text-left text-xs font-extrabold text-gray-700 dark:text-green-300 tracking-widest uppercase border-b border-gray-200 dark:border-dark-600">GRADO</th>
+                <th className="px-6 py-3 text-xs font-extrabold text-gray-700 dark:text-green-300 tracking-widest uppercase border-b border-gray-200 dark:border-dark-600 text-center">SECCIÓN</th>
+                <th className="px-6 py-3 text-xs font-extrabold text-gray-700 dark:text-green-300 tracking-widest uppercase border-b border-gray-200 dark:border-dark-600 text-center">MODALIDAD</th>
+                <th className="px-6 py-3 text-right text-xs font-extrabold text-gray-700 dark:text-green-300 tracking-widest uppercase border-b border-gray-200 dark:border-dark-600">ACCIONES</th>
               </tr>
             </thead>
-            <tbody className="bg-white dark:bg-dark-800 divide-y divide-gray-200 dark:divide-dark-700">
-              {Array.isArray(estudiantes) && estudiantes.map((estudiante) => (
-                <tr key={estudiante.id} className="hover:bg-gray-50 dark:hover:bg-dark-700">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{estudiante.cedula}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{estudiante.nombres}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{estudiante.apellidos}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{estudiante.nombre_grado}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{estudiante.nombre_seccion}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{estudiante.nombre_modalidad}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button
-                      onClick={() => {
-                        setEstudianteSeleccionado(estudiante);
-                        setMostrarFormulario(true);
-                      }}
-                      className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-300 mr-4"
-                    >
-                      <Pencil className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={() => setModalBorrar({ abierto: true, estudiante })}
-                      className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  </td>
+            <tbody>
+              {cargando ? (
+                [...Array(paginacion.registrosPorPagina)].map((_, idx) => (
+                  <tr key={idx} className={idx % 2 === 0 ? 'bg-white dark:bg-dark-800 border-b border-gray-200 dark:border-dark-600' : 'bg-gray-50 dark:bg-dark-700 border-b border-gray-200 dark:border-dark-600'}>
+                    <td colSpan={7} className="py-6 text-center animate-pulse text-gray-500 dark:text-gray-600">Cargando...</td>
+                  </tr>
+                ))
+              ) : estudiantes.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-8 text-center text-gray-400 bg-white dark:bg-dark-800">No se encontraron estudiantes.</td>
                 </tr>
-              ))}
+              ) : (
+                estudiantes.map((estudiante, idx) => (
+                  <tr
+                    key={estudiante.id}
+                    className={
+                      (idx % 2 === 0
+                        ? 'bg-white dark:bg-dark-800 border-b border-gray-200 dark:border-dark-600'
+                        : 'bg-gray-50 dark:bg-dark-700 border-b border-gray-200 dark:border-dark-600') +
+                      ' transition-all duration-200 hover:shadow-lg hover:shadow-emerald-500/10'
+                    }
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">{estudiante.cedula}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">{estudiante.nombres}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">{estudiante.apellidos}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">{estudiante.nombre_grado}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 text-center">{estudiante.nombre_seccion}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 text-center">{estudiante.nombre_modalidad}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex gap-2 justify-end">
+                      <button
+                        onClick={() => {
+                          setEstudianteSeleccionado(estudiante);
+                          setMostrarFormulario(true);
+                        }}
+                        className="rounded-full p-2 text-emerald-400 hover:text-white hover:bg-emerald-900/40 hover:shadow-md hover:shadow-emerald-400/30 transition-all"
+                        title="Editar"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" className="w-5 h-5" viewBox="0 0 20 20"><path d="M17.414 2.586a2 2 0 0 0-2.828 0l-9.9 9.9A2 2 0 0 0 4 14.414V17a1 1 0 0 0 1 1h2.586a2 2 0 0 0 1.414-.586l9.9-9.9a2 2 0 0 0 0-2.828l-2.414-2.414z"/></svg>
+                      </button>
+                      <button
+                        onClick={() => setModalBorrar({ abierto: true, estudiante })}
+                        className="rounded-full p-2 text-red-400 hover:text-white hover:bg-red-900/40 hover:shadow-md hover:shadow-red-400/30 transition-all"
+                        title="Eliminar"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" className="w-5 h-5" viewBox="0 0 20 20"><path d="M6 8a1 1 0 0 1 2 0v6a1 1 0 1 1-2 0V8zm4 0a1 1 0 0 1 2 0v6a1 1 0 1 1-2 0V8z"/><path fillRule="evenodd" d="M4 5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1H4V5zm2-3a4 4 0 0 0-4 4v1a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V6a4 4 0 0 0-4-4H6z" clipRule="evenodd"/></svg>
+                      </button>
+                      <OjoVerDetalles
+                        onClick={() => navigate(`/estudiantes/${estudiante.id}/calificaciones`)}
+                      />
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Paginación */}
+      {/* Paginación avanzada */}
       <div className="flex justify-between items-center bg-white dark:bg-dark-800 p-4 rounded-xl shadow-soft">
-        <div className="text-sm text-gray-700 dark:text-gray-300">
-          Mostrando {estudiantes.length} de {paginacion.totalRegistros} registros
-        </div>
         <Paginacion
           paginaActual={paginacion.paginaActual}
           totalPaginas={paginacion.totalPaginas}
+          totalRegistros={paginacion.totalRegistros}
+          registrosPorPagina={paginacion.registrosPorPagina}
           onCambiarPagina={handleCambiarPagina}
+          onCambiarRegistrosPorPagina={handleCambiarRegistrosPorPagina}
         />
       </div>
 

@@ -83,6 +83,7 @@ pub struct NuevoEstudiante {
 pub struct PeriodoEscolar {
     pub id_periodo: i32,
     pub periodo_escolar: String,
+    pub activo: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -95,6 +96,29 @@ pub struct Grado {
 pub struct Modalidad {
     pub id_modalidad: i32,
     pub nombre_modalidad: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Asignatura {
+    pub id_asignatura: i32,
+    pub nombre_asignatura: String,
+    pub id_grado: i32,
+    pub id_modalidad: i32,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CalificacionEstudiante {
+    pub id_calificacion: Option<i32>,
+    pub id_asignatura: i32,
+    pub nombre_asignatura: String,
+    pub lapso_1: Option<i32>,
+    pub lapso_1_ajustado: Option<i32>,
+    pub lapso_2: Option<i32>,
+    pub lapso_2_ajustado: Option<i32>,
+    pub lapso_3: Option<i32>,
+    pub lapso_3_ajustado: Option<i32>,
+    pub nota_final: Option<i32>,
+    pub revision: Option<i32>,
 }
 
 struct AppState {
@@ -143,6 +167,22 @@ pub struct PaginacionInfo {
 pub struct ResultadoPaginado<T> {
     pub datos: Vec<T>,
     pub paginacion: PaginacionInfo,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CalificacionInput {
+    pub id_calificacion: Option<i32>,
+    pub id_estudiante: i64,
+    pub id_asignatura: i32,
+    pub id_periodo: i32,
+    pub lapso_1: Option<i32>,
+    pub lapso_1_ajustado: Option<i32>,
+    pub lapso_2: Option<i32>,
+    pub lapso_2_ajustado: Option<i32>,
+    pub lapso_3: Option<i32>,
+    pub lapso_3_ajustado: Option<i32>,
+    pub revision: Option<i32>,
+    pub nota_final: Option<i32>,
 }
 
 #[tauri::command]
@@ -365,12 +405,13 @@ async fn contar_estudiantes(state: State<'_, AppState>) -> Result<i64, String> {
 #[tauri::command]
 async fn listar_periodos_escolares(state: State<'_, AppState>) -> Result<Vec<PeriodoEscolar>, String> {
     let mut db = state.db.lock().await;
-    let query = "SELECT id_periodo, periodo_escolar FROM periodos_escolares ORDER BY id_periodo ASC";
+    let query = "SELECT id_periodo, periodo_escolar, activo FROM periodos_escolares ORDER BY id_periodo ASC";
     let rows = db.query(query, &[]).await.map_err(|e| e.to_string())?;
 
     let periodos = rows.iter().map(|row| PeriodoEscolar {
         id_periodo: row.get("id_periodo"),
         periodo_escolar: row.get("periodo_escolar"),
+        activo: row.get("activo"),
     }).collect();
 
     Ok(periodos)
@@ -480,6 +521,213 @@ async fn insertar_estudiantes_masivo(
     Ok(resumen)
 }
 
+#[tauri::command]
+async fn obtener_estudiante_por_id(
+    id: i32,
+    state: tauri::State<'_, AppState>,
+) -> Result<Estudiante, String> {
+    let mut db = state.db.lock().await;
+    let row = db
+        .query_one(
+            "SELECT e.id, e.cedula, e.nombres, e.apellidos, e.genero, e.fecha_nacimiento, \
+            e.id_grado_secciones, e.fecha_ingreso, e.municipionac, e.paisnac, e.entidadfed, \
+            e.ciudadnac, e.estadonac, e.id_grado, g.nombre_grado, e.id_seccion, s.nombre_seccion, \
+            e.id_modalidad, m.nombre_modalidad, e.id_periodoactual, e.estado, e.fecha_retiro \
+            FROM estudiantes e \
+            LEFT JOIN grados g ON e.id_grado = g.id_grado \
+            LEFT JOIN secciones s ON e.id_seccion = s.id_seccion \
+            LEFT JOIN modalidades m ON e.id_modalidad = m.id_modalidad \
+            WHERE e.id = $1",
+            &[&id],
+        )
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(Estudiante {
+        id: row.get(0),
+        cedula: row.get(1),
+        nombres: row.get(2),
+        apellidos: row.get(3),
+        genero: row.get(4),
+        fecha_nacimiento: row.get(5),
+        id_grado_secciones: row.get(6),
+        fecha_ingreso: row.get(7),
+        municipionac: row.get(8),
+        paisnac: row.get(9),
+        entidadfed: row.get(10),
+        ciudadnac: row.get(11),
+        estadonac: row.get(12),
+        id_grado: row.get(13),
+        nombre_grado: row.get(14),
+        id_seccion: row.get(15),
+        nombre_seccion: row.get(16),
+        id_modalidad: row.get(17),
+        nombre_modalidad: row.get(18),
+        id_periodoactual: row.get(19),
+        estado: row.get(20),
+        fecha_retiro: row.get(21),
+    })
+}
+
+#[tauri::command]
+async fn guardar_calificacion(
+    calificacion: CalificacionInput,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    // Validar ajustes
+    if let (Some(l1), Some(a1)) = (calificacion.lapso_1, calificacion.lapso_1_ajustado) {
+        if a1 < l1 { return Err("El ajuste del 1er lapso no puede ser menor que la nota original".into()); }
+        if a1 > l1 + 2 { return Err("El ajuste del 1er lapso no puede ser mayor que la nota original +2".into()); }
+    }
+    if let (Some(l2), Some(a2)) = (calificacion.lapso_2, calificacion.lapso_2_ajustado) {
+        if a2 < l2 { return Err("El ajuste del 2do lapso no puede ser menor que la nota original".into()); }
+        if a2 > l2 + 2 { return Err("El ajuste del 2do lapso no puede ser mayor que la nota original +2".into()); }
+    }
+    if let (Some(l3), Some(a3)) = (calificacion.lapso_3, calificacion.lapso_3_ajustado) {
+        if a3 < l3 { return Err("El ajuste del 3er lapso no puede ser menor que la nota original".into()); }
+        if a3 > l3 + 2 { return Err("El ajuste del 3er lapso no puede ser mayor que la nota original +2".into()); }
+    }
+
+    // Calcular nota final usando ajustes si existen
+    let l1 = calificacion.lapso_1_ajustado.or(calificacion.lapso_1).unwrap_or(0);
+    let l2 = calificacion.lapso_2_ajustado.or(calificacion.lapso_2).unwrap_or(0);
+    let l3 = calificacion.lapso_3_ajustado.or(calificacion.lapso_3).unwrap_or(0);
+    let nota_final = ((l1 + l2 + l3) as f32 / 3.0).round() as i32;
+
+    let mut db = state.db.lock().await;
+    if let Some(id_calificacion) = calificacion.id_calificacion {
+        // UPDATE
+        db.execute(
+            "UPDATE calificaciones SET lapso_1=$1, lapso_1_ajustado=$2, lapso_2=$3, lapso_2_ajustado=$4, lapso_3=$5, lapso_3_ajustado=$6, revision=$7, nota_final=$8 WHERE id_calificacion=$9",
+            &[&calificacion.lapso_1, &calificacion.lapso_1_ajustado, &calificacion.lapso_2, &calificacion.lapso_2_ajustado, &calificacion.lapso_3, &calificacion.lapso_3_ajustado, &calificacion.revision, &nota_final, &id_calificacion]
+        ).await.map_err(|e| e.to_string())?;
+    } else {
+        // UPSERT: INSERT ... ON CONFLICT ... DO UPDATE
+        db.execute(
+            "INSERT INTO calificaciones (id_estudiante, id_asignatura, id_periodo, lapso_1, lapso_1_ajustado, lapso_2, lapso_2_ajustado, lapso_3, lapso_3_ajustado, revision, nota_final)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+             ON CONFLICT (id_estudiante, id_asignatura, id_periodo)
+             DO UPDATE SET
+                lapso_1=EXCLUDED.lapso_1,
+                lapso_1_ajustado=EXCLUDED.lapso_1_ajustado,
+                lapso_2=EXCLUDED.lapso_2,
+                lapso_2_ajustado=EXCLUDED.lapso_2_ajustado,
+                lapso_3=EXCLUDED.lapso_3,
+                lapso_3_ajustado=EXCLUDED.lapso_3_ajustado,
+                revision=EXCLUDED.revision,
+                nota_final=EXCLUDED.nota_final",
+            &[&calificacion.id_estudiante, &calificacion.id_asignatura, &calificacion.id_periodo, &calificacion.lapso_1, &calificacion.lapso_1_ajustado, &calificacion.lapso_2, &calificacion.lapso_2_ajustado, &calificacion.lapso_3, &calificacion.lapso_3_ajustado, &calificacion.revision, &nota_final]
+        ).await.map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+async fn obtener_asignaturas_por_grado_modalidad(
+    id_grado: i32,
+    id_modalidad: i32,
+    state: State<'_, AppState>,
+) -> Result<Vec<Asignatura>, String> {
+    println!("[DEBUG] >>>>> FUNCION obtener_asignaturas_por_grado_modalidad llamada");
+    println!("[DEBUG] Parámetros recibidos: id_grado={}, id_modalidad={}", id_grado, id_modalidad);
+    let mut db = state.db.lock().await;
+    let query = "
+        SELECT a.id_asignatura, a.nombre, gma.id_grado, gma.id_modalidad
+        FROM asignaturas a
+        INNER JOIN grado_modalidad_asignaturas gma ON a.id_asignatura = gma.id_asignatura
+        WHERE gma.id_grado = $1 AND gma.id_modalidad = $2
+        ORDER BY gma.orden";
+    let rows = db.query(query, &[&id_grado, &id_modalidad])
+        .await
+        .map_err(|e| e.to_string())?;
+    println!("[DEBUG] Filas retornadas por la consulta: {}", rows.len());
+    let asignaturas = rows.iter().map(|row| Asignatura {
+        id_asignatura: row.get(0),
+        nombre_asignatura: row.get(1),
+        id_grado: row.get(2),
+        id_modalidad: row.get(3),
+    }).collect();
+    Ok(asignaturas)
+}
+
+#[tauri::command]
+async fn obtener_calificaciones_estudiante(
+    id_estudiante: i64,
+    id_periodo: i32,
+    state: State<'_, AppState>,
+) -> Result<Vec<CalificacionEstudiante>, String> {
+    println!("[DEBUG][BACKEND] >>>>> FUNCION obtener_calificaciones_estudiante llamada");
+    println!("[DEBUG][BACKEND] Parámetros recibidos: id_estudiante={}, id_periodo={}", id_estudiante, id_periodo);
+    let mut db = state.db.lock().await;
+    let estudiante = db.query_one(
+        "SELECT id_grado, id_modalidad FROM estudiantes WHERE id = $1",
+        &[&((id_estudiante) as i32)]
+    ).await.map_err(|e| format!("Error al verificar estudiante: {}", e))?;
+    let id_grado: i32 = estudiante.get(0);
+    let id_modalidad: i32 = estudiante.get(1);
+    println!("[DEBUG] Estudiante encontrado: id_grado={}, id_modalidad={}", id_grado, id_modalidad);
+    
+    // Obtenemos las asignaturas y calificaciones en una sola consulta
+    let query = "
+        WITH asignaturas_estudiante AS (
+            SELECT 
+                a.id_asignatura,
+                a.nombre
+            FROM asignaturas a
+            INNER JOIN grado_modalidad_asignaturas gma 
+                ON a.id_asignatura = gma.id_asignatura
+            WHERE gma.id_grado = $1 
+                AND gma.id_modalidad = $2
+            ORDER BY gma.orden
+        )
+        SELECT 
+            c.id_calificacion,
+            ae.id_asignatura,
+            ae.nombre,
+            c.lapso_1,
+            c.lapso_1_ajustado,
+            c.lapso_2,
+            c.lapso_2_ajustado,
+            c.lapso_3,
+            c.lapso_3_ajustado,
+            c.nota_final,
+            c.revision
+        FROM asignaturas_estudiante ae
+        LEFT JOIN calificaciones c 
+            ON ae.id_asignatura = c.id_asignatura 
+            AND c.id_estudiante = $3 
+            AND c.id_periodo = $4
+        ORDER BY ae.nombre";
+    
+    println!("[DEBUG] Ejecutando consulta SQL");
+    let rows = db.query(query, &[&id_grado, &id_modalidad, &id_estudiante, &id_periodo])
+        .await
+        .map_err(|e| format!("Error al obtener calificaciones: {}", e))?;
+    
+    println!("[DEBUG] Filas obtenidas: {}", rows.len());
+    
+    let calificaciones = rows.iter().map(|row| {
+        let cal = CalificacionEstudiante {
+            id_calificacion: row.get(0),
+            id_asignatura: row.get(1),
+            nombre_asignatura: row.get(2),
+            lapso_1: row.get(3),
+            lapso_1_ajustado: row.get(4),
+            lapso_2: row.get(5),
+            lapso_2_ajustado: row.get(6),
+            lapso_3: row.get(7),
+            lapso_3_ajustado: row.get(8),
+            nota_final: row.get(9),
+            revision: row.get(10),
+        };
+        println!("[DEBUG] Calificación procesada: {:?}", cal);
+        cal
+    }).collect();
+    
+    println!("[DEBUG] Calificaciones procesadas exitosamente");
+    Ok(calificaciones)
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Iniciando Tauri...");
@@ -517,7 +765,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             listar_periodos_escolares,
             listar_grados,
             listar_modalidades,
-            insertar_estudiantes_masivo
+            insertar_estudiantes_masivo,
+            obtener_estudiante_por_id,
+            guardar_calificacion,
+            obtener_asignaturas_por_grado_modalidad,
+            obtener_calificaciones_estudiante
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

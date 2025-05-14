@@ -4,6 +4,7 @@ import { Dashboard } from './modulos/dashboard/paginas/Dashboard';
 import { ListaEstudiantes } from './modulos/estudiantes/paginas/ListaEstudiantes';
 import { MensajeGlobalProvider, useMensajeGlobal } from "./componentes/MensajeGlobalContext";
 import { ModalMensaje } from "./componentes/ModalMensaje";
+import { DetalleCalificacionesPage } from './modulos/calificaciones/paginas/DetalleCalificacionesPage';
 
 function MensajeGlobalModal() {
   const { mensaje, cerrarMensaje } = useMensajeGlobal();
@@ -22,6 +23,7 @@ export function App() {
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="estudiantes" element={<ListaEstudiantes />} />
+            <Route path="estudiantes/:id/calificaciones" element={<DetalleCalificacionesPage />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Route>
         </Routes>

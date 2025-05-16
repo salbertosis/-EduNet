@@ -4,7 +4,6 @@
 
 use serde::{Deserialize, Serialize};
 use tauri::State;
-use tokio_postgres::{NoTls};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use chrono::NaiveDate;
@@ -12,6 +11,10 @@ use postgres_types::{ToSql, FromSql};
 use serde_json;
 use std::collections::HashSet;
 // Eliminada importación no usada: bytes::BytesMut
+
+mod config;
+mod db;
+mod utils;
 
 #[derive(Debug, Serialize, Deserialize, Clone, ToSql, FromSql)]
 #[postgres(name = "estado_estudiante")]
@@ -150,8 +153,8 @@ pub struct AsignaturaPendiente {
     pub periodo_escolar: Option<String>,
 }
 
-struct AppState {
-    db: Arc<Mutex<tokio_postgres::Client>>,
+pub struct AppState {
+    pub db: Arc<Mutex<tokio_postgres::Client>>,
 }
 
 enum ParamValue {
@@ -343,7 +346,6 @@ async fn obtener_estudiantes(
     })
 }
 
-#[tauri::command]
 async fn verificar_cedula_duplicada(
     db: &tokio_postgres::Client,
     cedula: i64,
@@ -370,7 +372,6 @@ async fn crear_estudiante(
     estudiante: NuevoEstudiante,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
-    println!("[DEBUG] Datos recibidos en crear_estudiante: {:#?}", estudiante);
     let db = state.db.lock().await;
     let cedula_duplicada = verificar_cedula_duplicada(&*db, estudiante.cedula, None).await?;
     if cedula_duplicada {
@@ -764,13 +765,13 @@ async fn obtener_calificaciones_estudiante(
 #[tauri::command]
 async fn obtener_historial_academico_estudiante(
     id_estudiante: Option<i32>,
-    idEstudiante: Option<i32>,
-    _id_estudiante_alias: Option<i32>,
+    id_estudiante_alt: Option<i32>,
+    id_estudiante_alias: Option<i32>,
     state: State<'_, AppState>,
 ) -> Result<Vec<HistorialAcademico>, String> {
     let id = id_estudiante
-        .or(idEstudiante)
-        .or(_id_estudiante_alias)
+        .or(id_estudiante_alt)
+        .or(id_estudiante_alias)
         .ok_or("Falta el parámetro id_estudiante/idEstudiante")?;
     println!("[DEBUG][BACKEND] >>>>> FUNCION obtener_historial_academico_estudiante llamada");
     println!("[DEBUG][BACKEND] Parámetro recibido: id={}", id);
@@ -814,20 +815,20 @@ async fn obtener_historial_academico_estudiante(
 #[tauri::command]
 async fn upsert_historial_academico(
     id_estudiante: Option<i32>,
-    idEstudiante: Option<i32>,
+    id_estudiante_alt: Option<i32>,
     id_periodo: Option<i32>,
-    idPeriodo: Option<i32>,
+    id_periodo_alt: Option<i32>,
     id_grado_secciones: Option<i32>,
-    idGradoSecciones: Option<i32>,
+    id_grado_secciones_alt: Option<i32>,
     promedio_anual: Option<f64>,
-    promedioAnual: Option<f64>,
+    promedio_anual_alt: Option<f64>,
     estatus: String,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
-    let id = id_estudiante.or(idEstudiante).ok_or("Falta el parámetro id_estudiante/idEstudiante")?;
-    let periodo = id_periodo.or(idPeriodo).ok_or("Falta el parámetro id_periodo/idPeriodo")?;
-    let grado_secciones = id_grado_secciones.or(idGradoSecciones).ok_or("Falta el parámetro id_grado_secciones/idGradoSecciones")?;
-    let promedio = promedio_anual.or(promedioAnual).ok_or("Falta el parámetro promedio_anual/promedioAnual")?;
+    let id = id_estudiante.or(id_estudiante_alt).ok_or("Falta el parámetro id_estudiante/idEstudiante")?;
+    let periodo = id_periodo.or(id_periodo_alt).ok_or("Falta el parámetro id_periodo/idPeriodo")?;
+    let grado_secciones = id_grado_secciones.or(id_grado_secciones_alt).ok_or("Falta el parámetro id_grado_secciones/idGradoSecciones")?;
+    let promedio = promedio_anual.or(promedio_anual_alt).ok_or("Falta el parámetro promedio_anual/promedioAnual")?;
     println!("[DEBUG][BACKEND] >>>>> FUNCION upsert_historial_academico llamada");
     println!("[DEBUG][BACKEND] Parámetros recibidos: id_estudiante={}, id_periodo={}, id_grado_secciones={}, promedio_anual={}, estatus={}", 
         id, periodo, grado_secciones, promedio, estatus);
@@ -860,10 +861,10 @@ async fn upsert_historial_academico(
 #[tauri::command]
 async fn obtener_asignaturas_pendientes_estudiante(
     id_estudiante: Option<i32>,
-    idEstudiante: Option<i32>,
+    id_estudiante_alt: Option<i32>,
     state: State<'_, AppState>,
 ) -> Result<Vec<AsignaturaPendiente>, String> {
-    let id = id_estudiante.or(idEstudiante).ok_or("Falta el parámetro id_estudiante/idEstudiante")?;
+    let id = id_estudiante.or(id_estudiante_alt).ok_or("Falta el parámetro id_estudiante/idEstudiante")?;
     println!("[DEBUG][BACKEND] obtener_asignaturas_pendientes_estudiante: id={}", id);
     let db = state.db.lock().await;
     let query = r#"
@@ -897,7 +898,7 @@ async fn obtener_asignaturas_pendientes_estudiante(
 
 #[tauri::command]
 async fn guardar_asignaturas_pendientes(
-    idEstudiante: i32,
+    id_estudiante: i32,
     pendientes: Vec<AsignaturaPendienteInput>,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
@@ -911,7 +912,7 @@ async fn guardar_asignaturas_pendientes(
     // Obtener grado y sección del estudiante
     let row = db.query_one(
         "SELECT id_grado_secciones FROM estudiantes WHERE id = $1",
-        &[&idEstudiante],
+        &[&id_estudiante],
     ).await.map_err(|e| format!("Error al obtener grado/sección: {}", e))?;
     let id_grado_secciones: i32 = row.get(0);
     // Obtener nombre del grado
@@ -927,7 +928,7 @@ async fn guardar_asignaturas_pendientes(
             VALUES ($1, $2, $3, $4, $5, 'Pendiente', $6) \
             ON CONFLICT (id_estudiante, id_asignatura, id_periodo) \
             DO UPDATE SET cal_momento1 = EXCLUDED.cal_momento1, estado = 'Pendiente', grado = EXCLUDED.grado, id_grado_secciones = EXCLUDED.id_grado_secciones",
-            &[&idEstudiante, &pendiente.id_asignatura, &pendiente.id_periodo, &nombre_grado, &pendiente.revision, &id_grado_secciones]
+            &[&id_estudiante, &pendiente.id_asignatura, &pendiente.id_periodo, &nombre_grado, &pendiente.revision, &id_grado_secciones]
         ).await.map_err(|e| format!("Error al guardar asignatura pendiente: {}", e))?;
     }
     Ok(())
@@ -935,30 +936,13 @@ async fn guardar_asignaturas_pendientes(
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("Iniciando Tauri...");
+    println!("Iniciando EduNet...");
     
-    println!("Conectando a la base de datos...");
-    let (client, connection) = tokio_postgres::connect(
-        "host=localhost user=Salbertosis password=salbertosis13497674 dbname=EduNet port=5432",
-        NoTls,
-    )
-    .await?;
-    println!("Conexión a la base de datos establecida");
-
-    println!("Iniciando conexión en segundo plano...");
-    tokio::spawn(async move {
-        if let Err(e) = connection.await {
-            eprintln!("connection error: {}", e);
-        }
-    });
-    println!("Conexión en segundo plano iniciada");
-
-    let app_state = AppState {
-        db: Arc::new(Mutex::new(client)),
-    };
-    println!("Estado de la aplicación creado");
-
-    println!("Configurando Tauri...");
+    // Inicializar la base de datos
+    let db_pool = db::connection::init_db().await?;
+    let app_state = AppState { db: db_pool };
+    
+    // Configurar Tauri
     tauri::Builder::default()
         .manage(app_state)
         .invoke_handler(tauri::generate_handler![
@@ -983,6 +967,5 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 
-    println!("Tauri iniciado correctamente.");
     Ok(())
 }

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/tauri';
 import { useMensajeGlobal } from '../../../componentes/MensajeGlobalContext';
 import { HistorialAcademico } from '../componentes/HistorialAcademico';
+import { AsignaturasPendientes } from '../componentes/AsignaturasPendientes';
 
 const TABS = [
   { key: 'datos', label: 'Datos Personales' },
@@ -468,6 +469,33 @@ export function DetalleCalificaciones({ estudiante, onVolver }: DetalleCalificac
   // Log global para saber si el componente se monta
   console.log('[DEBUG][GLOBAL] DetalleCalificaciones renderizado');
 
+  // Agregar la función handleGuardarPendientes dentro del componente
+  const handleGuardarPendientes = async () => {
+    const pendientes = calificaciones.filter(c => typeof c.revision === 'number' && c.revision < 10);
+    if (pendientes.length === 0) {
+      mostrarMensaje('El estudiante no tiene asignaturas pendientes.', 'advertencia');
+      return;
+    }
+    if (pendientes.length > 2) {
+      mostrarMensaje('El estudiante tiene más de 2 asignaturas aplazadas. No se pueden guardar como pendientes.', 'error');
+      return;
+    }
+    try {
+      await invoke('guardar_asignaturas_pendientes', {
+        idEstudiante: estudiante.id,
+        pendientes: pendientes.map(p => ({
+          id_asignatura: p.id_asignatura,
+          id_periodo: periodoActual,
+          revision: p.revision,
+        })),
+      });
+      mostrarMensaje('Asignaturas pendientes guardadas correctamente.', 'exito');
+    } catch (error) {
+      mostrarMensaje('Error al guardar las asignaturas pendientes.', 'error');
+      console.error(error);
+    }
+  };
+
   return (
     <div className="max-w-5xl mx-auto p-4 md:p-8 bg-white dark:bg-dark-800 rounded-2xl shadow-lg">
       {advertenciaPeriodo}
@@ -706,6 +734,12 @@ export function DetalleCalificaciones({ estudiante, onVolver }: DetalleCalificac
             </div>
             <div className="mt-4 text-right flex flex-row items-center justify-end gap-4">
               {mensajeGuardado && <div className="mb-2 text-green-400 font-semibold">{mensajeGuardado}</div>}
+              <button
+                className="px-8 py-2 bg-gradient-to-r from-yellow-500 to-red-500 text-white rounded-xl font-bold shadow-lg hover:scale-105 hover:bg-yellow-600 transition-all"
+                onClick={handleGuardarPendientes}
+              >
+                Guardar Pendientes
+              </button>
               <button className="px-8 py-2 bg-gradient-to-r from-emerald-600 to-cyan-600 text-white rounded-xl font-bold shadow-lg hover:scale-105 hover:bg-emerald-700 transition-all" onClick={handleGuardar}>Guardar Cambios</button>
               <button className="px-8 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl font-bold shadow-lg hover:scale-105 hover:bg-blue-700 transition-all" onClick={() => setMostrarModalGuardarHistorialEstudiante(true)}>Guardar Historial</button>
             </div>
@@ -756,30 +790,7 @@ export function DetalleCalificaciones({ estudiante, onVolver }: DetalleCalificac
           <section>
             <h3 className="text-xl font-semibold mb-4">Asignaturas Pendientes</h3>
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-dark-700">
-                <thead className="bg-gray-100 dark:bg-dark-900">
-                  <tr>
-                    <th className="px-4 py-2">Año Escolar</th>
-                    <th className="px-4 py-2">Grado</th>
-                    <th className="px-4 py-2">Asignatura</th>
-                    <th className="px-4 py-2">Calificación</th>
-                    <th className="px-4 py-2">Estado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {PENDIENTES_FICTICIAS.map((p, idx) => (
-                    <tr key={idx}>
-                      <td className="px-4 py-2">{p.periodo}</td>
-                      <td className="px-4 py-2">{p.grado}</td>
-                      <td className="px-4 py-2">{p.asignatura}</td>
-                      <td className="px-4 py-2 text-center">{p.calificacion}</td>
-                      <td className="px-4 py-2">
-                        <span className="px-3 py-1 rounded-full text-xs font-bold bg-red-200 text-red-800">{p.estado}</span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <AsignaturasPendientes idEstudiante={estudiante.id} />
             </div>
           </section>
         )}

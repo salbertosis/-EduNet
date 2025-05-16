@@ -135,6 +135,21 @@ pub struct HistorialAcademico {
     pub seccion: Option<String>,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AsignaturaPendiente {
+    pub id_pendiente: i32,
+    pub id_estudiante: i32,
+    pub id_asignatura: i32,
+    pub id_periodo: i32,
+    pub grado: String,
+    pub cal_momento1: Option<i32>,
+    pub estado: String,
+    pub fecha_registro: chrono::NaiveDateTime,
+    pub id_grado_secciones: i32,
+    pub nombre_asignatura: Option<String>,
+    pub periodo_escolar: Option<String>,
+}
+
 struct AppState {
     db: Arc<Mutex<tokio_postgres::Client>>,
 }
@@ -195,6 +210,13 @@ pub struct CalificacionInput {
     pub lapso_3_ajustado: Option<i32>,
     pub revision: Option<i32>,
     pub nota_final: Option<i32>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AsignaturaPendienteInput {
+    pub id_asignatura: i32,
+    pub id_periodo: i32,
+    pub revision: Option<i32>,
 }
 
 #[tauri::command]
@@ -835,6 +857,82 @@ async fn upsert_historial_academico(
     Ok(())
 }
 
+#[tauri::command]
+async fn obtener_asignaturas_pendientes_estudiante(
+    id_estudiante: Option<i32>,
+    idEstudiante: Option<i32>,
+    state: State<'_, AppState>,
+) -> Result<Vec<AsignaturaPendiente>, String> {
+    let id = id_estudiante.or(idEstudiante).ok_or("Falta el parámetro id_estudiante/idEstudiante")?;
+    println!("[DEBUG][BACKEND] obtener_asignaturas_pendientes_estudiante: id={}", id);
+    let db = state.db.lock().await;
+    let query = r#"
+        SELECT ap.id_pendiente, ap.id_estudiante, ap.id_asignatura, ap.id_periodo, ap.grado, ap.cal_momento1, ap.estado, ap.fecha_registro, ap.id_grado_secciones,
+               a.nombre AS nombre_asignatura, p.periodo_escolar
+        FROM asignaturas_pendientes ap
+        LEFT JOIN asignaturas a ON ap.id_asignatura = a.id_asignatura
+        LEFT JOIN periodos_escolares p ON ap.id_periodo = p.id_periodo
+        WHERE ap.id_estudiante = $1
+        ORDER BY ap.id_periodo DESC, ap.grado, a.nombre
+    "#;
+    let rows = db.query(query, &[&id])
+        .await
+        .map_err(|e| format!("Error al consultar asignaturas pendientes: {}", e))?;
+    let pendientes = rows.iter().map(|row| AsignaturaPendiente {
+        id_pendiente: row.get(0),
+        id_estudiante: row.get(1),
+        id_asignatura: row.get(2),
+        id_periodo: row.get(3),
+        grado: row.get(4),
+        cal_momento1: row.get(5),
+        estado: row.get(6),
+        fecha_registro: row.get(7),
+        id_grado_secciones: row.get(8),
+        nombre_asignatura: row.get(9),
+        periodo_escolar: row.get(10),
+    }).collect::<Vec<_>>();
+    println!("[DEBUG][BACKEND] Filas encontradas: {}", pendientes.len());
+    Ok(pendientes)
+}
+
+#[tauri::command]
+async fn guardar_asignaturas_pendientes(
+    idEstudiante: i32,
+    pendientes: Vec<AsignaturaPendienteInput>,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    if pendientes.is_empty() {
+        return Err("No hay asignaturas pendientes para guardar.".to_string());
+    }
+    if pendientes.len() > 2 {
+        return Err("No se pueden guardar más de 2 asignaturas pendientes.".to_string());
+    }
+    let db = state.db.lock().await;
+    // Obtener grado y sección del estudiante
+    let row = db.query_one(
+        "SELECT id_grado_secciones FROM estudiantes WHERE id = $1",
+        &[&idEstudiante],
+    ).await.map_err(|e| format!("Error al obtener grado/sección: {}", e))?;
+    let id_grado_secciones: i32 = row.get(0);
+    // Obtener nombre del grado
+    let row_grado = db.query_one(
+        "SELECT g.nombre_grado FROM grado_secciones gs INNER JOIN grados g ON gs.id_grado = g.id_grado WHERE gs.id_grado_secciones = $1",
+        &[&id_grado_secciones],
+    ).await.map_err(|e| format!("Error al obtener nombre de grado: {}", e))?;
+    let nombre_grado: String = row_grado.get(0);
+    for pendiente in pendientes {
+        // UPSERT en asignaturas_pendientes
+        db.execute(
+            "INSERT INTO asignaturas_pendientes (id_estudiante, id_asignatura, id_periodo, grado, cal_momento1, estado, id_grado_secciones) \
+            VALUES ($1, $2, $3, $4, $5, 'Pendiente', $6) \
+            ON CONFLICT (id_estudiante, id_asignatura, id_periodo) \
+            DO UPDATE SET cal_momento1 = EXCLUDED.cal_momento1, estado = 'Pendiente', grado = EXCLUDED.grado, id_grado_secciones = EXCLUDED.id_grado_secciones",
+            &[&idEstudiante, &pendiente.id_asignatura, &pendiente.id_periodo, &nombre_grado, &pendiente.revision, &id_grado_secciones]
+        ).await.map_err(|e| format!("Error al guardar asignatura pendiente: {}", e))?;
+    }
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Iniciando Tauri...");
@@ -878,7 +976,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             obtener_asignaturas_por_grado_modalidad,
             obtener_calificaciones_estudiante,
             obtener_historial_academico_estudiante,
-            upsert_historial_academico
+            upsert_historial_academico,
+            obtener_asignaturas_pendientes_estudiante,
+            guardar_asignaturas_pendientes
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

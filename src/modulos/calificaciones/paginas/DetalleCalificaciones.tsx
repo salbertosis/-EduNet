@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/tauri';
 import { useMensajeGlobal } from '../../../componentes/MensajeGlobalContext';
+import { HistorialAcademico } from '../componentes/HistorialAcademico';
 
 const TABS = [
   { key: 'datos', label: 'Datos Personales' },
@@ -19,6 +20,7 @@ interface EstudianteDetalle {
   nombre_modalidad: string | undefined;
   id_grado?: number;
   id_modalidad?: number;
+  id_grado_secciones?: number;
 }
 
 interface DetalleCalificacionesProps {
@@ -56,15 +58,24 @@ const ASIGNATURAS = [
   { id: 6, nombre: 'Química' },
 ];
 
-const HISTORIAL_FICTICIO = [
-  { periodo: '2023-2024', grado: '2do Año', promedio: 15.2, estado: 'Aprobado' },
-  { periodo: '2022-2023', grado: '1er Año', promedio: 14.7, estado: 'Aprobado' },
-];
-
 const PENDIENTES_FICTICIAS = [
   { periodo: '2023-2024', grado: '2do Año', asignatura: 'Física', calificacion: 9, estado: 'Pendiente' },
   { periodo: '2022-2023', grado: '1er Año', asignatura: 'Matemática', calificacion: 10, estado: 'Pendiente' },
 ];
+
+// Definir la interfaz para el historial académico
+interface HistorialAcademico {
+  id_historial: number;
+  id_estudiante: number;
+  id_periodo: number;
+  id_grado_secciones: number;
+  promedio_anual: number;
+  estatus: string;
+  fecha_registro: string;
+  periodo_escolar: string | null;
+  grado: string | null;
+  seccion: string | null;
+}
 
 export function DetalleCalificaciones({ estudiante, onVolver }: DetalleCalificacionesProps) {
   const [tab, setTab] = useState('datos');
@@ -75,6 +86,7 @@ export function DetalleCalificaciones({ estudiante, onVolver }: DetalleCalificac
   const [mensajeGuardado, setMensajeGuardado] = useState<string | null>(null);
   const [periodoActual, setPeriodoActual] = useState<number | null>(null);
   const { mostrarMensaje } = useMensajeGlobal();
+  const [mostrarModalGuardarHistorialEstudiante, setMostrarModalGuardarHistorialEstudiante] = useState(false);
 
   useEffect(() => {
     const cargarPeriodoActual = async () => {
@@ -223,12 +235,6 @@ export function DetalleCalificaciones({ estudiante, onVolver }: DetalleCalificac
   };
 
   // Calcular promedios
-  const promedioFinal = () => {
-    const notas = calificaciones.map(c => c.nota_final).filter(n => typeof n === 'number');
-    if (notas.length === 0) return '';
-    return (notas.reduce((a, b) => (a as number) + (b as number), 0) / notas.length).toFixed(2);
-  };
-
   const calcularNotaFinal = (calificacion: CalificacionEstudiante): number => {
     const l1 = calificacion.lapso_1_ajustado ?? calificacion.lapso_1 ?? 0;
     const l2 = calificacion.lapso_2_ajustado ?? calificacion.lapso_2 ?? 0;
@@ -239,13 +245,38 @@ export function DetalleCalificaciones({ estudiante, onVolver }: DetalleCalificac
     return 0;
   };
 
-  // Nueva función para calcular el promedio de cada lapso usando ajustes si existen
-  const promedioLapsoConAjuste = (lapso: keyof CalificacionEstudiante, lapsoAjuste: keyof CalificacionEstudiante) => {
-    const notas = calificaciones.map(c => {
-      if (typeof c[lapsoAjuste] === 'number') return c[lapsoAjuste] as number;
-      if (typeof c[lapso] === 'number') return c[lapso] as number;
-      return undefined;
-    }).filter(n => typeof n === 'number') as number[];
+  // Función para obtener la nota válida (revisión si existe, si no final calculada)
+  const obtenerNotaValida = (calif: CalificacionEstudiante): number => {
+    const revision = Number(calif.revision);
+    if (!isNaN(revision) && revision > 0) return revision;
+    return calcularNotaFinal(calif);
+  };
+
+  // Promedio de cada lapso (usando ajustes si existen, excluyendo ids 9 y 11)
+  const promedioLapso = (lapso: keyof CalificacionEstudiante, lapsoAjuste: keyof CalificacionEstudiante) => {
+    const notas = asignaturas
+      .filter(a => a.id_asignatura !== 9 && a.id_asignatura !== 11)
+      .map(a => {
+        const calif = calificaciones.find(c => c.id_asignatura === a.id_asignatura);
+        if (!calif) return undefined;
+        if (typeof calif[lapsoAjuste] === 'number') return calif[lapsoAjuste] as number;
+        if (typeof calif[lapso] === 'number') return calif[lapso] as number;
+        return undefined;
+      })
+      .filter(n => typeof n === 'number' && !isNaN(n)) as number[];
+    if (notas.length === 0) return '';
+    return (notas.reduce((a, b) => a + b, 0) / notas.length).toFixed(2);
+  };
+
+  // Promedio final (usando revisión si existe, excluyendo ids 9 y 11)
+  const promedioFinal = () => {
+    const notas = asignaturas
+      .filter(a => a.id_asignatura !== 9 && a.id_asignatura !== 11)
+      .map(a => {
+        const calif = calificaciones.find(c => c.id_asignatura === a.id_asignatura);
+        return calif ? obtenerNotaValida(calif) : undefined;
+      })
+      .filter(n => typeof n === 'number' && !isNaN(n)) as number[];
     if (notas.length === 0) return '';
     return (notas.reduce((a, b) => a + b, 0) / notas.length).toFixed(2);
   };
@@ -348,6 +379,58 @@ export function DetalleCalificaciones({ estudiante, onVolver }: DetalleCalificac
     }
   };
 
+  // Lógica para guardar o actualizar historial académico (igual que en el modal)
+  const handleGuardarHistorial = async () => {
+    console.log('[DEBUG][FUNCION] handleGuardarHistorial ejecutada');
+    try {
+      const notasValidas = asignaturas
+        .filter(a => a.id_asignatura !== 9 && a.id_asignatura !== 11)
+        .map(a => {
+          const calif = calificaciones.find(c => c.id_asignatura === a.id_asignatura);
+          return calif ? obtenerNotaValida(calif) : undefined;
+        })
+        .filter(n => typeof n === 'number' && !isNaN(n)) as number[];
+      const promedio = notasValidas.length > 0 ? (notasValidas.reduce((a, b) => a + b, 0) / notasValidas.length) : 0;
+      const pendientes = asignaturas
+        .filter(a => a.id_asignatura !== 9 && a.id_asignatura !== 11)
+        .map(a => {
+          const calif = calificaciones.find(c => c.id_asignatura === a.id_asignatura);
+          const nota = calif ? obtenerNotaValida(calif) : 0;
+          return nota < 9.5;
+        })
+        .filter(Boolean).length;
+      let estatus = 'Aprobado';
+      if (pendientes >= 3) estatus = 'Repite';
+      else if (pendientes === 2) estatus = 'Aprobado';
+      else if (pendientes === 1) estatus = 'Aprobado';
+      // Usar el id_grado_secciones real del estudiante
+      const id_grado_secciones = estudiante.id_grado_secciones;
+      if (!id_grado_secciones) {
+        console.error('[ERROR][FUNCION] El estudiante no tiene id_grado_secciones. No se puede guardar el historial.');
+        mostrarMensaje('No se puede guardar el historial: falta el id de grado/sección del estudiante.', 'error');
+        return;
+      }
+      const params = {
+        idEstudiante: estudiante.id,
+        id_periodo: periodoActual,
+        idPeriodo: periodoActual,
+        id_grado_secciones,
+        idGradoSecciones: id_grado_secciones,
+        promedio_anual: promedio,
+        promedioAnual: promedio,
+        estatus,
+      };
+      console.log('[DEBUG][FUNCION] Params enviados a upsert_historial_academico:', params);
+      await invoke('upsert_historial_academico', params);
+      setMensajeGuardado('Historial guardado correctamente');
+      mostrarMensaje('Historial guardado correctamente', 'exito');
+    } catch (error) {
+      console.error('[ERROR][FUNCION] Error en handleGuardarHistorial:', error);
+      setMensajeGuardado('Error al guardar el historial');
+      mostrarMensaje('Error al guardar el historial', 'error');
+    }
+  };
+
   // Log antes del renderizado de la tabla
   console.log('[DEBUG] Asignaturas en render:', asignaturas);
 
@@ -356,6 +439,34 @@ export function DetalleCalificaciones({ estudiante, onVolver }: DetalleCalificac
     if (typeof nota === 'number') return nota.toString().padStart(2, '0');
     return '';
   }
+
+  // Función para guardar historial individual y refrescar historial
+  async function guardarHistorialEstudiante() {
+    try {
+      // Aquí deberías calcular promedio, grado, estatus, etc. según tu lógica
+      // Por ahora, ejemplo con datos dummy:
+      await invoke('upsert_historial_academico', {
+        idEstudiante: estudiante.id,
+        id_periodo: periodoActual,
+        id_grado_secciones: estudiante.id_grado || 0,
+        promedio_anual: 10.0, // Reemplaza por el promedio real
+        estatus: 'Aprobado', // O 'Reprobado' según lógica
+      });
+      mostrarMensaje('Historial guardado correctamente', 'exito');
+      // Refrescar historial
+      if (estudiante.id) {
+        const data = await invoke('obtener_historial_academico_estudiante', { id_estudiante: estudiante.id });
+        setCalificaciones(data as CalificacionEstudiante[]);
+      }
+    } catch (error) {
+      mostrarMensaje('Error al guardar el historial', 'error');
+    } finally {
+      setMostrarModalGuardarHistorialEstudiante(false);
+    }
+  }
+
+  // Log global para saber si el componente se monta
+  console.log('[DEBUG][GLOBAL] DetalleCalificaciones renderizado');
 
   return (
     <div className="max-w-5xl mx-auto p-4 md:p-8 bg-white dark:bg-dark-800 rounded-2xl shadow-lg">
@@ -535,7 +646,7 @@ export function DetalleCalificaciones({ estudiante, onVolver }: DetalleCalificac
                         <td className="px-1 py-2 w-20 align-middle text-center">
                           <input
                             type="text"
-                            value={padNota((calif as Partial<CalificacionEstudiante>).nota_final as number) || padNota(calcularNotaFinal(calif as CalificacionEstudiante))}
+                            value={padNota((calif as Partial<CalificacionEstudiante>).nota_final as number) || padNota(obtenerNotaValida(calif as CalificacionEstudiante))}
                             readOnly
                             className="w-14 h-10 px-2 py-1 rounded-lg border-2 border-emerald-400 dark:border-cyan-700 bg-emerald-50 dark:bg-[#232c3d] text-center text-emerald-700 dark:text-cyan-200 font-normal shadow text-sm"
                           />
@@ -573,15 +684,15 @@ export function DetalleCalificaciones({ estudiante, onVolver }: DetalleCalificac
                   <tr className="bg-gradient-to-r from-emerald-900 via-dark-800 to-dark-900 dark:from-[#059669] dark:via-[#2563eb] dark:to-[#181f2a] font-bold">
                     <td className="px-4 py-2 w-48 text-right text-emerald-700 dark:text-cyan-200 bg-white dark:bg-transparent"></td>
                     <td className="px-1 py-2 w-20 text-center text-emerald-700 dark:text-cyan-200 bg-white dark:bg-transparent align-middle">
-                      <div className="flex items-center justify-center h-full">{padNota(Number(promedioLapsoConAjuste('lapso_1', 'lapso_1_ajustado')))}</div>
+                      <div className="flex items-center justify-center h-full">{padNota(Number(promedioLapso('lapso_1', 'lapso_1_ajustado')))}</div>
                     </td>
                     {mostrarAjustes && <td className="px-1 py-2 w-20 text-center bg-white dark:bg-transparent align-middle"></td>}
                     <td className="px-1 py-2 w-20 text-center text-emerald-700 dark:text-cyan-200 bg-white dark:bg-transparent align-middle">
-                      <div className="flex items-center justify-center h-full">{padNota(Number(promedioLapsoConAjuste('lapso_2', 'lapso_2_ajustado')))}</div>
+                      <div className="flex items-center justify-center h-full">{padNota(Number(promedioLapso('lapso_2', 'lapso_2_ajustado')))}</div>
                     </td>
                     {mostrarAjustes && <td className="px-1 py-2 w-20 text-center bg-white dark:bg-transparent align-middle"></td>}
                     <td className="px-1 py-2 w-20 text-center text-emerald-700 dark:text-cyan-200 bg-white dark:bg-transparent align-middle">
-                      <div className="flex items-center justify-center h-full">{padNota(Number(promedioLapsoConAjuste('lapso_3', 'lapso_3_ajustado')))}</div>
+                      <div className="flex items-center justify-center h-full">{padNota(Number(promedioLapso('lapso_3', 'lapso_3_ajustado')))}</div>
                     </td>
                     {mostrarAjustes && <td className="px-1 py-2 w-20 text-center bg-white dark:bg-transparent align-middle"></td>}
                     <td className="px-1 py-2 w-20 text-center text-emerald-700 dark:text-cyan-200 bg-white dark:bg-transparent align-middle">
@@ -593,40 +704,53 @@ export function DetalleCalificaciones({ estudiante, onVolver }: DetalleCalificac
                 </tbody>
               </table>
             </div>
-            <div className="mt-4 text-right">
+            <div className="mt-4 text-right flex flex-row items-center justify-end gap-4">
               {mensajeGuardado && <div className="mb-2 text-green-400 font-semibold">{mensajeGuardado}</div>}
               <button className="px-8 py-2 bg-gradient-to-r from-emerald-600 to-cyan-600 text-white rounded-xl font-bold shadow-lg hover:scale-105 hover:bg-emerald-700 transition-all" onClick={handleGuardar}>Guardar Cambios</button>
+              <button className="px-8 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl font-bold shadow-lg hover:scale-105 hover:bg-blue-700 transition-all" onClick={() => setMostrarModalGuardarHistorialEstudiante(true)}>Guardar Historial</button>
             </div>
+            {/* Modal de confirmación para guardar historial individual */}
+            {mostrarModalGuardarHistorialEstudiante && (
+              (() => { console.log('[DEBUG][MODAL] Modal de guardar historial renderizado'); return null; })(),
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+                <div className="bg-white dark:bg-dark-800 p-8 rounded-xl shadow-lg max-w-md w-full border border-blue-300">
+                  <h2 className="text-xl font-bold mb-4 text-blue-700 dark:text-cyan-300">Guardar Historial</h2>
+                  <p className="mb-6 text-gray-700 dark:text-gray-200">
+                    ¿Está seguro que desea guardar el historial académico de este estudiante para el periodo actual?
+                  </p>
+                  <div className="flex justify-end gap-4">
+                    <button
+                      className="px-5 py-2 rounded-lg bg-gray-200 dark:bg-dark-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-dark-600 font-medium"
+                      onClick={() => {
+                        console.log('[DEBUG][MODAL] Click en Cancelar del modal');
+                        setMostrarModalGuardarHistorialEstudiante(false);
+                      }}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      className="px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 font-semibold shadow"
+                      onClick={async () => {
+                        console.log('[DEBUG][MODAL] Click en Guardar del modal de confirmación');
+                        try {
+                          await handleGuardarHistorial();
+                        } catch (e) {
+                          console.error('[ERROR][MODAL] Error al ejecutar handleGuardarHistorial:', e);
+                          mostrarMensaje('Error crítico al ejecutar handleGuardarHistorial', 'error');
+                        }
+                        setMostrarModalGuardarHistorialEstudiante(false);
+                      }}
+                    >
+                      Guardar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </section>
         )}
         {tab === 'historial' && (
-          <section>
-            <h3 className="text-xl font-semibold mb-4">Historial Académico</h3>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-dark-700">
-                <thead className="bg-gray-100 dark:bg-dark-900">
-                  <tr>
-                    <th className="px-4 py-2">Año Escolar</th>
-                    <th className="px-4 py-2">Grado</th>
-                    <th className="px-4 py-2">Promedio General</th>
-                    <th className="px-4 py-2">Estado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {HISTORIAL_FICTICIO.map((h, idx) => (
-                    <tr key={idx}>
-                      <td className="px-4 py-2">{h.periodo}</td>
-                      <td className="px-4 py-2">{h.grado}</td>
-                      <td className="px-4 py-2 text-center">{h.promedio}</td>
-                      <td className="px-4 py-2">
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${h.estado === 'Aprobado' ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}`}>{h.estado}</span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
+          <HistorialAcademico idEstudiante={estudiante.id} />
         )}
         {tab === 'pendientes' && (
           <section>

@@ -6,10 +6,19 @@ import {
   GraduationCap, 
   BookOpen, 
   Award,
-  Menu
+  Menu,
+  Settings
 } from 'lucide-react';
 import { useState } from 'react';
+import { ModalMensaje } from '../ModalMensaje';
 
+export function Layout() {
+  const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mostrarConfig, setMostrarConfig] = useState(false);
+  const [mostrarModalGuardarHistorial, setMostrarModalGuardarHistorial] = useState(false);
+
+  // Definir menuItems dentro del componente para acceder a los estados
 const menuItems = [
   { 
     icon: <LayoutDashboard className="w-5 h-5" />, 
@@ -36,11 +45,17 @@ const menuItems = [
     label: 'Calificaciones', 
     path: '/calificaciones'
   },
-];
-
-export function Layout() {
-  const location = useLocation();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+    {
+      icon: <Settings className="w-5 h-5" />, 
+      label: 'Configuración',
+      children: [
+        {
+          label: 'Guardar Historial',
+          onClick: () => setMostrarModalGuardarHistorial(true)
+        }
+      ]
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-dark-900">
@@ -68,18 +83,44 @@ export function Layout() {
       >
         <nav className="p-6 space-y-3">
           {menuItems.map((item) => (
+            item.children ? (
+              <div key={item.label}>
+                <button
+                  className={`flex items-center space-x-4 px-5 py-3 rounded-xl transition-all font-semibold text-lg tracking-wide shadow-sm hover:bg-emerald-100 dark:hover:bg-emerald-900/30 hover:text-emerald-700 dark:hover:text-emerald-300 focus:bg-emerald-100 dark:focus:bg-emerald-900/40 focus:text-emerald-800 dark:focus:text-emerald-200 outline-none w-full ${mostrarConfig ? 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300' : 'text-gray-700 dark:text-gray-300'}`}
+                  onClick={() => setMostrarConfig((v) => !v)}
+                >
+                  {item.icon}
+                  <span>{item.label}</span>
+                  <span className="ml-auto">{mostrarConfig ? '▲' : '▼'}</span>
+                </button>
+                {mostrarConfig && (
+                  <div className="ml-8 mt-2 space-y-2">
+                    {item.children.map((child) => (
+                      <button
+                        key={child.label}
+                        className="flex items-center space-x-2 px-3 py-2 rounded-lg text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 w-full text-left"
+                        onClick={child.onClick}
+                      >
+                        <span>{child.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
             <Link
               key={item.path}
               to={item.path}
-              className={`flex items-center space-x-4 px-5 py-3 rounded-xl transition-all font-semibold text-lg tracking-wide shadow-sm hover:bg-emerald-100 dark:hover:bg-emerald-900/30 hover:text-emerald-700 dark:hover:text-emerald-300 focus:bg-emerald-100 dark:focus:bg-emerald-900/40 focus:text-emerald-800 dark:focus:text-emerald-200 outline-none ${
+                className={`flex items-center space-x-4 px-5 py-3 rounded-xl transition-all font-semibold text-lg tracking-wide shadow-sm hover:bg-emerald-100 dark:hover:bg-emerald-900/30 hover:text-emerald-700 dark:hover:text-emerald-300 focus:bg-emerald-100 dark:focus:bg-emerald-900/40 focus:text-emerald-800 dark:focus:text-emerald-200 outline-none ${
                 location.pathname === item.path
-                  ? 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 shadow-emerald-800/30'
-                  : 'text-gray-700 dark:text-gray-300'
+                    ? 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 shadow-emerald-800/30'
+                    : 'text-gray-700 dark:text-gray-300'
               }`}
             >
               {item.icon}
               <span>{item.label}</span>
             </Link>
+            )
           ))}
         </nav>
       </aside>
@@ -91,6 +132,30 @@ export function Layout() {
           <Outlet />
         </div>
       </main>
+
+      {/* Modal de confirmación para Guardar Historial */}
+      {mostrarModalGuardarHistorial && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white dark:bg-dark-800 p-8 rounded-xl shadow-lg max-w-md w-full border border-emerald-300">
+            <h2 className="text-xl font-bold mb-4 text-emerald-700 dark:text-emerald-300">Guardar Historial Académico</h2>
+            <p className="mb-6 text-gray-700 dark:text-gray-200">¿Está seguro que desea guardar el historial académico de todos los estudiantes para el periodo actual? <b>Esta acción no se puede deshacer.</b></p>
+            <div className="flex justify-end gap-4">
+              <button
+                className="px-5 py-2 rounded-lg bg-gray-200 dark:bg-dark-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-dark-600 font-medium"
+                onClick={() => setMostrarModalGuardarHistorial(false)}
+              >
+                Cancelar
+              </button>
+              <button
+                className="px-5 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 font-semibold shadow"
+                onClick={() => setMostrarModalGuardarHistorial(false)}
+              >
+                Guardar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 

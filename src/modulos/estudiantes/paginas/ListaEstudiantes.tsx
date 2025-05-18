@@ -317,8 +317,8 @@ export function ListaEstudiantes() {
             <thead className="sticky top-0 z-10 bg-gray-100 dark:bg-dark-900">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-extrabold text-gray-700 dark:text-green-300 tracking-widest uppercase border-b border-gray-200 dark:border-dark-600">CÉDULA</th>
-                <th className="px-6 py-3 text-left text-xs font-extrabold text-gray-700 dark:text-green-300 tracking-widest uppercase border-b border-gray-200 dark:border-dark-600">NOMBRES</th>
                 <th className="px-6 py-3 text-left text-xs font-extrabold text-gray-700 dark:text-green-300 tracking-widest uppercase border-b border-gray-200 dark:border-dark-600">APELLIDOS</th>
+                <th className="px-6 py-3 text-left text-xs font-extrabold text-gray-700 dark:text-green-300 tracking-widest uppercase border-b border-gray-200 dark:border-dark-600">NOMBRES</th>
                 <th className="px-6 py-3 text-left text-xs font-extrabold text-gray-700 dark:text-green-300 tracking-widest uppercase border-b border-gray-200 dark:border-dark-600">GRADO</th>
                 <th className="px-6 py-3 text-xs font-extrabold text-gray-700 dark:text-green-300 tracking-widest uppercase border-b border-gray-200 dark:border-dark-600 text-center">SECCIÓN</th>
                 <th className="px-6 py-3 text-xs font-extrabold text-gray-700 dark:text-green-300 tracking-widest uppercase border-b border-gray-200 dark:border-dark-600 text-center">MODALIDAD</th>
@@ -348,8 +348,8 @@ export function ListaEstudiantes() {
                     }
                   >
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">{estudiante.cedula}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">{estudiante.nombres}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">{estudiante.apellidos}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">{estudiante.nombres}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">{estudiante.nombre_grado}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 text-center">{estudiante.nombre_seccion}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 text-center">{estudiante.nombre_modalidad}</td>

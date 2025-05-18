@@ -266,18 +266,13 @@ export function DetalleCalificacionesHistorial({ idEstudiante, idPeriodo }: Deta
       else if (pendientes === 1) estatus = 'Aprobado';
 
       const params = {
-        idEstudiante: estudiante.id,
+        id_estudiante: estudiante.id,
         id_periodo: Number(idPeriodo),
-        idPeriodo: Number(idPeriodo),
-        id_grado_secciones,
-        idGradoSecciones: id_grado_secciones,
-        promedio_anual: promedio,
-        promedioAnual: promedio,
-        estatus,
+        id_grado_secciones: id_grado_secciones,
       };
-      console.log('Params enviados a upsert_historial_academico:', params, JSON.stringify(params));
+      console.log('[DEBUG][HISTORIAL] Params enviados a upsert_historial_academico:', params);
       await invoke('upsert_historial_academico', params);
-      console.log('[DEBUG] Llamada a upsert_historial_academico finalizada');
+      console.log('[DEBUG][HISTORIAL] Llamada a upsert_historial_academico finalizada');
       setMensajeGuardado('Historial guardado correctamente');
     } catch (error) {
       console.error('[ERROR][FRONTEND] Error detallado:', error);

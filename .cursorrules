@@ -1,0 +1,73 @@
+¡Por supuesto! Aquí tienes un ejemplo de archivo `.cursorrules` personalizado para tu proyecto EduNet, pensado para un flujo de trabajo profesional y seguro en un equipo que usa Cursor:
+
+---
+
+```ini
+# .cursorrules - Reglas personalizadas para el editor Cursor en EduNet
+
+# Ignorar archivos y carpetas generadas automáticamente
+ignore = [
+  "node_modules/",
+  "dist/",
+  "build/",
+  "target/",
+  ".git/",
+  ".idea/",
+  ".vscode/",
+  "*.log",
+  "*.tmp",
+  "*.bak"
+]
+
+# Forzar indentación de 4 espacios en archivos Rust y TypeScript
+[formatting]
+"*.rs" = { indent_style = "space", indent_size = 4 }
+"*.ts" = { indent_style = "space", indent_size = 4 }
+"*.tsx" = { indent_style = "space", indent_size = 4 }
+"*.js" = { indent_style = "space", indent_size = 2 }
+
+# Excluir archivos de sugerencias automáticas de IA (por ejemplo, archivos de configuración sensibles)
+[ai.exclude]
+files = [
+  "src-tauri/tauri.conf.json",
+  "src-tauri/.env",
+  ".env",
+  "Cargo.lock"
+]
+
+# Reglas de linting personalizadas (puedes agregar más según tus necesidades)
+[lint]
+"*.rs" = { clippy = true }
+"*.ts" = { eslint = true }
+"*.tsx" = { eslint = true }
+
+# Sugerencias de IA solo en archivos fuente, no en archivos de migración ni de configuración
+[ai.suggestions]
+include = [
+  "src-tauri/src/**/*.rs",
+  "src/**/*.ts",
+  "src/**/*.tsx"
+]
+exclude = [
+  "src-tauri/migrations/",
+  "src-tauri/target/",
+  "src-tauri/src-tauri.conf.json"
+]
+
+# Reglas de seguridad: no permitir sugerencias de IA en archivos que contengan contraseñas o claves
+[security]
+no_ai_on_secrets = true
+
+# Comentario: Puedes agregar más reglas según crezca tu proyecto o el equipo lo requiera.
+```
+
+---
+
+### ¿Cómo usarlo?
+1. Crea un archivo llamado `.cursorrules` en la raíz de tu proyecto.
+2. Copia y pega el contenido anterior.
+3. Ajusta las reglas según tus necesidades o las del equipo.
+
+---
+
+¿Quieres agregar alguna regla especial (por ejemplo, para otro lenguaje, carpeta o flujo de trabajo)? ¿O necesitas que te explique alguna sección del archivo?

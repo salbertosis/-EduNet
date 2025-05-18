@@ -412,23 +412,24 @@ export function DetalleCalificaciones({ estudiante, onVolver }: DetalleCalificac
         return;
       }
       const params = {
-        idEstudiante: estudiante.id,
+        id_estudiante: estudiante.id,
         id_periodo: periodoActual,
-        idPeriodo: periodoActual,
-        id_grado_secciones,
-        idGradoSecciones: id_grado_secciones,
-        promedio_anual: promedio,
-        promedioAnual: promedio,
-        estatus,
+        id_grado_secciones: id_grado_secciones,
       };
       console.log('[DEBUG][FUNCION] Params enviados a upsert_historial_academico:', params);
-      await invoke('upsert_historial_academico', params);
-      setMensajeGuardado('Historial guardado correctamente');
-      mostrarMensaje('Historial guardado correctamente', 'exito');
+      try {
+        await invoke('upsert_historial_academico', params);
+        setMensajeGuardado('Historial guardado correctamente');
+        mostrarMensaje('Historial guardado correctamente', 'exito');
+      } catch (error) {
+        console.error('[ERROR][FUNCION] Error en handleGuardarHistorial:', error);
+        setMensajeGuardado('Error al guardar el historial');
+        mostrarMensaje(error instanceof Error ? error.message : String(error), 'error');
+      }
     } catch (error) {
-      console.error('[ERROR][FUNCION] Error en handleGuardarHistorial:', error);
+      console.error('[ERROR][FUNCION] Error general en handleGuardarHistorial:', error);
       setMensajeGuardado('Error al guardar el historial');
-      mostrarMensaje('Error al guardar el historial', 'error');
+      mostrarMensaje(error instanceof Error ? error.message : String(error), 'error');
     }
   };
 
@@ -674,7 +675,7 @@ export function DetalleCalificaciones({ estudiante, onVolver }: DetalleCalificac
                         <td className="px-1 py-2 w-20 align-middle text-center">
                           <input
                             type="text"
-                            value={padNota((calif as Partial<CalificacionEstudiante>).nota_final as number) || padNota(obtenerNotaValida(calif as CalificacionEstudiante))}
+                            value={Number.isFinite(obtenerNotaValida(calif)) ? obtenerNotaValida(calif) : ''}
                             readOnly
                             className="w-14 h-10 px-2 py-1 rounded-lg border-2 border-emerald-400 dark:border-cyan-700 bg-emerald-50 dark:bg-[#232c3d] text-center text-emerald-700 dark:text-cyan-200 font-normal shadow text-sm"
                           />
@@ -724,7 +725,7 @@ export function DetalleCalificaciones({ estudiante, onVolver }: DetalleCalificac
                     </td>
                     {mostrarAjustes && <td className="px-1 py-2 w-20 text-center bg-white dark:bg-transparent align-middle"></td>}
                     <td className="px-1 py-2 w-20 text-center text-emerald-700 dark:text-cyan-200 bg-white dark:bg-transparent align-middle">
-                      <div className="flex items-center justify-center h-full">{padNota(Number(promedioFinal()))}</div>
+                      <div className="flex items-center justify-center h-full">{promedioFinal()}</div>
                     </td>
                     <td className="px-1 py-2 w-20 text-center bg-white dark:bg-transparent align-middle"></td>
                     <td className="px-1 py-2 w-24 text-center bg-white dark:bg-transparent align-middle"></td>

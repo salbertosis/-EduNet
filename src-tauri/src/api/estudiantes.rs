@@ -102,7 +102,7 @@ pub async fn obtener_estudiantes(
     let total_paginas = (total_registros as f64 / paginacion.registros_por_pagina as f64).ceil() as i32;
     let offset = (paginacion.pagina - 1) * paginacion.registros_por_pagina;
     let query_final = format!(
-        "{} ORDER BY e.apellidos, e.nombres LIMIT {} OFFSET {}",
+        "{} ORDER BY e.cedula LIMIT {} OFFSET {}",
         query_base,
         paginacion.registros_por_pagina,
         offset

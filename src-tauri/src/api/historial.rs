@@ -9,6 +9,7 @@ pub async fn obtener_historial_academico_estudiante(
     id_estudiante: i32,
     state: State<'_, AppState>,
 ) -> Result<Vec<HistorialAcademico>, String> {
+    println!("[LOG][BACKEND] Iniciando obtención de historial académico para id_estudiante={}", id_estudiante);
     let db = state.db.lock().await;
     let query = "
         SELECT 
@@ -30,33 +31,41 @@ pub async fn obtener_historial_academico_estudiante(
         WHERE h.id_estudiante = $1
         ORDER BY h.id_periodo DESC";
 
-    let rows = db.query(query, &[&id_estudiante])
-        .await
-        .map_err(|e| e.to_string())?;
-
-    let historiales = rows.iter().map(|row| HistorialAcademico {
-        id_historial: row.get("id_historial"),
-        id_estudiante: row.get("id_estudiante"),
-        id_periodo: row.get("id_periodo"),
-        id_grado_secciones: row.get("id_grado_secciones"),
-        promedio_anual: row.get("promedio_anual"),
-        estatus: row.get("estatus"),
-        fecha_registro: row.get("fecha_registro"),
-        periodo_escolar: row.get("periodo_escolar"),
-        grado: row.get("grado"),
-        seccion: row.get("seccion"),
-    }).collect();
-
-    Ok(historiales)
+    println!("[LOG][BACKEND] Ejecutando query de historial académico...");
+    let rows_result = db.query(query, &[&id_estudiante]).await;
+    match rows_result {
+        Ok(rows) => {
+            println!("[LOG][BACKEND] Query ejecutada correctamente. Filas obtenidas: {}", rows.len());
+            let historiales = rows.iter().map(|row| HistorialAcademico {
+                id_historial: row.get("id_historial"),
+                id_estudiante: row.get("id_estudiante"),
+                id_periodo: row.get("id_periodo"),
+                id_grado_secciones: row.get("id_grado_secciones"),
+                promedio_anual: row.get("promedio_anual"),
+                estatus: row.get("estatus"),
+                fecha_registro: row.get("fecha_registro"),
+                periodo_escolar: row.get("periodo_escolar"),
+                grado: row.get("grado"),
+                seccion: row.get("seccion"),
+            }).collect::<Vec<_>>();
+            println!("[LOG][BACKEND] Historiales mapeados correctamente. Total: {}", historiales.len());
+            Ok(historiales)
+        },
+        Err(e) => {
+            println!("[ERROR][BACKEND] Error al ejecutar query de historial académico: {}", e);
+            Err(format!("Error al consultar historial académico: {}", e))
+        }
+    }
 }
 
 #[tauri::command]
 pub async fn upsert_historial_academico(
-    id_estudiante: i32,
-    id_periodo: i32,
-    id_grado_secciones: i32,
+    id_estudiante: i64,
+    id_periodo: i64,
+    id_grado_secciones: i64,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
+    println!("[DEBUG][BACKEND] upsert_historial_academico: id_estudiante={}, id_periodo={}, id_grado_secciones={}", id_estudiante, id_periodo, id_grado_secciones);
     let db = state.db.lock().await;
     
     // Obtener todas las calificaciones del estudiante para el período
@@ -126,6 +135,10 @@ pub async fn upsert_historial_academico(
             promedio_anual = EXCLUDED.promedio_anual,
             estatus = EXCLUDED.estatus";
 
+    println!(
+        "[DEBUG][BACKEND] Ejecutando query con: id_estudiante={}, id_periodo={}, id_grado_secciones={}, promedio_anual={}, estatus={}",
+        id_estudiante, id_periodo, id_grado_secciones, promedio_anual, estatus
+    );
     db.execute(query, &[&id_estudiante, &id_periodo, &id_grado_secciones, &promedio_anual, &estatus])
         .await
         .map_err(|e| e.to_string())?;

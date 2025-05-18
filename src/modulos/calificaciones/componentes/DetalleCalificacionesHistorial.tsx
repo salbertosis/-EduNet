@@ -266,9 +266,9 @@ export function DetalleCalificacionesHistorial({ idEstudiante, idPeriodo }: Deta
       else if (pendientes === 1) estatus = 'Aprobado';
 
       const params = {
-        id_estudiante: estudiante.id,
-        id_periodo: Number(idPeriodo),
-        id_grado_secciones: id_grado_secciones,
+        idEstudiante: estudiante.id,
+        idPeriodo: Number(idPeriodo),
+        idGradoSecciones: id_grado_secciones,
       };
       console.log('[DEBUG][HISTORIAL] Params enviados a upsert_historial_academico:', params);
       await invoke('upsert_historial_academico', params);

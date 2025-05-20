@@ -1,6 +1,7 @@
 import React from 'react';
 import { FilaCalificacion } from './FilaCalificacion';
 import { FilaPromedios } from './FilaPromedios';
+import { calcularTotalPendientes, useCalculosCalificaciones } from '../../../../utilidades/calculoNotas';
 
 interface Asignatura {
   id_asignatura: number;
@@ -32,13 +33,8 @@ interface TablaCalificacionesProps {
 }
 
 export const TablaCalificaciones: React.FC<TablaCalificacionesProps> = ({ asignaturas, calificaciones, errores, mostrarAjustes, onInputChange }) => {
-  const totalRevisionMenor10 = calificaciones.filter(c => typeof c.revision === 'number' && Number(c.revision) < 10).length;
-  // Calcula el total de inputs de revisión activos (nota_final < 9.5) con revision < 10
-  const totalPendientesRevisionActivos = calificaciones.filter(c => {
-    const notaFinal = typeof c.nota_final === 'number' ? c.nota_final : 0;
-    const revision = c.revision !== undefined && c.revision !== '' ? Number(c.revision) : undefined;
-    return notaFinal < 9.5 && revision !== undefined && !isNaN(revision) && revision < 10;
-  }).length;
+  const { calcularNotaFinal, calcularEstadoAsignatura } = useCalculosCalificaciones(asignaturas, calificaciones);
+  const totalPendientes = calcularTotalPendientes(asignaturas, calificaciones);
   return (
     <div className="overflow-x-auto max-h-[60vh]">
       <table className="min-w-full divide-y divide-emerald-400 dark:divide-cyan-800 text-sm rounded-xl overflow-hidden shadow-lg">
@@ -65,7 +61,11 @@ export const TablaCalificaciones: React.FC<TablaCalificacionesProps> = ({ asigna
               errores={errores}
               mostrarAjustes={mostrarAjustes}
               onInputChange={onInputChange}
-              totalPendientesRevisionActivos={totalPendientesRevisionActivos}
+              calcularNotaFinal={calcularNotaFinal}
+              calcularEstadoAsignatura={calcularEstadoAsignatura}
+              totalPendientes={totalPendientes}
+              asignaturas={asignaturas}
+              calificaciones={calificaciones}
             />
           ))}
           <FilaPromedios asignaturas={asignaturas} calificaciones={calificaciones} mostrarAjustes={mostrarAjustes} />

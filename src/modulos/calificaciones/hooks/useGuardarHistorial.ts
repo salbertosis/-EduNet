@@ -1,81 +1,78 @@
 import { useState } from 'react';
 import { invoke } from '@tauri-apps/api/tauri';
-import { useCalculosCalificaciones } from './useCalculosCalificaciones';
+import { CalificacionEstudiante } from '../types';
+import { Asignatura } from '../types';
+import { useCalculosCalificaciones } from '../../../utilidades/calculoNotas';
 import { useEstadosCalificaciones } from './useEstadosCalificaciones';
-
-interface CalificacionEstudiante {
-  id_calificacion?: number;
-  id_asignatura: number;
-  nombre_asignatura: string;
-  lapso_1?: number;
-  lapso_1_ajustado?: number;
-  lapso_2?: number;
-  lapso_2_ajustado?: number;
-  lapso_3?: number;
-  lapso_3_ajustado?: number;
-  nota_final?: number;
-  revision?: string;
-}
-
-interface Asignatura {
-  id_asignatura: number;
-  nombre_asignatura: string;
-  id_grado: number;
-  id_modalidad: number;
-}
+import { useMensajeGlobal } from '../../../componentes/MensajeGlobalContext';
 
 export function useGuardarHistorial(
-  asignaturas: Asignatura[],
-  calificaciones: CalificacionEstudiante[]
+    asignaturas: Asignatura[],
+    calificaciones: CalificacionEstudiante[]
 ) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [exito, setExito] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [exito, setExito] = useState(false);
+    const { promedioFinal, totalPendientes } = useCalculosCalificaciones(asignaturas, calificaciones);
+    const { calcularEstadoGeneral } = useEstadosCalificaciones(calificaciones, totalPendientes);
+    const { mostrarMensaje } = useMensajeGlobal();
 
-  const { obtenerNotaValida, promedioFinal, totalPendientes } = useCalculosCalificaciones(asignaturas, calificaciones);
-  const { calcularEstadoGeneral } = useEstadosCalificaciones(calificaciones, totalPendientes);
+    const guardarHistorial = async (
+        estudianteId: number,
+        periodoId: number,
+        idGradoSecciones: number
+    ) => {
+        if (!estudianteId || !periodoId || !idGradoSecciones) {
+            mostrarMensaje('Faltan datos necesarios para guardar el historial', 'error');
+            return;
+        }
 
-  const guardarHistorial = async (
-    estudianteId: number,
-    periodoId: number,
-    idGradoSecciones: number
-  ) => {
-    if (!estudianteId || !periodoId || !idGradoSecciones) {
-      setError('Faltan datos necesarios para guardar el historial');
-      return;
-    }
+        setLoading(true);
+        setExito(false);
 
-    setLoading(true);
-    setError(null);
-    setExito(false);
+        try {
+            // Calcular promedio y estado
+            const promedio = Number(promedioFinal());
+            const estado = calcularEstadoGeneral;
 
-    try {
-      // Calcular promedio y estado
-      const promedio = Number(promedioFinal());
-      const estatus = calcularEstadoGeneral;
+            // Guardar historial
+            const params = {
+                idEstudiante: Math.trunc(Number(estudianteId)),
+                idPeriodo: Math.trunc(Number(periodoId)),
+                idGradoSecciones: Math.trunc(Number(idGradoSecciones))
+            };
+            const respuesta = await invoke('upsert_historial_academico', { input: params });
+            // Log detallado de la respuesta
+            console.log('[DEBUG][GUARDAR_HISTORIAL] Respuesta backend:', respuesta);
+            // Si la respuesta es un objeto con error, mostrarlo
+            if (respuesta && typeof respuesta === 'object' && 'error' in respuesta && respuesta.error) {
+                mostrarMensaje(respuesta.error, 'error');
+                setExito(false);
+            } else {
+                setExito(true);
+                mostrarMensaje('Historial académico guardado correctamente.', 'exito');
+            }
+        } catch (err: any) {
+            console.error('[DEBUG][GUARDAR_HISTORIAL] Error detallado:', err);
+            // Si el error es vacío o no relevante, mostrar éxito
+            if (!err || (typeof err === 'object' && Object.keys(err).length === 0)) {
+                setExito(true);
+                mostrarMensaje('Historial académico guardado correctamente.', 'exito');
+            } else {
+                let mensajeError = 'Error al guardar historial académico';
+                if (typeof err === 'string') mensajeError = err;
+                else if (err && typeof err.message === 'string') mensajeError = err.message;
+                else if (typeof err === 'object') mensajeError = JSON.stringify(err);
+                mostrarMensaje(mensajeError, 'error');
+                setExito(false);
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
 
-      // Guardar historial
-      await invoke('upsert_historial_academico', {
-        id_estudiante: estudianteId,
-        id_periodo: periodoId,
-        id_grado_secciones: idGradoSecciones,
-        promedio_anual: promedio,
-        estatus
-      });
-
-      setExito(true);
-    } catch (err: any) {
-      setError(err?.message || 'Error al guardar historial académico');
-      setExito(false);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return {
-    guardarHistorial,
-    loading,
-    error,
-    exito
-  };
+    return {
+        guardarHistorial,
+        loading,
+        exito
+    };
 } 

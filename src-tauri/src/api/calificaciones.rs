@@ -13,14 +13,14 @@ pub async fn guardar_calificacion(
     if let Some(id_calificacion) = calificacion.id_calificacion {
         // UPDATE
         db.execute(
-            "UPDATE calificaciones SET lapso_1=$1, lapso_1_ajustado=$2, lapso_2=$3, lapso_2_ajustado=$4, lapso_3=$5, lapso_3_ajustado=$6, revision=$7 WHERE id_calificacion=$8",
-            &[&calificacion.lapso_1, &calificacion.lapso_1_ajustado, &calificacion.lapso_2, &calificacion.lapso_2_ajustado, &calificacion.lapso_3, &calificacion.lapso_3_ajustado, &calificacion.revision, &id_calificacion]
+            "UPDATE calificaciones SET lapso_1=$1, lapso_1_ajustado=$2, lapso_2=$3, lapso_2_ajustado=$4, lapso_3=$5, lapso_3_ajustado=$6, revision=$7, nota_final=$8 WHERE id_calificacion=$9",
+            &[&calificacion.lapso_1, &calificacion.lapso_1_ajustado, &calificacion.lapso_2, &calificacion.lapso_2_ajustado, &calificacion.lapso_3, &calificacion.lapso_3_ajustado, &calificacion.revision, &calificacion.nota_final, &id_calificacion]
         ).await.map_err(|e| e.to_string())?;
     } else {
         // UPSERT: INSERT ... ON CONFLICT ... DO UPDATE
         db.execute(
-            "INSERT INTO calificaciones (id_estudiante, id_asignatura, id_periodo, lapso_1, lapso_1_ajustado, lapso_2, lapso_2_ajustado, lapso_3, lapso_3_ajustado, revision)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+            "INSERT INTO calificaciones (id_estudiante, id_asignatura, id_periodo, lapso_1, lapso_1_ajustado, lapso_2, lapso_2_ajustado, lapso_3, lapso_3_ajustado, revision, nota_final)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
              ON CONFLICT (id_estudiante, id_asignatura, id_periodo)
              DO UPDATE SET
                 lapso_1=EXCLUDED.lapso_1,
@@ -29,8 +29,9 @@ pub async fn guardar_calificacion(
                 lapso_2_ajustado=EXCLUDED.lapso_2_ajustado,
                 lapso_3=EXCLUDED.lapso_3,
                 lapso_3_ajustado=EXCLUDED.lapso_3_ajustado,
-                revision=EXCLUDED.revision",
-            &[&calificacion.id_estudiante, &calificacion.id_asignatura, &calificacion.id_periodo, &calificacion.lapso_1, &calificacion.lapso_1_ajustado, &calificacion.lapso_2, &calificacion.lapso_2_ajustado, &calificacion.lapso_3, &calificacion.lapso_3_ajustado, &calificacion.revision]
+                revision=EXCLUDED.revision,
+                nota_final=EXCLUDED.nota_final",
+            &[&calificacion.id_estudiante, &calificacion.id_asignatura, &calificacion.id_periodo, &calificacion.lapso_1, &calificacion.lapso_1_ajustado, &calificacion.lapso_2, &calificacion.lapso_2_ajustado, &calificacion.lapso_3, &calificacion.lapso_3_ajustado, &calificacion.revision, &calificacion.nota_final]
         ).await.map_err(|e| e.to_string())?;
     }
     Ok(())

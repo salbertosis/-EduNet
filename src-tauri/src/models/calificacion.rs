@@ -18,7 +18,7 @@ pub struct CalificacionEstudiante {
 #[derive(Debug, Deserialize)]
 pub struct CalificacionInput {
     pub id_calificacion: Option<i32>,
-    pub id_estudiante: i64,
+    pub id_estudiante: i32,
     pub id_asignatura: i32,
     pub id_periodo: i32,
     pub lapso_1: Option<i32>,

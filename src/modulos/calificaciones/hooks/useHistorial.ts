@@ -15,19 +15,19 @@ interface HistorialAcademico {
 }
 
 export function useHistorial(estudianteId: number) {
-  // Estado y lógica para cargar y guardar historial académico
   const [historial, setHistorial] = useState<HistorialAcademico[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Log de entrada al hook
-  console.log('[DEBUG][HOOK] useHistorial ejecutado con estudianteId:', estudianteId, 'tipo:', typeof estudianteId);
+  console.log('[DEBUG][HOOK] useHistorial ejecutado con estudianteId:', estudianteId);
 
   const cargarHistorial = useCallback(async () => {
-    console.log('[DEBUG][HOOK] cargarHistorial llamado con estudianteId:', estudianteId, 'tipo:', typeof estudianteId);
+    console.log('[DEBUG][HOOK] cargarHistorial iniciado con estudianteId:', estudianteId);
+    
+    // Validación estricta del ID
     if (typeof estudianteId !== 'number' || isNaN(estudianteId) || estudianteId <= 0) {
       setError('ID de estudiante no válido (' + estudianteId + ')');
-      console.warn('[DEBUG][HOOK] ID de estudiante no válido:', estudianteId, 'tipo:', typeof estudianteId);
+      console.warn('[DEBUG][HOOK] ID de estudiante no válido:', estudianteId);
       return;
     }
 
@@ -35,11 +35,15 @@ export function useHistorial(estudianteId: number) {
     setError(null);
 
     try {
-      console.log('[DEBUG][HOOK] Llamando a invoke obtener_historial_academico_estudiante con id:', estudianteId);
+      console.log('[DEBUG][HOOK] Llamando a obtener_historial_academico_estudiante con id_estudiante:', estudianteId);
       const data = await invoke<HistorialAcademico[]>('obtener_historial_academico_estudiante', {
-        id_estudiante: estudianteId
+        idEstudiante: estudianteId
       });
-      console.log('[DEBUG][HOOK] Respuesta de invoke:', data);
+      console.log('[DEBUG][HOOK] Datos recibidos:', data);
+
+      if (!Array.isArray(data)) {
+        throw new Error('Formato de respuesta inválido');
+      }
 
       // Ordenar por periodo escolar (más reciente primero)
       const historialOrdenado = data.sort((a, b) => {
@@ -47,27 +51,27 @@ export function useHistorial(estudianteId: number) {
         return b.periodo_escolar.localeCompare(a.periodo_escolar);
       });
 
+      console.log('[DEBUG][HOOK] Historial ordenado:', historialOrdenado);
       setHistorial(historialOrdenado);
     } catch (err: any) {
+      console.error('[DEBUG][HOOK] Error al cargar historial:', err);
       setError(err?.message || 'Error al cargar historial académico');
       setHistorial([]);
-      console.error('[DEBUG][HOOK] Error en invoke:', err);
     } finally {
       setLoading(false);
     }
   }, [estudianteId]);
 
   useEffect(() => {
-    console.log('[DEBUG][HOOK] useEffect disparado con estudianteId:', estudianteId, 'tipo:', typeof estudianteId);
+    console.log('[DEBUG][HOOK] useEffect disparado');
     cargarHistorial();
-  }, [cargarHistorial, estudianteId]);
+  }, [cargarHistorial]);
 
   return {
     historial,
     setHistorial,
     loading,
     error,
-    recargar: cargarHistorial,
-    // Métodos para cargar, guardar, etc.
+    recargar: cargarHistorial
   };
 } 

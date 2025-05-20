@@ -49,7 +49,7 @@ export function DetalleCalificacionesHistorial({ idEstudiante, idPeriodo }: Deta
         });
         setAsignaturas(asignaturasData);
         const calificacionesData = await invoke<CalificacionEstudiante[]>('obtener_calificaciones_estudiante', {
-          idEstudiante,
+          id_estudiante: idEstudiante,
           idPeriodo,
         });
         setCalificaciones(calificacionesData);

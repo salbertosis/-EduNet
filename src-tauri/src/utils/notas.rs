@@ -19,4 +19,31 @@ pub fn calcular_promedio_anual(calificaciones: &[CalificacionEstudiante]) -> f64
 
     let promedio = suma_notas / calificaciones.len() as f64;
     (promedio * 100.0).round() / 100.0
+}
+
+/// Calcula el estatus académico según el número de asignaturas aplazadas.
+/// Una asignatura está aplazada si nota final < 9.5 y revisión < 10.
+pub fn calcular_estatus_academico(calificaciones: &[CalificacionEstudiante]) -> String {
+    let mut aplazadas = 0;
+    for cal in calificaciones {
+        let nota_final = calcular_nota_final(cal);
+        let revision = cal.revision;
+        // Si la nota final es >= 10, está aprobada
+        if nota_final >= 10 {
+            continue;
+        }
+        // Si la revisión existe y es >= 10, está aprobada
+        if let Some(rev) = revision {
+            if rev >= 10 {
+                continue;
+            }
+        }
+        // Si la revisión no existe o es < 10, es aplazada
+        aplazadas += 1;
+    }
+    if aplazadas >= 3 {
+        "REPITE".to_string()
+    } else {
+        "APROBADO".to_string()
+    }
 } 

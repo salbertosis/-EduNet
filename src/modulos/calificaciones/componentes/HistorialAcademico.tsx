@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useHistorial } from '../hooks/useHistorial';
 import { EyeIcon } from '@heroicons/react/24/outline';
 import { ModalCalificacionesHistorial } from './ModalCalificacionesHistorial';
@@ -21,28 +21,42 @@ interface HistorialAcademicoProps {
 }
 
 export const HistorialAcademico: React.FC<HistorialAcademicoProps> = ({ idEstudiante }) => {
+  console.log('[DEBUG][COMPONENT] HistorialAcademico renderizado con idEstudiante:', idEstudiante);
+  
   const { historial, loading, error, recargar } = useHistorial(idEstudiante);
   const [modalAbierto, setModalAbierto] = useState(false);
   const [periodoSeleccionado, setPeriodoSeleccionado] = useState<HistorialAcademico | null>(null);
 
-  if (loading) return (
-    <div className="flex items-center justify-center p-8">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
-      <span className="ml-3 text-gray-600">Cargando historial académico...</span>
-    </div>
-  );
+  useEffect(() => {
+    console.log('[DEBUG][COMPONENT] Historial actualizado:', historial);
+  }, [historial]);
 
-  if (error) return (
-    <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-      <p className="text-red-600">Error: {error}</p>
-      <button 
-        onClick={recargar}
-        className="mt-2 px-4 py-2 bg-red-100 text-red-700 rounded hover:bg-red-200"
-      >
-        Reintentar
-      </button>
-    </div>
-  );
+  if (loading) {
+    console.log('[DEBUG][COMPONENT] Mostrando estado de carga');
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
+        <span className="ml-3 text-gray-600">Cargando historial académico...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    console.error('[DEBUG][COMPONENT] Error detectado:', error);
+    return (
+      <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+        <p className="text-red-600">Error: {error}</p>
+        <button 
+          onClick={recargar}
+          className="mt-2 px-4 py-2 bg-red-100 text-red-700 rounded hover:bg-red-200"
+        >
+          Reintentar
+        </button>
+      </div>
+    );
+  }
+
+  console.log('[DEBUG][COMPONENT] Renderizando tabla con historial:', historial);
 
   return (
     <section>
@@ -93,6 +107,7 @@ export const HistorialAcademico: React.FC<HistorialAcademicoProps> = ({ idEstudi
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <button 
                       onClick={() => { 
+                        console.log('[DEBUG][COMPONENT] Abriendo modal para periodo:', h);
                         setPeriodoSeleccionado(h); 
                         setModalAbierto(true); 
                       }}
@@ -111,7 +126,11 @@ export const HistorialAcademico: React.FC<HistorialAcademicoProps> = ({ idEstudi
       {modalAbierto && periodoSeleccionado && (
         <ModalCalificacionesHistorial
           open={modalAbierto}
-          onClose={() => setModalAbierto(false)}
+          onClose={() => {
+            console.log('[DEBUG][COMPONENT] Cerrando modal');
+            setModalAbierto(false);
+            setPeriodoSeleccionado(null);
+          }}
           idEstudiante={idEstudiante}
           idPeriodo={periodoSeleccionado.id_periodo}
           periodoEscolar={periodoSeleccionado.periodo_escolar || ''}

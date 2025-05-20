@@ -3,6 +3,17 @@ use crate::AppState;
 use crate::models::historial::HistorialAcademico;
 use crate::models::calificacion::CalificacionEstudiante;
 use crate::utils::notas::{calcular_nota_final, calcular_promedio_anual};
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+pub struct HistorialInput {
+    #[serde(rename = "idEstudiante")]
+    pub id_estudiante: i32,
+    #[serde(rename = "idPeriodo")]
+    pub id_periodo: i32,
+    #[serde(rename = "idGradoSecciones")]
+    pub id_grado_secciones: i32,
+}
 
 #[tauri::command]
 pub async fn obtener_historial_academico_estudiante(
@@ -60,13 +71,12 @@ pub async fn obtener_historial_academico_estudiante(
 
 #[tauri::command]
 pub async fn upsert_historial_academico(
-    id_estudiante: i64,
-    id_periodo: i64,
-    id_grado_secciones: i64,
+    input: HistorialInput,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
-    println!("[DEBUG][BACKEND] upsert_historial_academico: id_estudiante={}, id_periodo={}, id_grado_secciones={}", id_estudiante, id_periodo, id_grado_secciones);
     let db = state.db.lock().await;
+    println!("[DEBUG][BACKEND] upsert_historial_academico: id_estudiante={}, id_periodo={}, id_grado_secciones={}", 
+        input.id_estudiante, input.id_periodo, input.id_grado_secciones);
     
     // Obtener todas las calificaciones del estudiante para el período
     let calificaciones_query = "
@@ -85,7 +95,7 @@ pub async fn upsert_historial_academico(
         JOIN asignaturas a ON c.id_asignatura = a.id_asignatura
         WHERE c.id_estudiante = $1 AND c.id_periodo = $2";
     
-    let calificaciones_rows = db.query(calificaciones_query, &[&id_estudiante, &id_periodo])
+    let calificaciones_rows = db.query(calificaciones_query, &[&input.id_estudiante, &input.id_periodo])
         .await
         .map_err(|e| e.to_string())?;
     
@@ -116,12 +126,8 @@ pub async fn upsert_historial_academico(
     // Calcular el promedio anual usando la función centralizada
     let promedio_anual = calcular_promedio_anual(&calificaciones);
     
-    // Determinar el estatus basado en el promedio
-    let estatus = if promedio_anual >= 10.0 {
-        "APROBADO".to_string()
-    } else {
-        "REPROBADO".to_string()
-    };
+    // Determinar el estatus usando la función centralizada (ahora con la lógica correcta)
+    let estatus = crate::utils::notas::calcular_estatus_academico(&calificaciones);
     
     // Insertar o actualizar el historial académico
     let query = "
@@ -136,10 +142,14 @@ pub async fn upsert_historial_academico(
             estatus = EXCLUDED.estatus";
 
     println!(
-        "[DEBUG][BACKEND] Ejecutando query con: id_estudiante={}, id_periodo={}, id_grado_secciones={}, promedio_anual={}, estatus={}",
-        id_estudiante, id_periodo, id_grado_secciones, promedio_anual, estatus
+        "[DEBUG][BACKEND] Consulta SQL a ejecutar: {}",
+        query
     );
-    db.execute(query, &[&id_estudiante, &id_periodo, &id_grado_secciones, &promedio_anual, &estatus])
+    println!(
+        "[DEBUG][BACKEND] Valores de parámetros: id_estudiante={}, id_periodo={}, id_grado_secciones={}, promedio_anual={}, estatus={}",
+        input.id_estudiante, input.id_periodo, input.id_grado_secciones, promedio_anual, estatus
+    );
+    db.execute(query, &[&input.id_estudiante, &input.id_periodo, &input.id_grado_secciones, &promedio_anual, &estatus])
         .await
         .map_err(|e| e.to_string())?;
     Ok(())

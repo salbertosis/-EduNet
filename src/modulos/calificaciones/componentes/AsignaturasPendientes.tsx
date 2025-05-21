@@ -1,5 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { usePendientes } from '../hooks/usePendientes';
+import { ModalPendiente } from './ModalPendiente';
+import DeleteIcon from '@mui/icons-material/Delete';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 
 interface AsignaturaPendiente {
   id_pendiente: number;
@@ -21,8 +24,19 @@ interface AsignaturasPendientesProps {
 
 export const AsignaturasPendientes: React.FC<AsignaturasPendientesProps> = ({ idEstudiante }) => {
   const { pendientes, loading, recargar } = usePendientes(idEstudiante);
+  const [mostrarModal, setMostrarModal] = useState(false);
+  const [pendienteSeleccionada, setPendienteSeleccionada] = useState<AsignaturaPendiente | null>(null);
 
   if (loading) return <div>Cargando asignaturas pendientes...</div>;
+
+  const handleEliminarPendiente = (id_pendiente: number) => {
+    // Implementar lógica de eliminación
+  };
+
+  const handleVerDetalle = (pendiente: AsignaturaPendiente) => {
+    setPendienteSeleccionada(pendiente);
+    setMostrarModal(true);
+  };
 
   return (
     <section>
@@ -36,6 +50,7 @@ export const AsignaturasPendientes: React.FC<AsignaturasPendientesProps> = ({ id
               <th className="px-2 py-2 text-center font-bold uppercase whitespace-nowrap">ASIGNATURA</th>
               <th className="px-2 py-2 text-center font-bold uppercase whitespace-nowrap">CALIFICACIÓN</th>
               <th className="px-2 py-2 text-center font-bold uppercase whitespace-nowrap">ESTADO</th>
+              <th className="px-2 py-2 text-center font-bold uppercase whitespace-nowrap">ACCIONES</th>
             </tr>
           </thead>
           <tbody>
@@ -57,11 +72,34 @@ export const AsignaturasPendientes: React.FC<AsignaturasPendientesProps> = ({ id
                     {p.estado?.toUpperCase()}
                   </span>
                 </td>
+                <td className="px-2 py-2 text-center whitespace-nowrap flex gap-2 justify-center">
+                  <DeleteIcon
+                    fontSize="medium"
+                    className="text-red-600 cursor-pointer hover:bg-red-100 rounded-full transition"
+                    titleAccess="Eliminar"
+                    onClick={() => handleEliminarPendiente(p.id_pendiente)}
+                  />
+                  <VisibilityIcon
+                    fontSize="medium"
+                    className="text-blue-600 cursor-pointer hover:bg-blue-100 rounded-full transition"
+                    titleAccess="Ver Detalle"
+                    onClick={() => handleVerDetalle(p)}
+                  />
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      <ModalPendiente
+        open={mostrarModal}
+        onClose={() => setMostrarModal(false)}
+        pendiente={pendienteSeleccionada}
+        onGuardar={(valores) => {
+          // TODO: lógica para guardar los valores de los momentos en backend
+          setMostrarModal(false);
+        }}
+      />
     </section>
   );
 }; 

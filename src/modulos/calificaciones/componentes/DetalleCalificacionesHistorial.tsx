@@ -1,27 +1,8 @@
 import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/tauri';
 import { useMensajeGlobal } from '../../../componentes/MensajeGlobalContext';
-
-interface CalificacionEstudiante {
-  id_calificacion?: number;
-  id_asignatura: number;
-  nombre_asignatura: string;
-  lapso_1?: number;
-  lapso_1_ajustado?: number;
-  lapso_2?: number;
-  lapso_2_ajustado?: number;
-  lapso_3?: number;
-  lapso_3_ajustado?: number;
-  nota_final?: number;
-  revision?: string;
-}
-
-interface Asignatura {
-  id_asignatura: number;
-  nombre_asignatura: string;
-  id_grado: number;
-  id_modalidad: number;
-}
+import { TablaCalificaciones } from './DetalleCalificaciones/TablaCalificaciones';
+import { CalificacionEstudiante, Asignatura } from '../types';
 
 interface DetalleCalificacionesHistorialProps {
   idEstudiante: number;
@@ -47,12 +28,33 @@ export function DetalleCalificacionesHistorial({ idEstudiante, idPeriodo }: Deta
           idGrado: estudiante.id_grado,
           idModalidad: estudiante.id_modalidad,
         });
-        setAsignaturas(asignaturasData);
+        console.log('[DEBUG] AsignaturasData:', asignaturasData);
+        console.log('[DEBUG][FRONTEND] Invocando obtener_calificaciones_estudiante con', { idEstudiante: idEstudiante, idPeriodo: idPeriodo });
         const calificacionesData = await invoke<CalificacionEstudiante[]>('obtener_calificaciones_estudiante', {
-          id_estudiante: idEstudiante,
-          idPeriodo,
+          idEstudiante: idEstudiante,
+          idPeriodo: idPeriodo,
         });
-        setCalificaciones(calificacionesData);
+        console.log('[DEBUG] CalificacionesData:', calificacionesData);
+        // Construir array completo de calificaciones
+        const calificacionesCompletas = asignaturasData.map(asig => {
+          return (
+            calificacionesData.find(c => c.id_asignatura === asig.id_asignatura) || {
+              id_asignatura: asig.id_asignatura,
+              nombre_asignatura: asig.nombre_asignatura,
+              lapso_1: undefined,
+              lapso_1_ajustado: undefined,
+              lapso_2: undefined,
+              lapso_2_ajustado: undefined,
+              lapso_3: undefined,
+              lapso_3_ajustado: undefined,
+              nota_final: undefined,
+              revision: ''
+            }
+          );
+        });
+        console.log('[DEBUG] CalificacionesCompletas:', calificacionesCompletas);
+        setAsignaturas(asignaturasData);
+        setCalificaciones(calificacionesCompletas);
       } catch (error) {
         // Manejo de errores
       } finally {
@@ -294,169 +296,13 @@ export function DetalleCalificacionesHistorial({ idEstudiante, idPeriodo }: Deta
         <div className="text-center py-8 text-gray-400">Cargando calificaciones...</div>
       ) : (
         <div className="overflow-x-auto rounded-xl">
-          <table className="min-w-full text-xs md:text-sm divide-y divide-emerald-400 dark:divide-cyan-800 rounded-xl overflow-hidden shadow-lg border border-emerald-200 dark:border-cyan-800">
-            <thead className="sticky top-0 z-30 bg-gradient-to-r from-emerald-900 via-dark-800 to-dark-900 dark:from-[#059669] dark:via-[#2563eb] dark:to-[#181f2a] text-white">
-              <tr>
-                <th className="px-2 py-2 text-center font-bold uppercase whitespace-nowrap">ASIGNATURA</th>
-                <th className="px-1 py-2 text-center font-bold uppercase whitespace-nowrap">1ER LAPSO</th>
-                <th className="px-1 py-2 text-center font-bold uppercase whitespace-nowrap">AJUSTE 1</th>
-                <th className="px-1 py-2 text-center font-bold uppercase whitespace-nowrap">2DO LAPSO</th>
-                <th className="px-1 py-2 text-center font-bold uppercase whitespace-nowrap">AJUSTE 2</th>
-                <th className="px-1 py-2 text-center font-bold uppercase whitespace-nowrap">3ER LAPSO</th>
-                <th className="px-1 py-2 text-center font-bold uppercase whitespace-nowrap">AJUSTE 3</th>
-                <th className="px-1 py-2 text-center font-bold uppercase whitespace-nowrap">FINAL</th>
-                <th className="px-1 py-2 text-center font-bold uppercase whitespace-nowrap">REVISIÓN</th>
-              </tr>
-            </thead>
-            <tbody>
-              {asignaturas.length === 0 && (
-                <tr>
-                  <td colSpan={9} className="text-center py-4 text-gray-400">No hay asignaturas registradas para este estudiante.</td>
-                </tr>
-              )}
-              {asignaturas.map((asig, idx) => {
-                const calif = calificaciones.find(c => c.id_asignatura === asig.id_asignatura) || {
-                  id_asignatura: asig.id_asignatura,
-                  nombre_asignatura: asig.nombre_asignatura,
-                  lapso_1: undefined,
-                  lapso_1_ajustado: undefined,
-                  lapso_2: undefined,
-                  lapso_2_ajustado: undefined,
-                  lapso_3: undefined,
-                  lapso_3_ajustado: undefined,
-                  nota_final: undefined,
-                  revision: ''
-                };
-                return (
-                  <tr key={asig.id_asignatura} className={
-                    (idx % 2 === 0 ? 'bg-white dark:bg-[#232c3d]' : 'bg-gray-100 dark:bg-[#222b3a]') +
-                    ' transition hover:dark:bg-[#2563eb]/10 hover:bg-emerald-100'
-                  }>
-                    <td className="px-2 py-2 font-bold text-emerald-700 dark:text-cyan-200 whitespace-nowrap text-xs md:text-sm">
-                      <div className="flex items-center gap-2 md:gap-3">
-                        <span className="flex items-center justify-center w-7 h-7 md:w-8 md:h-8 rounded-lg font-bold text-white text-xs md:text-base shadow" style={{ background: '#2563eb' }}>
-                          {asig.nombre_asignatura?.[0] ?? ''}
-                        </span>
-                        <span className="dark:text-cyan-200 text-emerald-700">{asig.nombre_asignatura}</span>
-                      </div>
-                    </td>
-                    {/* Lapso 1 */}
-                    <td className="px-1 py-1 align-middle text-center">
-                      <input
-                        type="number"
-                        min={0}
-                        max={20}
-                        value={padNota((calif as Partial<CalificacionEstudiante>).lapso_1 as number)}
-                        onChange={e => handleInputChange(asig.id_asignatura, 'lapso_1', e.target.value)}
-                        className="w-10 md:w-14 h-8 md:h-10 px-1 md:px-2 py-1 rounded-lg border-2 border-emerald-400 dark:border-cyan-700 bg-white dark:bg-[#181f2a] text-center text-xs md:text-sm text-gray-900 dark:text-cyan-100 shadow focus:ring-2 focus:ring-cyan-400 focus:border-cyan-500 transition-all font-normal"
-                      />
-                    </td>
-                    {/* Ajuste 1 */}
-                    <td className="px-1 py-1 align-middle text-center">
-                      <input
-                        type="number"
-                        min={0}
-                        max={20}
-                        value={padNota((calif as Partial<CalificacionEstudiante>).lapso_1_ajustado as number)}
-                        onChange={e => handleInputChange(asig.id_asignatura, 'lapso_1_ajustado', e.target.value)}
-                        className={`w-10 md:w-14 h-8 md:h-10 px-1 md:px-2 py-1 rounded-lg border-2 ${errores[`${asig.id_asignatura}_lapso_1_ajustado`] ? 'border-red-500' : 'border-cyan-400 dark:border-cyan-600'} bg-white dark:bg-[#181f2a] text-center text-xs md:text-sm text-gray-900 dark:text-cyan-100 shadow focus:ring-2 focus:ring-cyan-400 focus:border-cyan-500 transition-all font-normal`}
-                      />
-                      {errores[`${asig.id_asignatura}_lapso_1_ajustado`] && <div className="text-xs text-red-500">{errores[`${asig.id_asignatura}_lapso_1_ajustado`]}</div>}
-                    </td>
-                    {/* Lapso 2 */}
-                    <td className="px-1 py-1 align-middle text-center">
-                      <input
-                        type="number"
-                        min={0}
-                        max={20}
-                        value={padNota((calif as Partial<CalificacionEstudiante>).lapso_2 as number)}
-                        onChange={e => handleInputChange(asig.id_asignatura, 'lapso_2', e.target.value)}
-                        className="w-10 md:w-14 h-8 md:h-10 px-1 md:px-2 py-1 rounded-lg border-2 border-emerald-400 dark:border-cyan-700 bg-white dark:bg-[#181f2a] text-center text-xs md:text-sm text-gray-900 dark:text-cyan-100 shadow focus:ring-2 focus:ring-cyan-400 focus:border-cyan-500 transition-all font-normal"
-                      />
-                    </td>
-                    {/* Ajuste 2 */}
-                    <td className="px-1 py-1 align-middle text-center">
-                      <input
-                        type="number"
-                        min={0}
-                        max={20}
-                        value={padNota((calif as Partial<CalificacionEstudiante>).lapso_2_ajustado as number)}
-                        onChange={e => handleInputChange(asig.id_asignatura, 'lapso_2_ajustado', e.target.value)}
-                        className={`w-10 md:w-14 h-8 md:h-10 px-1 md:px-2 py-1 rounded-lg border-2 ${errores[`${asig.id_asignatura}_lapso_2_ajustado`] ? 'border-red-500' : 'border-cyan-400 dark:border-cyan-600'} bg-white dark:bg-[#181f2a] text-center text-xs md:text-sm text-gray-900 dark:text-cyan-100 shadow focus:ring-2 focus:ring-cyan-400 focus:border-cyan-500 transition-all font-normal`}
-                      />
-                      {errores[`${asig.id_asignatura}_lapso_2_ajustado`] && <div className="text-xs text-red-500">{errores[`${asig.id_asignatura}_lapso_2_ajustado`]}</div>}
-                    </td>
-                    {/* Lapso 3 */}
-                    <td className="px-1 py-1 align-middle text-center">
-                      <input
-                        type="number"
-                        min={0}
-                        max={20}
-                        value={padNota((calif as Partial<CalificacionEstudiante>).lapso_3 as number)}
-                        onChange={e => handleInputChange(asig.id_asignatura, 'lapso_3', e.target.value)}
-                        className="w-10 md:w-14 h-8 md:h-10 px-1 md:px-2 py-1 rounded-lg border-2 border-emerald-400 dark:border-cyan-700 bg-white dark:bg-[#181f2a] text-center text-xs md:text-sm text-gray-900 dark:text-cyan-100 shadow focus:ring-2 focus:ring-cyan-400 focus:border-cyan-500 transition-all font-normal"
-                      />
-                    </td>
-                    {/* Ajuste 3 */}
-                    <td className="px-1 py-1 align-middle text-center">
-                      <input
-                        type="number"
-                        min={0}
-                        max={20}
-                        value={padNota((calif as Partial<CalificacionEstudiante>).lapso_3_ajustado as number)}
-                        onChange={e => handleInputChange(asig.id_asignatura, 'lapso_3_ajustado', e.target.value)}
-                        className={`w-10 md:w-14 h-8 md:h-10 px-1 md:px-2 py-1 rounded-lg border-2 ${errores[`${asig.id_asignatura}_lapso_3_ajustado`] ? 'border-red-500' : 'border-cyan-400 dark:border-cyan-600'} bg-white dark:bg-[#181f2a] text-center text-xs md:text-sm text-gray-900 dark:text-cyan-100 shadow focus:ring-2 focus:ring-cyan-400 focus:border-cyan-500 transition-all font-normal`}
-                      />
-                      {errores[`${asig.id_asignatura}_lapso_3_ajustado`] && <div className="text-xs text-red-500">{errores[`${asig.id_asignatura}_lapso_3_ajustado`]}</div>}
-                    </td>
-                    {/* Final */}
-                    <td className="px-1 py-1 w-16 align-middle text-center">
-                      <div className="flex flex-col items-center gap-1">
-                        <input
-                          type="text"
-                          value={padNota((calif as Partial<CalificacionEstudiante>).nota_final as number) || padNota(calcularNotaFinal(calif as CalificacionEstudiante))}
-                          readOnly
-                          className="w-10 md:w-14 h-8 md:h-10 px-1 md:px-2 py-1 rounded-lg border-2 border-emerald-400 dark:border-cyan-700 bg-emerald-50 dark:bg-[#232c3d] text-center text-emerald-700 dark:text-cyan-200 font-normal shadow text-xs md:text-sm"
-                        />
-                        {calif.revision && !isNaN(Number(calif.revision)) && Number(calif.revision) > 0 && (
-                          <span className="text-xs text-blue-500 font-bold">Rev: {padNota(Number(calif.revision))}</span>
-                        )}
-                      </div>
-                    </td>
-                    {/* Revisión */}
-                    <td className="px-1 py-1 w-16 align-middle text-center">
-                      <input
-                        type="text"
-                        value={(calif as Partial<CalificacionEstudiante>).revision ?? ''}
-                        onChange={e => handleInputChange(asig.id_asignatura, 'revision', e.target.value)}
-                        className="w-10 md:w-14 h-8 md:h-10 px-1 md:px-2 py-1 rounded-lg border-2 border-emerald-400 dark:border-cyan-700 bg-white dark:bg-[#181f2a] text-center text-xs md:text-sm text-gray-900 dark:text-cyan-100 shadow focus:ring-2 focus:ring-cyan-400 focus:border-cyan-500 transition-all font-normal"
-                      />
-                    </td>
-                  </tr>
-                );
-              })}
-              {/* Fila de promedios */}
-              <tr className="bg-gradient-to-r from-emerald-900 via-dark-800 to-dark-900 dark:from-[#059669] dark:via-[#2563eb] dark:to-[#181f2a] font-bold">
-                <td className="px-4 py-2 w-48 text-right text-emerald-700 dark:text-cyan-200 bg-white dark:bg-transparent"></td>
-                <td className="px-1 py-2 w-20 text-center text-emerald-700 dark:text-cyan-200 bg-white dark:bg-transparent align-middle">
-                  <div className="flex items-center justify-center h-full">{padNota(Number(promedioLapso('lapso_1', 'lapso_1_ajustado')))}</div>
-                </td>
-                <td className="px-1 py-2 w-20 text-center bg-white dark:bg-transparent align-middle"></td>
-                <td className="px-1 py-2 w-20 text-center text-emerald-700 dark:text-cyan-200 bg-white dark:bg-transparent align-middle">
-                  <div className="flex items-center justify-center h-full">{padNota(Number(promedioLapso('lapso_2', 'lapso_2_ajustado')))}</div>
-                </td>
-                <td className="px-1 py-2 w-20 text-center bg-white dark:bg-transparent align-middle"></td>
-                <td className="px-1 py-2 w-20 text-center text-emerald-700 dark:text-cyan-200 bg-white dark:bg-transparent align-middle">
-                  <div className="flex items-center justify-center h-full">{padNota(Number(promedioLapso('lapso_3', 'lapso_3_ajustado')))}</div>
-                </td>
-                <td className="px-1 py-2 w-20 text-center bg-white dark:bg-transparent align-middle"></td>
-                <td className="px-1 py-2 w-20 text-center text-emerald-700 dark:text-cyan-200 bg-white dark:bg-transparent align-middle">
-                  <div className="flex items-center justify-center h-full">{padNota(Number(promedioFinal()))}</div>
-                </td>
-                <td className="px-1 py-2 w-20 text-center bg-white dark:bg-transparent align-middle"></td>
-              </tr>
-            </tbody>
-          </table>
+          <TablaCalificaciones
+            asignaturas={asignaturas}
+            calificaciones={calificaciones}
+            errores={errores}
+            mostrarAjustes={true}
+            onInputChange={handleInputChange}
+          />
           <div className="mt-4 text-right flex flex-row items-center justify-end gap-4 sticky bottom-0 bg-white dark:bg-dark-800 pb-2 pt-2 z-10">
             {mensajeGuardado && <div className="mb-2 text-green-400 font-semibold">{mensajeGuardado}</div>}
             {!periodoValido && (

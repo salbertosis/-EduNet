@@ -62,27 +62,20 @@ export const HistorialAcademico: React.FC<HistorialAcademicoProps> = ({ idEstudi
     <section>
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-xl font-semibold text-emerald-600">Historial Académico</h3>
-        <button 
-          onClick={recargar}
-          className="px-4 py-2 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200 transition-colors"
-        >
-          Actualizar
-        </button>
       </div>
-
-      <div className="overflow-x-auto rounded-lg border border-gray-200">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+      <div className="overflow-x-auto rounded-xl">
+        <table className="min-w-full text-xs md:text-sm divide-y divide-emerald-400 dark:divide-cyan-800 rounded-xl overflow-hidden shadow-lg border border-emerald-200 dark:border-cyan-800">
+          <thead className="sticky top-0 z-30 bg-gradient-to-r from-emerald-900 via-dark-800 to-dark-900 dark:from-[#059669] dark:via-[#2563eb] dark:to-[#181f2a] text-white">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Año Escolar</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Grado</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sección</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Promedio</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+              <th className="px-2 py-2 text-center font-bold uppercase whitespace-nowrap">AÑO ESCOLAR</th>
+              <th className="px-2 py-2 text-center font-bold uppercase whitespace-nowrap">GRADO</th>
+              <th className="px-2 py-2 text-center font-bold uppercase whitespace-nowrap">SECCIÓN</th>
+              <th className="px-2 py-2 text-center font-bold uppercase whitespace-nowrap">PROMEDIO</th>
+              <th className="px-2 py-2 text-center font-bold uppercase whitespace-nowrap">ESTADO</th>
+              <th className="px-2 py-2 text-center font-bold uppercase whitespace-nowrap">ACCIONES</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody>
             {historial.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
@@ -91,23 +84,22 @@ export const HistorialAcademico: React.FC<HistorialAcademicoProps> = ({ idEstudi
               </tr>
             ) : (
               historial.map((h) => (
-                <tr key={h.id_historial} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{h.periodo_escolar}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{h.grado}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{h.seccion}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{h.promedio_anual.toFixed(2)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                <tr key={h.id_historial} className="hover:bg-emerald-50 dark:hover:bg-[#2563eb]/10 transition">
+                  <td className="px-2 py-2 text-center text-xs md:text-sm text-gray-900 dark:text-cyan-200 whitespace-nowrap">{h.periodo_escolar}</td>
+                  <td className="px-2 py-2 text-center text-xs md:text-sm text-gray-900 dark:text-cyan-200 whitespace-nowrap">{h.grado}</td>
+                  <td className="px-2 py-2 text-center text-xs md:text-sm text-gray-900 dark:text-cyan-200 whitespace-nowrap">{h.seccion}</td>
+                  <td className="px-2 py-2 text-center text-xs md:text-sm text-gray-900 dark:text-cyan-200 whitespace-nowrap">{h.promedio_anual.toFixed(2)}</td>
+                  <td className="px-2 py-2 text-center whitespace-nowrap">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
                       ${h.estatus === 'Aprobado' ? 'bg-green-100 text-green-800' : 
-                        h.estatus === 'Repite' ? 'bg-red-100 text-red-800' : 
-                        'bg-yellow-100 text-yellow-800'}`}>
-                      {h.estatus}
+                        h.estatus === 'Repite' ? 'bg-yellow-100 text-yellow-800' : 
+                        'bg-red-100 text-red-800'}`}>
+                      {h.estatus?.toUpperCase()}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-2 py-2 text-center text-xs md:text-sm text-gray-500 whitespace-nowrap">
                     <button 
                       onClick={() => { 
-                        console.log('[DEBUG][COMPONENT] Abriendo modal para periodo:', h);
                         setPeriodoSeleccionado(h); 
                         setModalAbierto(true); 
                       }}
@@ -122,12 +114,10 @@ export const HistorialAcademico: React.FC<HistorialAcademicoProps> = ({ idEstudi
           </tbody>
         </table>
       </div>
-
       {modalAbierto && periodoSeleccionado && (
         <ModalCalificacionesHistorial
           open={modalAbierto}
           onClose={() => {
-            console.log('[DEBUG][COMPONENT] Cerrando modal');
             setModalAbierto(false);
             setPeriodoSeleccionado(null);
           }}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/tauri';
 import { Search, Plus, Pencil, Trash2, FileSpreadsheet, X } from 'lucide-react';
 import { FormularioEstudiante } from '../componentes/FormularioEstudiante';
@@ -62,6 +62,8 @@ export function ListaEstudiantes() {
   const [mostrarDetalleCalificaciones, setMostrarDetalleCalificaciones] = useState(false);
   const [estudianteDetalle, setEstudianteDetalle] = useState<Estudiante | null>(null);
   const navigate = useNavigate();
+  const [modalConfirmarExcel, setModalConfirmarExcel] = useState<{ abierto: boolean, cantidad: number, nombre: string, estudiantes: any[] } | null>(null);
+  const inputExcelRef = useRef<HTMLInputElement>(null);
 
   const cargarEstudiantes = async () => {
     try {
@@ -76,10 +78,10 @@ export function ListaEstudiantes() {
       setEstudiantes(resultado.datos);
       const paginacionBackend = resultado.paginacion;
       const paginacionFrontend = {
-        paginaActual: paginacionBackend['pagina_actual'],
-        totalPaginas: paginacionBackend['total_paginas'],
-        totalRegistros: paginacionBackend['total_registros'],
-        registrosPorPagina: paginacionBackend['registros_por_pagina']
+        paginaActual: paginacionBackend.paginaActual,
+        totalPaginas: paginacionBackend.totalPaginas,
+        totalRegistros: paginacionBackend.totalRegistros,
+        registrosPorPagina: paginacionBackend.registrosPorPagina
       };
       setPaginacion(paginacionFrontend);
     } catch (error) {
@@ -151,6 +153,7 @@ export function ListaEstudiantes() {
     const file = e.target.files?.[0];
     if (!file) {
       mostrarMensaje('No se seleccionó ningún archivo', 'error');
+      if (inputExcelRef.current) inputExcelRef.current.value = "";
       return;
     }
     const reader = new FileReader();
@@ -167,15 +170,28 @@ export function ListaEstudiantes() {
           fecha_ingreso: typeof est.fecha_ingreso === 'number' ? excelDateToISO(est.fecha_ingreso) : est.fecha_ingreso,
           fecha_retiro: typeof est.fecha_retiro === 'number' ? excelDateToISO(est.fecha_retiro) : est.fecha_retiro,
         }));
-        const resumen = await invoke<ResumenInsercion>('insertar_estudiantes_masivo', { estudiantes });
-        setResumenInsercion(resumen);
-        mostrarMensaje(`Importación finalizada: ${resumen.insertados} insertados, ${resumen.duplicados} duplicados.`, 'exito');
-        cargarEstudiantes();
+        setModalConfirmarExcel({ abierto: true, cantidad: estudiantes.length, nombre: file.name, estudiantes });
       } catch (err) {
-        mostrarMensaje('Error al procesar o insertar estudiantes: ' + err, 'error');
+        mostrarMensaje('Error al procesar el archivo Excel: ' + err, 'error');
+      } finally {
+        if (inputExcelRef.current) inputExcelRef.current.value = "";
       }
     };
     reader.readAsBinaryString(file);
+  };
+
+  const handleConfirmarInsertarExcel = async () => {
+    if (!modalConfirmarExcel) return;
+    try {
+      const resumen = await invoke<ResumenInsercion>('insertar_estudiantes_masivo', { estudiantes: modalConfirmarExcel.estudiantes });
+      setResumenInsercion(resumen);
+      cargarEstudiantes();
+    } catch (err) {
+      mostrarMensaje('Error al procesar o insertar estudiantes: ' + err, 'error');
+    } finally {
+      setModalConfirmarExcel(null);
+      if (inputExcelRef.current) inputExcelRef.current.value = "";
+    }
   };
 
   const handleCambiarRegistrosPorPagina = (cantidad: number) => {
@@ -208,6 +224,7 @@ export function ListaEstudiantes() {
             <FileSpreadsheet className="w-5 h-5" />
             <span>Cargar Excel</span>
             <input
+              ref={inputExcelRef}
               type="file"
               accept=".xlsx,.xls"
               style={{ display: 'none' }}
@@ -397,19 +414,21 @@ export function ListaEstudiantes() {
 
       {/* Modal de formulario */}
       {mostrarFormulario && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-dark-800 rounded-xl shadow-soft p-6 w-full max-w-2xl">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-dark-800 rounded-xl shadow-soft p-6 w-full max-w-2xl max-h-[90vh] flex flex-col">
             <h2 className="text-xl font-bold mb-4">
               {estudianteSeleccionado ? 'Editar Estudiante' : 'Nuevo Estudiante'}
             </h2>
-            <FormularioEstudiante
-              estudiante={estudianteSeleccionado || undefined}
-              onGuardar={() => {
-                setMostrarFormulario(false);
-                cargarEstudiantes();
-              }}
-              onCancelar={() => setMostrarFormulario(false)}
-            />
+            <div className="flex-1 overflow-y-auto">
+              <FormularioEstudiante
+                estudiante={estudianteSeleccionado || undefined}
+                onGuardar={() => {
+                  setMostrarFormulario(false);
+                  cargarEstudiantes();
+                }}
+                onCancelar={() => setMostrarFormulario(false)}
+              />
+            </div>
           </div>
         </div>
       )}
@@ -469,6 +488,18 @@ export function ListaEstudiantes() {
         mensaje={modalBorrar.estudiante ? `¿Estás seguro de que deseas eliminar a "${modalBorrar.estudiante.nombres} ${modalBorrar.estudiante.apellidos}"?` : ''}
         onConfirmar={handleConfirmarBorrar}
         onCancelar={() => setModalBorrar({ abierto: false })}
+      />
+
+      <ModalConfirmar
+        abierto={!!modalConfirmarExcel}
+        titulo="Confirmar carga de estudiantes"
+        mensaje={modalConfirmarExcel ? `¿Estás seguro de insertar ${modalConfirmarExcel.cantidad} estudiantes desde el archivo "${modalConfirmarExcel.nombre}"?` : ''}
+        textoConfirmar="Insertar"
+        onConfirmar={handleConfirmarInsertarExcel}
+        onCancelar={() => {
+          setModalConfirmarExcel(null);
+          if (inputExcelRef.current) inputExcelRef.current.value = "";
+        }}
       />
     </div>
   );

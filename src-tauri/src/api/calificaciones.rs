@@ -39,21 +39,24 @@ pub async fn guardar_calificacion(
 
 #[tauri::command]
 pub async fn obtener_calificaciones_estudiante(
-    id_estudiante: i64,
+    id_estudiante: i32,
     id_periodo: i32,
     state: State<'_, AppState>,
 ) -> Result<Vec<CalificacionEstudiante>, String> {
     println!("[DEBUG][BACKEND] >>>>> FUNCION obtener_calificaciones_estudiante llamada");
     println!("[DEBUG][BACKEND] Parámetros recibidos: id_estudiante={}, id_periodo={}", id_estudiante, id_periodo);
     let db = state.db.lock().await;
+    // Log antes de la consulta de grado y modalidad
+    println!("[DEBUG][BACKEND] Consultando grado y modalidad del estudiante...");
     let estudiante = db.query_one(
         "SELECT id_grado, id_modalidad FROM estudiantes WHERE id = $1",
-        &[&((id_estudiante) as i32)]
+        &[&id_estudiante]
     ).await.map_err(|e| format!("Error al verificar estudiante: {}", e))?;
     let id_grado: i32 = estudiante.get(0);
     let id_modalidad: i32 = estudiante.get(1);
-    println!("[DEBUG] Estudiante encontrado: id_grado={}, id_modalidad={}", id_grado, id_modalidad);
-    
+    println!("[DEBUG][BACKEND] Estudiante encontrado: id_grado={}, id_modalidad={}", id_grado, id_modalidad);
+    // Log antes de la consulta principal
+    println!("[DEBUG][BACKEND] Ejecutando consulta principal de calificaciones con parámetros: id_grado={}, id_modalidad={}, id_estudiante={}, id_periodo={}", id_grado, id_modalidad, id_estudiante, id_periodo);
     let query = "
         WITH asignaturas_estudiante AS (
             SELECT 
@@ -83,14 +86,21 @@ pub async fn obtener_calificaciones_estudiante(
             AND c.id_estudiante = $3 
             AND c.id_periodo = $4
         ORDER BY ae.nombre";
-    
-    println!("[DEBUG] Ejecutando consulta SQL");
+    println!("[DEBUG][BACKEND] Consulta SQL ejecutada: {}", query);
     let rows = db.query(query, &[&id_grado, &id_modalidad, &id_estudiante, &id_periodo])
         .await
         .map_err(|e| format!("Error al obtener calificaciones: {}", e))?;
-    
-    println!("[DEBUG] Filas obtenidas: {}", rows.len());
-    
+    println!("[DEBUG][BACKEND] Filas obtenidas: {}", rows.len());
+    for (i, row) in rows.iter().enumerate() {
+        println!("[DEBUG][BACKEND] Fila {}: id_asignatura={:?}, id_calificacion={:?}, lapso_1={:?}, lapso_2={:?}, lapso_3={:?}",
+            i,
+            row.get::<usize, Option<i32>>(1),
+            row.get::<usize, Option<i32>>(0),
+            row.get::<usize, Option<i32>>(3),
+            row.get::<usize, Option<i32>>(5),
+            row.get::<usize, Option<i32>>(7),
+        );
+    }
     let calificaciones = rows.iter().map(|row| {
         let cal = CalificacionEstudiante {
             id_calificacion: row.get(0),
@@ -110,8 +120,7 @@ pub async fn obtener_calificaciones_estudiante(
             nota_final: Some(nota_final),
             ..cal
         }
-    }).collect();
-    
-    println!("[DEBUG] Calificaciones procesadas exitosamente");
+    }).collect::<Vec<_>>();
+    println!("[DEBUG][BACKEND] Calificaciones construidas para respuesta: {:?}", calificaciones);
     Ok(calificaciones)
 } 

@@ -34,6 +34,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             api::estudiantes::actualizar_estudiante,
             api::estudiantes::eliminar_estudiante,
             api::estudiantes::contar_estudiantes,
+            api::estudiantes::insertar_estudiantes_masivo,
             api::historial::obtener_historial_academico_estudiante,
             api::historial::upsert_historial_academico,
             api::pendiente::obtener_asignaturas_pendientes_estudiante,

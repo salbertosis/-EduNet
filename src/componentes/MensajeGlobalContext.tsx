@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
 type TipoMensaje = 'exito' | 'error' | 'info' | 'advertencia';
 
@@ -22,6 +22,18 @@ export function MensajeGlobalProvider({ children }: { children: React.ReactNode 
     mensaje: '',
     tipo: 'info'
   });
+
+  useEffect(() => {
+    let timeout: NodeJS.Timeout | undefined;
+    if (mensaje.abierto && mensaje.tipo === 'exito') {
+      timeout = setTimeout(() => {
+        setMensaje(prev => ({ ...prev, abierto: false }));
+      }, 2500);
+    }
+    return () => {
+      if (timeout) clearTimeout(timeout);
+    };
+  }, [mensaje.abierto, mensaje.tipo]);
 
   const mostrarMensaje = (mensaje: string, tipo: TipoMensaje) => {
     setMensaje({ abierto: true, mensaje, tipo });

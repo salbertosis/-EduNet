@@ -6,6 +6,10 @@ export interface Pendiente {
   id_pendiente: number;
   nombre_asignatura: string;
   periodo_escolar: string;
+  cal_momento1?: number;
+  cal_momento2?: number;
+  cal_momento3?: number;
+  cal_momento4?: number;
 }
 
 interface ModalPendienteProps {
@@ -28,10 +32,14 @@ export const ModalPendiente: React.FC<ModalPendienteProps> = ({ open, onClose, p
 
   useEffect(() => {
     if (pendiente && open) {
+      setMomentos({
+        momento1: pendiente.cal_momento1 ?? 0,
+        momento2: pendiente.cal_momento2 ?? 0,
+        momento3: pendiente.cal_momento3 ?? 0,
+        momento4: pendiente.cal_momento4 ?? 0,
+      });
       setLoadingCalificacion(true);
-      console.log('Solicitando calificaciones para:', pendiente.id_pendiente);
       obtenerCalificacionesPendiente(pendiente.id_pendiente).then(data => {
-        console.log('Respuesta de calificaciones:', data);
         if (data) {
           setMomentos({
             momento1: data.cal_momento1 ?? 0,
@@ -39,8 +47,6 @@ export const ModalPendiente: React.FC<ModalPendienteProps> = ({ open, onClose, p
             momento3: data.cal_momento3 ?? 0,
             momento4: data.cal_momento4 ?? 0,
           });
-        } else {
-          setMomentos({ momento1: 0, momento2: 0, momento3: 0, momento4: 0 });
         }
       }).finally(() => setLoadingCalificacion(false));
     }

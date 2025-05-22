@@ -45,6 +45,10 @@ export const AsignaturasPendientes: React.FC<AsignaturasPendientesProps> = ({ id
       id_pendiente: pendiente.id_pendiente,
       nombre_asignatura: pendiente.nombre_asignatura ?? '',
       periodo_escolar: pendiente.periodo_escolar ?? '',
+      cal_momento1: pendiente.cal_momento1,
+      cal_momento2: pendiente.cal_momento2,
+      cal_momento3: pendiente.cal_momento3,
+      cal_momento4: pendiente.cal_momento4,
     });
     setMostrarModal(true);
   };

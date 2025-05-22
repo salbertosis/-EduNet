@@ -9,15 +9,27 @@ pub fn calcular_nota_final(calificacion: &CalificacionEstudiante) -> i32 {
 }
 
 pub fn calcular_promedio_anual(calificaciones: &[CalificacionEstudiante]) -> f64 {
-    if calificaciones.is_empty() {
+    // Excluir asignaturas administrativas (id 9 y 11)
+    let califs_validas: Vec<&CalificacionEstudiante> = calificaciones
+        .iter()
+        .filter(|c| c.id_asignatura != 9 && c.id_asignatura != 11)
+        .collect();
+    if califs_validas.is_empty() {
         return 0.0;
     }
-
-    let suma_notas: f64 = calificaciones.iter()
-        .map(|cal| calcular_nota_final(cal) as f64)
+    // Usar revisión si existe y es > 0, si no, nota final
+    let suma_notas: f64 = califs_validas
+        .iter()
+        .map(|cal| {
+            if let Some(rev) = cal.revision {
+                if rev > 0 {
+                    return rev as f64;
+                }
+            }
+            calcular_nota_final(cal) as f64
+        })
         .sum();
-
-    let promedio = suma_notas / calificaciones.len() as f64;
+    let promedio = suma_notas / califs_validas.len() as f64;
     (promedio * 100.0).round() / 100.0
 }
 

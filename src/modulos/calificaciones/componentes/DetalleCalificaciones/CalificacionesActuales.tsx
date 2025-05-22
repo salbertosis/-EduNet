@@ -117,7 +117,10 @@ export const CalificacionesActuales: React.FC<CalificacionesActualesProps> = ({
       <ModalGuardarHistorial
         open={mostrarModalGuardarHistorialEstudiante}
         onClose={() => setMostrarModalGuardarHistorialEstudiante(false)}
-        onConfirmar={onGuardarHistorial}
+        onConfirmar={() => {
+          onGuardarHistorial();
+          setMostrarModalGuardarHistorialEstudiante(false);
+        }}
         loading={loadingGuardarHistorial}
       />
     </section>

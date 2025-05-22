@@ -1,6 +1,16 @@
 use tauri::State;
 use crate::AppState;
 use crate::models::pendiente::{AsignaturaPendiente, AsignaturaPendienteInput};
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct CalificacionesPendiente {
+    pub id_pendiente: i32,
+    pub cal_momento1: Option<i32>,
+    pub cal_momento2: Option<i32>,
+    pub cal_momento3: Option<i32>,
+    pub cal_momento4: Option<i32>,
+}
 
 #[tauri::command]
 pub async fn obtener_asignaturas_pendientes_estudiante(
@@ -99,4 +109,84 @@ pub async fn guardar_asignaturas_pendientes(
         return Err("No se guardó ningún pendiente".to_string());
     }
     Ok(())
+}
+
+#[tauri::command]
+pub async fn obtener_calificaciones_pendiente(id_pendiente: i32, state: State<'_, AppState>) -> Result<CalificacionesPendiente, String> {
+    println!("[DEBUG][BACKEND] obtener_calificaciones_pendiente llamado con id_pendiente={}", id_pendiente);
+    let db = state.db.lock().await;
+    let query = "SELECT id_pendiente, cal_momento1, cal_momento2, cal_momento3, cal_momento4 FROM asignaturas_pendientes WHERE id_pendiente = $1";
+    match db.query_one(query, &[&id_pendiente]).await {
+        Ok(row) => {
+            let result = CalificacionesPendiente {
+                id_pendiente: row.get(0),
+                cal_momento1: row.get(1),
+                cal_momento2: row.get(2),
+                cal_momento3: row.get(3),
+                cal_momento4: row.get(4),
+            };
+            println!("[DEBUG][BACKEND] obtener_calificaciones_pendiente retorna: {:?}", result);
+            Ok(result)
+        },
+        Err(e) => {
+            eprintln!("[ERROR][obtener_calificaciones_pendiente] id_pendiente={}: {}", id_pendiente, e);
+            Err(format!("ERR_DB: No se pudieron obtener las calificaciones para la asignatura pendiente (id: {}). Detalle: {}", id_pendiente, e))
+        }
+    }
+}
+
+#[derive(Deserialize)]
+pub struct UpsertCalificacionesPendienteInput {
+    pub id_pendiente: i32,
+    pub cal_momento1: i32,
+    pub cal_momento2: i32,
+    pub cal_momento3: i32,
+    pub cal_momento4: i32,
+}
+
+#[tauri::command]
+pub async fn upsert_calificaciones_pendiente(input: UpsertCalificacionesPendienteInput, state: State<'_, AppState>) -> Result<String, String> {
+    let db = state.db.lock().await;
+    let query = "UPDATE asignaturas_pendientes SET cal_momento1 = $1, cal_momento2 = $2, cal_momento3 = $3, cal_momento4 = $4 WHERE id_pendiente = $5";
+    let result = db.execute(query, &[&input.cal_momento1, &input.cal_momento2, &input.cal_momento3, &input.cal_momento4, &input.id_pendiente]).await;
+    match result {
+        Ok(rows) if rows > 0 => Ok("Calificaciones actualizadas correctamente".to_string()),
+        Ok(_) => {
+            let insert_query = "INSERT INTO asignaturas_pendientes (id_pendiente, cal_momento1, cal_momento2, cal_momento3, cal_momento4) VALUES ($1, $2, $3, $4, $5)";
+            match db.execute(insert_query, &[&input.id_pendiente, &input.cal_momento1, &input.cal_momento2, &input.cal_momento3, &input.cal_momento4]).await {
+                Ok(_) => Ok("Calificaciones insertadas correctamente".to_string()),
+                Err(e) => {
+                    eprintln!("[ERROR][insert_calificaciones_pendiente] id_pendiente={}: {}", input.id_pendiente, e);
+                    Err(format!("ERR_DB: No se pudieron insertar las calificaciones para la asignatura pendiente (id: {}). Detalle: {}", input.id_pendiente, e))
+                }
+            }
+        },
+        Err(e) => {
+            eprintln!("[ERROR][upsert_calificaciones_pendiente] id_pendiente={}: {}", input.id_pendiente, e);
+            Err(format!("ERR_DB: No se pudieron actualizar las calificaciones para la asignatura pendiente (id: {}). Detalle: {}", input.id_pendiente, e))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn eliminar_asignatura_pendiente(
+    id_pendiente: Option<i32>,
+    idPendiente: Option<i32>,
+    state: State<'_, AppState>
+) -> Result<String, String> {
+    // Prioridad: id_pendiente, luego idPendiente
+    let id = id_pendiente.or(idPendiente).ok_or("Falta el parámetro id_pendiente o idPendiente")?;
+    let db = state.db.lock().await;
+    let query = "DELETE FROM asignaturas_pendientes WHERE id_pendiente = $1";
+    match db.execute(query, &[&id]).await {
+        Ok(rows) if rows > 0 => Ok("Asignatura pendiente eliminada correctamente".to_string()),
+        Ok(_) => {
+            eprintln!("[ERROR][eliminar_asignatura_pendiente] No se encontró el registro id_pendiente={}", id);
+            Err(format!("No se encontró la asignatura pendiente a eliminar (id: {})", id))
+        },
+        Err(e) => {
+            eprintln!("[ERROR][eliminar_asignatura_pendiente] id_pendiente={}: {}", id, e);
+            Err(format!("No se pudo eliminar la asignatura pendiente (id: {}). Detalle: {}", id, e))
+        }
+    }
 } 

@@ -43,7 +43,7 @@ export function Paginacion({
   return (
     <div className="flex flex-col md:flex-row md:items-center md:justify-between w-full gap-2">
       <div className="text-xs text-gray-600 dark:text-gray-300 mb-2 md:mb-0">
-        Mostrando <b>{desde}</b> - <b>{hasta}</b> de <b>{totalRegistros}</b> registros
+        Mostrando <b>{isNaN(desde) ? '' : desde}</b> - <b>{isNaN(hasta) ? '' : hasta}</b> de <b>{isNaN(totalRegistros) ? '' : totalRegistros}</b> registros
       </div>
       <div className="flex items-center gap-2">
         <label className="text-xs text-gray-600 dark:text-gray-300 mr-2" htmlFor="registrosPorPagina">Filas por página:</label>
@@ -88,7 +88,7 @@ export function Paginacion({
             }`}
             aria-current={numero === paginaActual ? 'page' : undefined}
           >
-            {numero}
+            {isNaN(numero) ? '' : numero}
           </button>
         ))}
         {mostrarFlechas && (

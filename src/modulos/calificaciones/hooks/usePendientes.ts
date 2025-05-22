@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { guardarPendientesAPI, cargarPendientesAPI } from '../services/pendientesService';
 import { useMensajeGlobal } from '../../../componentes/MensajeGlobalContext';
+import { invoke } from '@tauri-apps/api/tauri';
 
 function contarAplazadas(pendientesAGuardar: any[]) {
   // Considera aplazada si nota_final < 9.5 o revisión < 10
@@ -24,12 +25,21 @@ function validarPendientes(pendientesAGuardar: any[]) {
   }
 }
 
+export interface CalificacionesPendiente {
+  id_pendiente: number;
+  cal_momento1: number;
+  cal_momento2: number;
+  cal_momento3: number;
+  cal_momento4: number;
+}
+
 export function usePendientes(estudianteId: number) {
   // Estado y lógica para cargar y guardar asignaturas pendientes
   const [pendientes, setPendientes] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [exito, setExito] = useState(false);
   const { mostrarMensaje } = useMensajeGlobal();
+  const [error, setError] = useState<string | null>(null);
 
   const cargarPendientes = useCallback(async () => {
     if (!estudianteId) return;
@@ -61,6 +71,87 @@ export function usePendientes(estudianteId: number) {
     }
   };
 
+  const obtenerCalificacionesPendiente = async (idPendiente: number): Promise<CalificacionesPendiente | null> => {
+    setError(null);
+    try {
+      console.log('Invocando obtener_calificaciones_pendiente con:', idPendiente);
+      const data = await invoke<CalificacionesPendiente>('obtener_calificaciones_pendiente', { idPendiente });
+      console.log('Datos recibidos:', data);
+      return data;
+    } catch (e: any) {
+      console.error('Error al obtener calificaciones:', e);
+      let msg = 'Error al obtener calificaciones';
+      if (e && typeof e === 'object' && e.message) {
+        msg = e.message;
+      } else if (typeof e === 'string') {
+        msg = e;
+      }
+      if (msg.includes('ERR_DB')) {
+        if (process.env.NODE_ENV === 'development') {
+          console.error('[ERROR][obtenerCalificacionesPendiente]', msg);
+        }
+        setError('No se pudieron obtener las calificaciones. Por favor, intente más tarde o contacte al soporte.');
+      } else {
+        setError(msg);
+      }
+      return null;
+    }
+  };
+
+  const upsertCalificacionesPendiente = async (input: CalificacionesPendiente): Promise<boolean> => {
+    setError(null);
+    try {
+      const inputSnake = {
+        id_pendiente: input.id_pendiente,
+        cal_momento1: input.cal_momento1,
+        cal_momento2: input.cal_momento2,
+        cal_momento3: input.cal_momento3,
+        cal_momento4: input.cal_momento4,
+      };
+      await invoke<string>('upsert_calificaciones_pendiente', { input: inputSnake });
+      return true;
+    } catch (e: any) {
+      let msg = 'Error al guardar calificaciones';
+      if (e && typeof e === 'object' && e.message) {
+        msg = e.message;
+      } else if (typeof e === 'string') {
+        msg = e;
+      }
+      if (msg.includes('ERR_DB')) {
+        if (process.env.NODE_ENV === 'development') {
+          console.error('[ERROR][upsertCalificacionesPendiente]', msg);
+        }
+        setError('No se pudieron guardar las calificaciones. Por favor, intente más tarde o contacte al soporte.');
+      } else {
+        setError(msg);
+      }
+      return false;
+    }
+  };
+
+  const eliminarAsignaturaPendiente = async (idPendiente: number): Promise<boolean> => {
+    setLoading(true);
+    setError(null);
+    try {
+      await invoke<string>('eliminar_asignatura_pendiente', { idPendiente });
+      mostrarMensaje('Asignatura pendiente eliminada correctamente', 'exito');
+      await cargarPendientes();
+      return true;
+    } catch (e: any) {
+      let msg = 'Error al eliminar asignatura pendiente';
+      if (e && typeof e === 'object' && e.message) {
+        msg = e.message;
+      } else if (typeof e === 'string') {
+        msg = e;
+      }
+      setError(msg);
+      mostrarMensaje(msg, 'error');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     cargarPendientes();
   }, [cargarPendientes]);
@@ -72,5 +163,9 @@ export function usePendientes(estudianteId: number) {
     exito,
     recargar: cargarPendientes,
     guardarPendientes,
+    error,
+    obtenerCalificacionesPendiente,
+    upsertCalificacionesPendiente,
+    eliminarAsignaturaPendiente,
   };
 } 

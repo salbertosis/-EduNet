@@ -32,8 +32,8 @@ const menuItems = [
   },
   { 
     icon: <GraduationCap className="w-5 h-5" />, 
-    label: 'Profesores', 
-    path: '/profesores'
+    label: 'Docentes', 
+    path: '/docentes'
   },
   { 
     icon: <BookOpen className="w-5 h-5" />, 

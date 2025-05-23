@@ -28,7 +28,7 @@ export function Dashboard() {
           color="primary"
         />
         <Tarjeta
-          titulo="Total Profesores"
+          titulo="Total Docentes"
           valor="89"
           descripcion="+5% desde el mes pasado"
           icono={<GraduationCap className="w-6 h-6" />}

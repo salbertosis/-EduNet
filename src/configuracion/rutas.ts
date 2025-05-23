@@ -16,11 +16,11 @@ export const RUTAS = {
     DETALLE: (id: string) => `/estudiantes/${id}`,
     EDITAR: (id: string) => `/estudiantes/${id}/editar`
   },
-  PROFESORES: {
-    LISTA: '/profesores',
-    NUEVO: '/profesores/nuevo',
-    DETALLE: (id: string) => `/profesores/${id}`,
-    EDITAR: (id: string) => `/profesores/${id}/editar`
+  DOCENTES: {
+    LISTA: '/docentes',
+    NUEVO: '/docentes/nuevo',
+    DETALLE: (id: string) => `/docentes/${id}`,
+    EDITAR: (id: string) => `/docentes/${id}/editar`
   },
   CURSOS: {
     LISTA: '/cursos',

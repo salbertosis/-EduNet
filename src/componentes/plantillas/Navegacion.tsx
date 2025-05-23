@@ -31,13 +31,13 @@ export function Navegacion() {
       ruta: RUTAS.ESTUDIANTES.LISTA,
       icono: <Users className="w-5 h-5" />,
       texto: 'Estudiantes',
-      visible: sesion.usuario.rol === 'ADMIN'
+      visible: sesion.usuario.role === 'ADMIN'
     },
     {
-      ruta: RUTAS.PROFESORES.LISTA,
+      ruta: RUTAS.DOCENTES.LISTA,
       icono: <GraduationCap className="w-5 h-5" />,
-      texto: 'Profesores',
-      visible: sesion.usuario.rol === 'ADMIN'
+      texto: 'Docentes',
+      visible: sesion.usuario.role === 'ADMIN'
     },
     {
       ruta: RUTAS.CURSOS.LISTA,

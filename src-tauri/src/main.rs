@@ -28,6 +28,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .invoke_handler(tauri::generate_handler![
             api::calificaciones::guardar_calificacion,
             api::calificaciones::obtener_calificaciones_estudiante,
+            api::calificaciones::cargar_calificaciones_masivo,
             api::estudiantes::obtener_estudiantes,
             api::estudiantes::obtener_estudiante_por_id,
             api::estudiantes::crear_estudiante,
@@ -51,6 +52,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             api::docente::actualizar_docente,
             api::docente::eliminar_docente,
             api::docente::insertar_docentes_masivo,
+            api::docente::contar_docentes,
+            api::plantillas::generar_plantilla_acta,
+            api::plantillas::obtener_grados,
+            api::plantillas::obtener_secciones,
+            api::plantillas::obtener_asignaturas,
+            api::plantillas::obtener_lapsos,
+            api::plantillas::obtener_periodos_escolares,
+            api::plantillas::obtener_modalidades,
+            api::plantillas::obtener_grados_por_modalidad,
+            api::plantillas::obtener_secciones_por_grado_modalidad_periodo,
+            api::plantillas::test_query_minimal,
+            api::plantillas::test_column_types,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -2,6 +2,22 @@ use tauri::State;
 use crate::AppState;
 use crate::models::calificacion::{CalificacionEstudiante, CalificacionInput};
 use crate::utils::notas::calcular_nota_final;
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+pub struct CalificacionCargaMasiva {
+    pub id_estudiante: i32,
+    pub id_asignatura: i32,
+    pub id_periodo: i32,
+    pub lapso_1: Option<i32>,
+    pub lapso_2: Option<i32>,
+    pub lapso_3: Option<i32>,
+    pub revision: Option<i32>,
+    pub lapso_1_ajustado: Option<i32>,
+    pub lapso_2_ajustado: Option<i32>,
+    pub lapso_3_ajustado: Option<i32>,
+    pub nota_final: Option<i32>,
+}
 
 #[tauri::command]
 pub async fn guardar_calificacion(
@@ -123,4 +139,48 @@ pub async fn obtener_calificaciones_estudiante(
     }).collect::<Vec<_>>();
     println!("[DEBUG][BACKEND] Calificaciones construidas para respuesta: {:?}", calificaciones);
     Ok(calificaciones)
+}
+
+#[tauri::command]
+pub async fn cargar_calificaciones_masivo(
+    calificaciones: Vec<CalificacionCargaMasiva>,
+    state: State<'_, AppState>,
+) -> Result<serde_json::Value, String> {
+    let mut db = state.db.lock().await;
+    let trans = db.transaction().await.map_err(|e| e.to_string())?;
+    let mut insertados = 0;
+    let mut actualizados = 0;
+    let mut errores = vec![];
+
+    for c in calificaciones {
+        let res = trans.execute(
+            "INSERT INTO calificaciones (id_estudiante, id_asignatura, id_periodo, lapso_1, lapso_2, lapso_3, revision, lapso_1_ajustado, lapso_2_ajustado, lapso_3_ajustado, nota_final)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+             ON CONFLICT (id_estudiante, id_asignatura, id_periodo)
+             DO UPDATE SET
+                lapso_1=EXCLUDED.lapso_1,
+                lapso_2=EXCLUDED.lapso_2,
+                lapso_3=EXCLUDED.lapso_3,
+                revision=EXCLUDED.revision,
+                lapso_1_ajustado=EXCLUDED.lapso_1_ajustado,
+                lapso_2_ajustado=EXCLUDED.lapso_2_ajustado,
+                lapso_3_ajustado=EXCLUDED.lapso_3_ajustado,
+                nota_final=EXCLUDED.nota_final",
+            &[&c.id_estudiante, &c.id_asignatura, &c.id_periodo, &c.lapso_1, &c.lapso_2, &c.lapso_3, &c.revision, &c.lapso_1_ajustado, &c.lapso_2_ajustado, &c.lapso_3_ajustado, &c.nota_final]
+        ).await;
+        match res {
+            Ok(n) if n == 1 => insertados += 1,
+            Ok(_) => actualizados += 1,
+            Err(e) => errores.push(format!(
+                "Est: {} Asig: {} Per: {}: {}", c.id_estudiante, c.id_asignatura, c.id_periodo, e
+            )),
+        }
+    }
+    trans.commit().await.map_err(|e| e.to_string())?;
+    Ok(serde_json::json!({
+        "total_registros": insertados + actualizados + errores.len(),
+        "insertados": insertados,
+        "actualizados": actualizados,
+        "errores": errores,
+    }))
 } 

@@ -3,7 +3,7 @@ import { ReactNode } from 'react';
 interface TarjetaProps {
   titulo: string;
   icono: ReactNode;
-  valor: string | number;
+  valor: string | number | ReactNode;
   descripcion?: string;
   color?: 'primary' | 'success' | 'warning' | 'danger';
 }

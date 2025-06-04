@@ -7,7 +7,8 @@ import {
   BookOpen, 
   Award,
   Menu,
-  Settings
+  Settings,
+  BarChart3
 } from 'lucide-react';
 import { useState } from 'react';
 import { ModalMensaje } from '../ModalMensaje';
@@ -36,26 +37,31 @@ const menuItems = [
     path: '/docentes'
   },
   { 
-    icon: <BookOpen className="w-5 h-5" />, 
-    label: 'Cursos', 
-    path: '/cursos'
-  },
-  { 
     icon: <Award className="w-5 h-5" />, 
     label: 'Calificaciones', 
     path: '/calificaciones'
   },
-    {
-      icon: <Settings className="w-5 h-5" />, 
-      label: 'Configuración',
-      children: [
-        {
-          label: 'Guardar Historial',
-          onClick: () => setMostrarModalGuardarHistorial(true)
-        }
-      ]
-    },
-  ];
+  { 
+    icon: <BarChart3 className="w-5 h-5" />, 
+    label: 'Reportes', 
+    path: '/reportes'
+  },
+  { 
+    icon: <BookOpen className="w-5 h-5" />, 
+    label: 'Cursos', 
+    path: '/cursos'
+  },
+  {
+    icon: <Settings className="w-5 h-5" />, 
+    label: 'Configuración',
+    children: [
+      {
+        label: 'Guardar Historial',
+        onClick: () => setMostrarModalGuardarHistorial(true)
+      }
+    ]
+  },
+];
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-dark-900">

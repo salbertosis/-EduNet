@@ -25,4 +25,5 @@ tokio-postgres = { version = "0.7", features = ["with-uuid-1"] }
 chrono = { version = "0.4", features = ["serde"] }
 postgres-types = { version = "0.2", features = ["derive", "with-chrono-0_4", "with-uuid-1"] }
 bytes = "1.5"
+rust_xlsxwriter = "0.38.0"
 

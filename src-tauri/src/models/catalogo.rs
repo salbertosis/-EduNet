@@ -25,4 +25,18 @@ pub struct Asignatura {
     pub nombre_asignatura: String,
     pub id_grado: i32,
     pub id_modalidad: i32,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SeccionCatalogo {
+    pub id_seccion: i32,
+    pub nombre_seccion: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SeccionCompleta {
+    pub id_seccion: i32,
+    pub nombre_seccion: String,
+    #[serde(rename = "idGradoSecciones")]
+    pub id_grado_secciones: i32,
 } 

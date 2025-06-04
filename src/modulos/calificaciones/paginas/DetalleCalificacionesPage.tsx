@@ -2,6 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { DetalleCalificaciones } from './DetalleCalificaciones';
 import { invoke } from '@tauri-apps/api/tauri';
+import { CargaMasivaCalificaciones } from '../componentes/CargaMasivaCalificaciones';
 
 export function DetalleCalificacionesPage() {
   const { id } = useParams();
@@ -26,6 +27,9 @@ export function DetalleCalificacionesPage() {
   if (!estudiante) return <div className="text-center py-12 text-gray-500 dark:text-gray-400">Cargando datos del estudiante...</div>;
 
   return (
-    <DetalleCalificaciones estudiante={estudiante} onVolver={() => navigate(-1)} />
+    <div>
+      <CargaMasivaCalificaciones />
+      <DetalleCalificaciones estudiante={estudiante} onVolver={() => navigate(-1)} />
+    </div>
   );
 } 

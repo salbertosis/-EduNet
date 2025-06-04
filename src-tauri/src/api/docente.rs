@@ -149,4 +149,15 @@ pub async fn insertar_docentes_masivo(
         "duplicados": duplicados,
         "errores": errores,
     }))
+}
+
+#[tauri::command]
+pub async fn contar_docentes(state: State<'_, AppState>) -> Result<i64, String> {
+    let db = state.db.lock().await;
+    let row = db
+        .query_one("SELECT COUNT(*) FROM docentes", &[])
+        .await
+        .map_err(|e| e.to_string())?;
+    let total: i64 = row.get(0);
+    Ok(total)
 } 

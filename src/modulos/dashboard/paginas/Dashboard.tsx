@@ -5,11 +5,21 @@ import { invoke } from '@tauri-apps/api/tauri';
 
 export function Dashboard() {
   const [totalEstudiantes, setTotalEstudiantes] = useState<number>(0);
+  const [totalDocentes, setTotalDocentes] = useState<number>(0);
+  const [cargandoEstudiantes, setCargandoEstudiantes] = useState(true);
+  const [cargandoDocentes, setCargandoDocentes] = useState(true);
 
   useEffect(() => {
+    setCargandoEstudiantes(true);
+    setCargandoDocentes(true);
     invoke<number>('contar_estudiantes')
       .then(setTotalEstudiantes)
-      .catch(() => setTotalEstudiantes(0));
+      .catch(() => setTotalEstudiantes(0))
+      .finally(() => setCargandoEstudiantes(false));
+    invoke<number>('contar_docentes')
+      .then(setTotalDocentes)
+      .catch(() => setTotalDocentes(0))
+      .finally(() => setCargandoDocentes(false));
   }, []);
 
   return (
@@ -22,14 +32,14 @@ export function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Tarjeta
           titulo="Total de Estudiantes"
-          valor={totalEstudiantes.toLocaleString()}
+          valor={cargandoEstudiantes ? <span className="animate-pulse text-gray-400">Cargando…</span> : totalEstudiantes.toLocaleString()}
           descripcion="Estudiantes registrados en el sistema"
           icono={<Users className="w-6 h-6" />}
           color="primary"
         />
         <Tarjeta
           titulo="Total Docentes"
-          valor="89"
+          valor={cargandoDocentes ? <span className="animate-pulse text-gray-400">Cargando…</span> : totalDocentes.toLocaleString()}
           descripcion="+5% desde el mes pasado"
           icono={<GraduationCap className="w-6 h-6" />}
           color="success"

@@ -171,8 +171,20 @@ pub async fn generar_plantilla_acta(
     // Escribir el nombre de la asignatura en D8
     sheet.get_cell_mut("D8").set_value(nombre_asignatura.clone());
 
-    // El nombre del acta y archivo, usando los valores seleccionados
-    let nombre_acta = format!("{}{}_{}_{}", sigla, grado, seccion, lapso_str);
+    // 5. En la celda A11 de la hoja ACTA, coloco la modalidad
+    let row = db.query_one("SELECT id_modalidad FROM grado_secciones WHERE id_grado_secciones = $1", &[&id_grado_secciones]).await.map_err(|e| e.to_string())?;
+    let id_modalidad: i32 = row.get(0);
+    let row_modalidad = db.query_one("SELECT nombre_modalidad FROM modalidades WHERE id_modalidad = $1", &[&id_modalidad]).await.map_err(|e| e.to_string())?;
+    let modalidad: String = row_modalidad.get(0);
+    sheet.get_cell_mut("A11").set_value(&modalidad);
+
+    // Ajuste para modalidad Telemática en el nombre del acta y archivo
+    let sigla_ext = if modalidad.to_lowercase().contains("tele") {
+        format!("{}Tele", sigla)
+    } else {
+        sigla.to_string()
+    };
+    let nombre_acta = format!("{}{}_{}_{}", sigla_ext, grado, seccion, lapso_str);
     sheet.get_cell_mut("D10").set_value(&nombre_acta);
 
     // Llenar estudiantes en la hoja ACTA usando 'sheet'
@@ -183,13 +195,6 @@ pub async fn generar_plantilla_acta(
         sheet.get_cell_mut(&*cell_cedula).set_value(est.cedula.to_string());
         sheet.get_cell_mut(&*cell_nombre).set_value(format!("{} {}", est.apellido, est.nombre));
     }
-
-    // 5. En la celda A11 de la hoja ACTA, coloco la modalidad
-    let row = db.query_one("SELECT id_modalidad FROM grado_secciones WHERE id_grado_secciones = $1", &[&id_grado_secciones]).await.map_err(|e| e.to_string())?;
-    let id_modalidad: i32 = row.get(0);
-    let row_modalidad = db.query_one("SELECT nombre_modalidad FROM modalidades WHERE id_modalidad = $1", &[&id_modalidad]).await.map_err(|e| e.to_string())?;
-    let modalidad: String = row_modalidad.get(0);
-    sheet.get_cell_mut("A11").set_value(&modalidad);
 
     // === Agregar hoja de carga masiva ===
     let nombre_lapso_campo = match lapso.as_str() {

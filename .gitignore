@@ -1,5 +1,5 @@
 # Logs
-logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -7,18 +7,72 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# Dependencies
+node_modules/
+# Dependencias de pnpm si usas pnpm
+.pnpm-store/
+
+# Build outputs
+dist/
+dist-ssr/
+build/
+out/
+.next/ # Para proyectos Next.js
+.nuxt/  # Para proyectos Nuxt.js
+.output/ # Para proyectos Nuxt 3 / Nitro
+coverage/ # Archivos de cobertura de pruebas
+
+# Rust/Tauri specific (VERY IMPORTANT for your previous issues)
+target/ # Ignora la carpeta de compilación de Rust/Tauri
+**/*.iml # Archivos de configuración de IntelliJ IDEA para Rust/IntelliJ
 
 # Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-.DS_Store
+.vscode/
+!.vscode/extensions.json # Mantener si quieres compartir extensiones recomendadas
+.idea/ # Directorios de configuración de IntelliJ IDEA
+.DS_Store # Archivos de macOS
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
-*.sw?
+*.swp # Archivos de swap de Vim
+*.swo # Archivos de swap de Vim
+*.sublime-project
+*.sublime-workspace
+.history/ # Si usas alguna extensión de historial de archivos (ej. VS Code Local History)
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Thumbnails y caches del sistema operativo
+Thumbs.db
+.cache/
+
+# Archivos de paquetes de sistema (si los usas)
+*.tgz
+*.zip
+*.rar
+
+# Archivos temporales
+*~
+#*#
+.#*
+
+# Otros archivos de configuración locales
+*.local
+
+# Archivos generados por NPM/Yarn
+package-lock.json # Mantener si usas npm < 7 o para control estricto
+yarn.lock # Mantener para consistencia de dependencias
+
+# IDE específicos
+*.mine
+*.bak
+*.orig
+*.swp
+*.swp

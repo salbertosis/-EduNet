@@ -4,9 +4,13 @@ use std::fs;
 use std::path::Path;
 use chrono::Local;
 use serde::{Deserialize, Serialize};
-use rust_xlsxwriter::{Workbook, Format, XlsxError};
-use crate::models::catalogo::{SeccionCompleta, SeccionCatalogo};
+use umya_spreadsheet::{reader, writer};
+use umya_spreadsheet::helper::coordinate::CellCoordinates;
 use std::collections::HashMap;
+use crate::models::catalogo::{SeccionCatalogo, SeccionCompleta};
+use regex;
+use regex::Regex;
+use umya_spreadsheet::CellValue;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct EstudiantePlantilla {
@@ -93,102 +97,147 @@ pub async fn generar_plantilla_acta(
         })
         .collect();
 
-    // Crear directorio de plantillas si no existe
-    let plantillas_dir = Path::new("C:/plantillas");
-    if !plantillas_dir.exists() {
-        fs::create_dir_all(plantillas_dir).map_err(|e| e.to_string())?;
+    // === Obtener datos legibles para la hoja bonita ===
+    // Obtener nombre de la asignatura
+    let row_asig = db.query_one("SELECT nombre FROM asignaturas WHERE id_asignatura = $1", &[&id_asignatura]).await.map_err(|e| e.to_string())?;
+    let nombre_asignatura: String = row_asig.get(0);
+    // Obtener grado y sección legibles
+    println!("DEBUG: id_grado_secciones recibido: {}", id_grado_secciones);
+    let row_grado_seccion = db.query_one(
+        "SELECT g.nombre_grado, s.nombre_seccion FROM grado_secciones gs \
+         JOIN grados g ON gs.id_grado = g.id_grado \
+         JOIN secciones s ON gs.id_seccion = s.id_seccion \
+         WHERE gs.id_grado_secciones = $1",
+        &[&id_grado_secciones],
+    ).await.map_err(|e| e.to_string())?;
+    let nombre_grado: String = row_grado_seccion.get(0);
+    let nombre_seccion: String = row_grado_seccion.get(1);
+    println!("DEBUG: nombre_grado obtenido: '{}', nombre_seccion obtenido: '{}'", nombre_grado, nombre_seccion);
+
+    // Normaliza el nombre de la asignatura para buscar la sigla
+    let nombre_asignatura_normalizado = if nombre_asignatura.trim().to_lowercase() == "lengua y literatura" {
+        "castellano".to_string()
+    } else {
+        nombre_asignatura.trim().to_lowercase()
+            .replace("á", "a").replace("é", "e").replace("í", "i").replace("ó", "o").replace("ú", "u")
+            .replace("à", "a").replace("è", "e").replace("ì", "i").replace("ò", "o").replace("ù", "u")
+            .replace(" ", "")
+    };
+
+    let siglas = HashMap::from([
+        ("castellano".to_string(), "Ca"),
+        ("ingles".to_string(), "In"),
+        ("matematica".to_string(), "Ma"),
+        ("educacionfisica".to_string(), "Ef"),
+        ("arteypatrimonio".to_string(), "Ap"),
+        ("bat".to_string(), "Ba"),
+        ("ghc".to_string(), "Gh"),
+        ("fisica".to_string(), "Fi"),
+        ("quimica".to_string(), "Qu"),
+        ("fsn".to_string(), "Fs"),
+        ("cs.de.la.tierra".to_string(), "Cs"),
+        ("programacion".to_string(), "Pr"),
+        ("proyectodeeconomia".to_string(), "Pe"),
+        ("gcrp".to_string(), "Gc"),
+        ("orientacion".to_string(), "Or"),
+    ]);
+    let sigla = match siglas.get(&nombre_asignatura_normalizado) {
+        Some(s) => s,
+        None => {
+            println!("[WARN] Asignatura no encontrada en siglas: '{}'. Normalizado: '{}'", nombre_asignatura, nombre_asignatura_normalizado);
+            &"XX"
+        }
+    };
+
+    // Lapso con símbolo
+    let lapso_str = format!("{}º", lapso);
+
+    // === Abrir plantilla bonita existente ===
+    let plantilla_path = Path::new("C:/plantillas/acta_pantilla/acta_plantilla.xlsx");
+    let mut book = reader::xlsx::read(plantilla_path).map_err(|e| e.to_string())?;
+    let sheet = book.get_sheet_by_name_mut("ACTA").ok_or("No se encontró la hoja ACTA en la plantilla")?;
+
+    // Corrige '1er' y '3er' a '1ero' y '3ero' en el grado seleccionado
+    let mut grado = nombre_grado.trim().to_string();
+    if grado == "1er" { grado = "1ero".to_string(); }
+    if grado == "3er" { grado = "3ero".to_string(); }
+    let seccion = nombre_seccion.trim();
+    // Arma el texto para la celda D6 con el formato correcto
+    let texto_d6 = format!("{} Año {}", nombre_grado.trim(), nombre_seccion.trim());
+    sheet.get_cell_mut("D6").set_value(texto_d6);
+
+    // Escribir el lapso en D7
+    sheet.get_cell_mut("D7").set_value(lapso_str.clone());
+    // Escribir el nombre de la asignatura en D8
+    sheet.get_cell_mut("D8").set_value(nombre_asignatura.clone());
+
+    // El nombre del acta y archivo, usando los valores seleccionados
+    let nombre_acta = format!("{}{}_{}_{}", sigla, grado, seccion, lapso_str);
+    sheet.get_cell_mut("D10").set_value(&nombre_acta);
+
+    // Llenar estudiantes en la hoja ACTA usando 'sheet'
+    for (i, est) in estudiantes.iter().enumerate() {
+        let row = 13 + i;
+        let cell_cedula = format!("B{}", row);
+        let cell_nombre = format!("C{}", row);
+        sheet.get_cell_mut(&*cell_cedula).set_value(est.cedula.to_string());
+        sheet.get_cell_mut(&*cell_nombre).set_value(format!("{} {}", est.apellido, est.nombre));
     }
 
-    // Generar nombre del archivo
-    let timestamp = Local::now().format("%Y%m%d_%H%M%S");
-    let filename = format!(
-        "acta_{}_{}_{}_{}_{}.xlsx",
-        id_grado_secciones, id_grado_secciones, id_asignatura, lapso, timestamp
-    );
-    let filepath = plantillas_dir.join(&filename);
+    // 5. En la celda A11 de la hoja ACTA, coloco la modalidad
+    let row = db.query_one("SELECT id_modalidad FROM grado_secciones WHERE id_grado_secciones = $1", &[&id_grado_secciones]).await.map_err(|e| e.to_string())?;
+    let id_modalidad: i32 = row.get(0);
+    let row_modalidad = db.query_one("SELECT nombre_modalidad FROM modalidades WHERE id_modalidad = $1", &[&id_modalidad]).await.map_err(|e| e.to_string())?;
+    let modalidad: String = row_modalidad.get(0);
+    sheet.get_cell_mut("A11").set_value(&modalidad);
 
-    println!("Generando archivo Excel: {}", filename);
+    // === Agregar hoja de carga masiva ===
+    let nombre_lapso_campo = match lapso.as_str() {
+        "1" | "1º" | "1er" | "1ero" => "lapso_1",
+        "2" | "2º" | "2do" => "lapso_2",
+        "3" | "3º" | "3er" | "3ero" => "lapso_3",
+        _ => "calificacion",
+    };
 
-    // Crear archivo Excel
-    let mut workbook = Workbook::new();
-    
-    // Crear hoja principal
-    let mut worksheet = workbook.add_worksheet();
+    // 2. Separar grado y sección para mostrar como '2do Año B', '3er Año A', etc.
+    // Ejemplo: '2do AñoB' -> grado: '2do Año', seccion: 'B'
+    let (nombre_grado_limpio, nombre_seccion_limpia) = {
+        let s = nombre_grado.replace("Año", "Año ").replace("año", "año ");
+        let s = s.trim();
+        if let Some(idx) = s.rfind(char::is_alphabetic) {
+            let (grado, seccion) = s.split_at(idx);
+            (grado.trim().to_string(), seccion.trim().to_string())
+        } else {
+            (s.to_string(), String::new())
+        }
+    };
 
-    // Escribir encabezados de información general
-    worksheet.write_string(0, 0, "ID Asignatura:")
-        .map_err(|e: XlsxError| e.to_string())?;
-    worksheet.write_number(0, 1, id_asignatura as f64)
-        .map_err(|e: XlsxError| e.to_string())?;
-    worksheet.write_string(1, 0, "Lapso:")
-        .map_err(|e: XlsxError| e.to_string())?;
-    worksheet.write_string(1, 1, &lapso)
-        .map_err(|e: XlsxError| e.to_string())?;
-
-    // Dejar una fila vacía antes de la tabla
-    let tabla_offset = 3u32;
-
-    // Configurar anchos de columna
-    worksheet.set_column_width(0, 15.0).map_err(|e: XlsxError| e.to_string())?; // id_estudiante
-    worksheet.set_column_width(1, 15.0).map_err(|e: XlsxError| e.to_string())?; // id_asignatura
-    worksheet.set_column_width(2, 15.0).map_err(|e: XlsxError| e.to_string())?; // id_periodo
-    worksheet.set_column_width(3, 15.0).map_err(|e: XlsxError| e.to_string())?; // calificacion
-
-    // Crear formato para encabezados
-    let header_format = Format::new()
-        .set_bold()
-        .set_background_color("#00B050") // verde profesional
-        .set_font_color("#FFFFFF");      // blanco
-
-    // Escribir encabezados de la tabla para carga masiva
-    let headers = ["id_estudiante", "id_asignatura", "id_periodo", "calificacion"];
-    for (col, header) in headers.iter().enumerate() {
-        worksheet.write_string_with_format(tabla_offset, col as u16, *header, &header_format)
-            .map_err(|e: XlsxError| e.to_string())?;
+    // 3. Hoja CARGA_MASIVA visible (la ocultación no es soportada en esta versión de umya-spreadsheet)
+    // carga.set_hidden(true); // No disponible en esta versión
+    let carga = book.new_sheet("CARGA_MASIVA").map_err(|e| e.to_string())?;
+    carga.get_cell_mut("A1").set_value("id_estudiante");
+    carga.get_cell_mut("B1").set_value("id_asignatura");
+    carga.get_cell_mut("C1").set_value("id_periodo");
+    carga.get_cell_mut("D1").set_value(nombre_lapso_campo);
+    for (i, est) in estudiantes.iter().enumerate() {
+        let row = 2 + i;
+        carga.get_cell_mut(&*format!("A{}", row)).set_value(est.id.to_string());
+        carga.get_cell_mut(&*format!("B{}", row)).set_value(id_asignatura.to_string());
+        carga.get_cell_mut(&*format!("C{}", row)).set_value(id_periodo.to_string());
+        let celda_acta = format!("N{}", 13 + i); // N13, N14, ...
+        let formula = format!("=ACTA!{}", celda_acta);
+        carga.get_cell_mut(&*format!("D{}", row)).set_formula(&formula);
     }
 
-    println!("Escribiendo datos de {} estudiantes en el Excel", estudiantes.len());
-
-    // Escribir datos de estudiantes para carga masiva
-    for (row, estudiante) in estudiantes.iter().enumerate() {
-        let row = (row as u32) + tabla_offset + 1;
-        worksheet.write_number(row, 0, estudiante.id as f64)
-            .map_err(|e: XlsxError| e.to_string())?;
-        worksheet.write_number(row, 1, id_asignatura as f64)
-            .map_err(|e: XlsxError| e.to_string())?;
-        worksheet.write_number(row, 2, id_periodo as f64)
-            .map_err(|e: XlsxError| e.to_string())?;
-        worksheet.write_string(row, 3, "") // calificacion vacío
-            .map_err(|e: XlsxError| e.to_string())?;
-    }
-
-    // Crear hoja de metadatos
-    let mut metadata = workbook.add_worksheet();
-    metadata.set_name("METADATA").map_err(|e: XlsxError| e.to_string())?;
-    
-    let metadata_data = [
-        ("Grado", id_grado_secciones.to_string()),
-        ("Sección", id_grado_secciones.to_string()),
-        ("ID Asignatura", id_asignatura.to_string()),
-        ("Lapso", lapso),
-        ("Fecha Generación", Local::now().format("%Y-%m-%d %H:%M:%S").to_string()),
-    ];
-
-    for (row, (key, value)) in metadata_data.iter().enumerate() {
-        metadata.write_string(row as u32, 0, *key)
-            .map_err(|e: XlsxError| e.to_string())?;
-        metadata.write_string(row as u32, 1, value)
-            .map_err(|e: XlsxError| e.to_string())?;
-    }
-
-    // Guardar el archivo
-    println!("Guardando archivo Excel...");
-    workbook.save(&filepath).map_err(|e: XlsxError| e.to_string())?;
-    println!("Archivo Excel guardado exitosamente");
+    // === Guardar copia con el nombre del acta ===
+    println!("DEBUG FINAL: nombre_acta usado para guardar: '{}'", nombre_acta);
+    let save_path_str = format!("C:/plantillas/{}.xlsx", nombre_acta);
+    let save_path = Path::new(&save_path_str);
+    writer::xlsx::write(&book, save_path).map_err(|e| e.to_string())?;
 
     println!("=== FIN GENERACIÓN PLANTILLA ACTA ===");
-    println!("ANTES DE OK(filename)");
-    Ok(filename)
+    println!("ANTES DE OK(nombre_acta)");
+    Ok(nombre_acta)
 }
 
 #[tauri::command]
@@ -213,7 +262,7 @@ pub async fn obtener_grados(state: State<'_, AppState>) -> Result<Vec<crate::mod
 #[tauri::command]
 pub async fn obtener_secciones(
     state: State<'_, AppState>,
-    id_grado: i32,
+    _id_grado: i32,
 ) -> Result<Vec<SeccionCatalogo>, String> {
     let db = state.db.lock().await;
     let rows = db.query(
@@ -262,7 +311,7 @@ pub async fn obtener_asignaturas(
 }
 
 #[tauri::command]
-pub async fn obtener_lapsos(state: State<'_, AppState>) -> Result<Vec<String>, String> {
+pub async fn obtener_lapsos(_state: State<'_, AppState>) -> Result<Vec<String>, String> {
     Ok(vec!["1".to_string(), "2".to_string(), "3".to_string()])
 }
 

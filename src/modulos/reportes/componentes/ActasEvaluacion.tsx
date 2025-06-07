@@ -15,8 +15,8 @@ interface FiltrosPlantilla {
   id_periodo: number | null;
   id_modalidad: number | null;
   id_grado: number | null;
-  id_seccion: number | null;
-  id_asignatura: number | null;
+  id_seccion: number | 'todas' | null;
+  id_asignatura: number | 'todas' | null;
   lapso: string;
 }
 
@@ -85,91 +85,35 @@ export default function ActasEvaluacion() {
   };
 
   const generarPlantilla = async () => {
-    console.log('=== INICIO GENERACIÓN PLANTILLA ===');
-    console.log('Filtros actuales:', JSON.stringify(filtros, null, 2));
-
-    if (!filtros.id_periodo || !filtros.id_modalidad || !filtros.id_grado || !filtros.id_seccion || !filtros.id_asignatura || !filtros.lapso) {
-      console.log('Faltan campos requeridos:', {
-        id_periodo: filtros.id_periodo,
-        id_modalidad: filtros.id_modalidad,
-        id_grado: filtros.id_grado,
-        id_seccion: filtros.id_seccion,
-        id_asignatura: filtros.id_asignatura,
-        lapso: filtros.lapso
-      });
-      mostrarMensaje('Por favor, complete todos los campos', 'error');
+    if (!filtros.id_periodo || !filtros.id_modalidad || !filtros.id_grado || !filtros.lapso) {
+      mostrarMensaje('Por favor, complete todos los campos requeridos.', 'error');
       return;
     }
 
+    // Siempre usar el comando masivo, adaptando los arrays y asegurando que sean de tipo number[]
+    const idsAsignatura = filtros.id_asignatura === 'todas'
+      ? asignaturas.map(a => Number(a.id_asignatura))
+      : filtros.id_asignatura !== null ? [Number(filtros.id_asignatura)] : [];
+    const idsSeccion = filtros.id_seccion === 'todas'
+      ? secciones.map(s => Number(s.id_seccion))
+      : filtros.id_seccion !== null ? [Number(filtros.id_seccion)] : [];
+
     try {
       setCargando(true);
-      console.log('=== BUSCANDO DATOS DE REFERENCIA ===');
-
-      // Buscar los nombres a partir de los ids seleccionados
-      const gradoObj = grados.find(g => g.id_grado === Number(filtros.id_grado));
-      console.log('Grado encontrado:', gradoObj);
-
-      const asignaturaObj = asignaturas.find(a => a.id_asignatura === Number(filtros.id_asignatura));
-      console.log('Asignatura encontrada:', asignaturaObj);
-
-      const grado = gradoObj ? gradoObj.nombre_grado : '';
-      const seccion = '';
-      const asignatura = asignaturaObj ? asignaturaObj.nombre_asignatura : '';
-
-      console.log('=== BUSCANDO SECCIÓN ===');
-      console.log('Secciones disponibles:', JSON.stringify(secciones, null, 2));
-      console.log('ID de sección seleccionada:', filtros.id_seccion);
-      
-      const seccionObj = secciones.find(s => s.id_seccion === Number(filtros.id_seccion));
-      console.log('Sección encontrada:', JSON.stringify(seccionObj, null, 2));
-
-      // Verificar la estructura de la sección
-      if (seccionObj) {
-        console.log('Propiedades de la sección:', Object.keys(seccionObj));
-        console.log('id_grado_secciones:', seccionObj.id_grado_secciones);
-        console.log('idGradoSecciones:', seccionObj.idGradoSecciones);
-      }
-
-      const idGradoSecciones = seccionObj
-        ? seccionObj.id_grado_secciones ?? seccionObj.idGradoSecciones ?? null
-        : null;
-
-      console.log('idGradoSecciones final:', idGradoSecciones);
-
-      if (!idGradoSecciones) {
-        console.log('ERROR: No se pudo obtener idGradoSecciones');
-        mostrarMensaje('Debes seleccionar una sección válida.', 'error');
-        setCargando(false);
-        return;
-      }
-
-      console.log('=== GENERANDO PLANTILLA ===');
-      console.log('Parámetros para generar_plantilla_acta:', {
-        idGradoSecciones: Number(idGradoSecciones),
-        idPeriodo: Number(filtros.id_periodo),
-        idAsignatura: Number(filtros.id_asignatura),
+      const resultado = await invoke('generar_actas_masivas', {
+        idPeriodo: filtros.id_periodo,
+        idModalidad: filtros.id_modalidad,
+        idGrado: filtros.id_grado,
+        idsAsignatura: idsAsignatura.length > 0 ? idsAsignatura : null,
+        idsSeccion: idsSeccion.length > 0 ? idsSeccion : null,
         lapso: filtros.lapso
       });
-
-      const resultado = await invoke('generar_plantilla_acta', {
-        idGradoSecciones: Number(idGradoSecciones),
-        idPeriodo: Number(filtros.id_periodo),
-        idAsignatura: Number(filtros.id_asignatura),
-        lapso: filtros.lapso
-      });
-
-      console.log('Resultado de generar_plantilla_acta:', resultado);
-
-      if (resultado) {
-        console.log('Plantilla generada exitosamente');
-        mostrarMensaje('Plantilla generada exitosamente', 'exito');
-      }
+      mostrarMensaje('Actas generadas: ' + (Array.isArray(resultado) ? resultado.join(', ') : resultado), 'exito');
     } catch (error) {
-      console.error('Error al generar la plantilla:', error);
-      mostrarMensaje('Error al generar la plantilla: ' + error, 'error');
+      console.error('Error al generar actas:', error);
+      mostrarMensaje('Error al generar las actas.', 'error');
     } finally {
       setCargando(false);
-      console.log('=== FIN GENERACIÓN PLANTILLA ===');
     }
   };
 
@@ -232,16 +176,19 @@ export default function ActasEvaluacion() {
               Sección
             </label>
             <SelectorSeccion
-              value={filtros.id_seccion !== null ? filtros.id_seccion.toString() : ''}
+              value={
+                filtros.id_seccion === null ? '' :
+                filtros.id_seccion === 'todas' ? 'todas' : filtros.id_seccion.toString()
+              }
               onChange={valor => setFiltros(f => ({
                 ...f,
-                id_seccion: valor ? Number(valor) : null
+                id_seccion: valor === 'todas' ? 'todas' : (valor ? Number(valor) : null)
               }))}
               className="w-full"
               secciones={secciones}
-              grado={filtros.id_grado ? filtros.id_grado.toString() : ''}
-              modalidad={filtros.id_modalidad ? filtros.id_modalidad.toString() : ''}
-              periodo={filtros.id_periodo ? filtros.id_periodo.toString() : ''}
+              grado={typeof filtros.id_grado === 'number' ? filtros.id_grado.toString() : ''}
+              modalidad={typeof filtros.id_modalidad === 'number' ? filtros.id_modalidad.toString() : ''}
+              periodo={typeof filtros.id_periodo === 'number' ? filtros.id_periodo.toString() : ''}
             />
           </div>
           <div>
@@ -249,14 +196,17 @@ export default function ActasEvaluacion() {
               Asignatura
             </label>
             <SelectorAsignatura
-              value={filtros.id_asignatura !== null ? filtros.id_asignatura.toString() : ''}
+              value={
+                filtros.id_asignatura === null ? '' :
+                filtros.id_asignatura === 'todas' ? 'todas' : filtros.id_asignatura.toString()
+              }
               onChange={valor => setFiltros(f => ({
                 ...f,
-                id_asignatura: valor ? Number(valor) : null
+                id_asignatura: valor === 'todas' ? 'todas' : (valor ? Number(valor) : null)
               }))}
               className="w-full"
-              grado={filtros.id_grado ? filtros.id_grado.toString() : ''}
-              modalidad={filtros.id_modalidad ? filtros.id_modalidad.toString() : ''}
+              grado={typeof filtros.id_grado === 'number' ? filtros.id_grado.toString() : ''}
+              modalidad={typeof filtros.id_modalidad === 'number' ? filtros.id_modalidad.toString() : ''}
             />
           </div>
           <div>

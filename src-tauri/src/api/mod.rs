@@ -4,4 +4,5 @@ pub mod estudiantes;
 pub mod historial;
 pub mod pendiente;
 pub mod docente;
-pub mod plantillas; 
+pub mod plantillas;
+pub mod actas_masivas; 

@@ -53,11 +53,12 @@ export function SelectorAsignatura({ value, onChange, className = '', grado, mod
   return (
     <select
       value={value}
-      onChange={(e) => onChange(e.target.value)}
+      onChange={(e) => onChange(e.target.value === 'todas' ? 'todas' : e.target.value)}
       className={`w-full px-3 py-2 bg-white dark:bg-dark-600 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${className}`}
       disabled={cargando || !grado || !modalidad}
     >
       <option value="">Seleccione una asignatura</option>
+      <option value="todas">Todas las asignaturas</option>
       {asignaturas.map((asignatura) => (
         <option key={asignatura.id_asignatura} value={asignatura.id_asignatura}>
           {asignatura.nombre_asignatura}

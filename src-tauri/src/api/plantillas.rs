@@ -11,6 +11,9 @@ use crate::models::catalogo::{SeccionCatalogo, SeccionCompleta};
 use regex;
 use regex::Regex;
 use umya_spreadsheet::CellValue;
+use std::sync::Arc;
+use tokio::sync::Mutex;
+use tokio_postgres;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct EstudiantePlantilla {
@@ -52,9 +55,8 @@ pub struct SeccionTemp {
     pub id_grado_secciones: i32,
 }
 
-#[tauri::command]
 pub async fn generar_plantilla_acta(
-    state: State<'_, AppState>,
+    db_pool: Arc<Mutex<tokio_postgres::Client>>,
     id_grado_secciones: i32,
     id_periodo: i32,
     id_asignatura: i32,
@@ -64,24 +66,24 @@ pub async fn generar_plantilla_acta(
     println!("Parámetros recibidos: id_grado_secciones={}, id_periodo={}, id_asignatura={}, lapso={}", 
         id_grado_secciones, id_periodo, id_asignatura, lapso);
 
-    let db = state.db.lock().await;
-    println!("Ejecutando consulta SQL para obtener estudiantes...");
-    let estudiantes = db.query(
-        "SELECT e.id, e.cedula, e.nombres, e.apellidos FROM historial_grado_estudiantes h \
-         JOIN estudiantes e ON h.id_estudiante = e.id \
-         WHERE h.id_grado_secciones = $1 AND h.id_periodo = $2 AND h.estado = 'activo' AND h.es_actual = true \
-         ORDER BY e.apellidos, e.nombres",
-        &[&id_grado_secciones, &id_periodo],
-    ).await.map_err(|e| {
-        println!("Error en la consulta SQL: {}", e);
-        e.to_string()
-    })?;
-
-    println!("Número de estudiantes encontrados: {}", estudiantes.len());
+    println!("[ACTA] Ejecutando consulta SQL para obtener estudiantes...");
+    let estudiantes = {
+        let db = db_pool.lock().await;
+        db.query(
+            "SELECT e.id, e.cedula, e.nombres, e.apellidos FROM historial_grado_estudiantes h \
+             JOIN estudiantes e ON h.id_estudiante = e.id \
+             WHERE h.id_grado_secciones = $1 AND h.id_periodo = $2 AND h.estado = 'activo' AND h.es_actual = true \
+             ORDER BY e.apellidos, e.nombres",
+            &[&id_grado_secciones, &id_periodo],
+        ).await.map_err(|e| {
+            println!("[ACTA][ERROR] Error en la consulta SQL de estudiantes: {}", e);
+            e.to_string()
+        })?
+    };
+    println!("[ACTA] Número de estudiantes encontrados: {}", estudiantes.len());
     if estudiantes.is_empty() {
-        println!("ADVERTENCIA: No se encontraron estudiantes para los parámetros dados");
+        println!("[ACTA][WARN] No se encontraron estudiantes para los parámetros dados");
     }
-
     let estudiantes: Vec<EstudiantePlantilla> = estudiantes
         .iter()
         .map(|row| {
@@ -91,30 +93,41 @@ pub async fn generar_plantilla_acta(
                 nombre: row.get::<_, String>(2),
                 apellido: row.get::<_, String>(3),
             };
-            println!("Estudiante encontrado: id={}, cedula={}, nombre={}, apellido={}", 
+            println!("[ACTA] Estudiante encontrado: id={}, cedula={}, nombre={}, apellido={}", 
                 estudiante.id, estudiante.cedula, estudiante.nombre, estudiante.apellido);
             estudiante
         })
         .collect();
 
-    // === Obtener datos legibles para la hoja bonita ===
-    // Obtener nombre de la asignatura
-    let row_asig = db.query_one("SELECT nombre FROM asignaturas WHERE id_asignatura = $1", &[&id_asignatura]).await.map_err(|e| e.to_string())?;
+    println!("[ACTA] Consultando nombre de la asignatura...");
+    let row_asig = {
+        let db = db_pool.lock().await;
+        db.query_one("SELECT nombre FROM asignaturas WHERE id_asignatura = $1", &[&id_asignatura]).await.map_err(|e| {
+            println!("[ACTA][ERROR] Error consultando nombre de asignatura: {}", e);
+            e.to_string()
+        })?
+    };
     let nombre_asignatura: String = row_asig.get(0);
-    // Obtener grado y sección legibles
-    println!("DEBUG: id_grado_secciones recibido: {}", id_grado_secciones);
-    let row_grado_seccion = db.query_one(
-        "SELECT g.nombre_grado, s.nombre_seccion FROM grado_secciones gs \
-         JOIN grados g ON gs.id_grado = g.id_grado \
-         JOIN secciones s ON gs.id_seccion = s.id_seccion \
-         WHERE gs.id_grado_secciones = $1",
-        &[&id_grado_secciones],
-    ).await.map_err(|e| e.to_string())?;
+    println!("[ACTA] Nombre de asignatura obtenido: {}", nombre_asignatura);
+
+    println!("[ACTA] Consultando grado y sección legibles...");
+    let row_grado_seccion = {
+        let db = db_pool.lock().await;
+        db.query_one(
+            "SELECT g.nombre_grado, s.nombre_seccion FROM grado_secciones gs \
+             JOIN grados g ON gs.id_grado = g.id_grado \
+             JOIN secciones s ON gs.id_seccion = s.id_seccion \
+             WHERE gs.id_grado_secciones = $1",
+            &[&id_grado_secciones],
+        ).await.map_err(|e| {
+            println!("[ACTA][ERROR] Error consultando grado y sección: {}", e);
+            e.to_string()
+        })?
+    };
     let nombre_grado: String = row_grado_seccion.get(0);
     let nombre_seccion: String = row_grado_seccion.get(1);
-    println!("DEBUG: nombre_grado obtenido: '{}', nombre_seccion obtenido: '{}'", nombre_grado, nombre_seccion);
+    println!("[ACTA] nombre_grado obtenido: '{}', nombre_seccion obtenido: '{}'", nombre_grado, nombre_seccion);
 
-    // Normaliza el nombre de la asignatura para buscar la sigla
     let nombre_asignatura_normalizado = if nombre_asignatura.trim().to_lowercase() == "lengua y literatura" {
         "castellano".to_string()
     } else {
@@ -123,9 +136,13 @@ pub async fn generar_plantilla_acta(
             .replace("à", "a").replace("è", "e").replace("ì", "i").replace("ò", "o").replace("ù", "u")
             .replace(" ", "")
     };
+    println!("[ACTA] nombre_asignatura_normalizado: {}", nombre_asignatura_normalizado);
 
     let siglas = HashMap::from([
         ("castellano".to_string(), "Ca"),
+        ("lengua".to_string(), "Ca"),
+        ("lenguayliteratura".to_string(), "Ca"),
+        ("lengua y literatura".to_string(), "Ca"),
         ("ingles".to_string(), "In"),
         ("matematica".to_string(), "Ma"),
         ("educacionfisica".to_string(), "Ef"),
@@ -135,6 +152,9 @@ pub async fn generar_plantilla_acta(
         ("fisica".to_string(), "Fi"),
         ("quimica".to_string(), "Qu"),
         ("fsn".to_string(), "Fs"),
+        ("cienciasdelatierra".to_string(), "Cs"),
+        ("ciencias de la tierra".to_string(), "Cs"),
+        ("csdelatierra".to_string(), "Cs"),
         ("cs.de.la.tierra".to_string(), "Cs"),
         ("programacion".to_string(), "Pr"),
         ("proyectodeeconomia".to_string(), "Pe"),
@@ -144,41 +164,71 @@ pub async fn generar_plantilla_acta(
     let sigla = match siglas.get(&nombre_asignatura_normalizado) {
         Some(s) => s,
         None => {
-            println!("[WARN] Asignatura no encontrada en siglas: '{}'. Normalizado: '{}'", nombre_asignatura, nombre_asignatura_normalizado);
+            println!("[ACTA][WARN] Asignatura no encontrada en siglas: '{}'. Normalizado: '{}'", nombre_asignatura, nombre_asignatura_normalizado);
             &"XX"
         }
     };
+    println!("[ACTA] Sigla usada: {}", sigla);
 
-    // Lapso con símbolo
     let lapso_str = format!("{}º", lapso);
+    println!("[ACTA] Lapso string: {}", lapso_str);
 
-    // === Abrir plantilla bonita existente ===
     let plantilla_path = Path::new("C:/plantillas/acta_pantilla/acta_plantilla.xlsx");
-    let mut book = reader::xlsx::read(plantilla_path).map_err(|e| e.to_string())?;
-    let sheet = book.get_sheet_by_name_mut("ACTA").ok_or("No se encontró la hoja ACTA en la plantilla")?;
+    println!("[ACTA] Intentando abrir plantilla: {:?}", plantilla_path);
+    let mut book = match reader::xlsx::read(plantilla_path) {
+        Ok(b) => {
+            println!("[ACTA] Plantilla abierta correctamente");
+            b
+        },
+        Err(e) => {
+            println!("[ACTA][ERROR] Error abriendo plantilla: {}", e);
+            return Err(e.to_string());
+        }
+    };
+    let sheet = match book.get_sheet_by_name_mut("ACTA") {
+        Some(s) => {
+            println!("[ACTA] Hoja ACTA encontrada en la plantilla");
+            s
+        },
+        None => {
+            println!("[ACTA][ERROR] No se encontró la hoja ACTA en la plantilla");
+            return Err("No se encontró la hoja ACTA en la plantilla".to_string());
+        }
+    };
 
-    // Corrige '1er' y '3er' a '1ero' y '3ero' en el grado seleccionado
     let mut grado = nombre_grado.trim().to_string();
     if grado == "1er" { grado = "1ero".to_string(); }
     if grado == "3er" { grado = "3ero".to_string(); }
     let seccion = nombre_seccion.trim();
-    // Arma el texto para la celda D6 con el formato correcto
     let texto_d6 = format!("{} Año {}", nombre_grado.trim(), nombre_seccion.trim());
-    sheet.get_cell_mut("D6").set_value(texto_d6);
+    sheet.get_cell_mut("D6").set_value(&texto_d6);
+    println!("[ACTA] Escrito en D6: {}", texto_d6);
 
-    // Escribir el lapso en D7
     sheet.get_cell_mut("D7").set_value(lapso_str.clone());
-    // Escribir el nombre de la asignatura en D8
+    println!("[ACTA] Escrito en D7: {}", lapso_str);
     sheet.get_cell_mut("D8").set_value(nombre_asignatura.clone());
+    println!("[ACTA] Escrito en D8: {}", nombre_asignatura);
 
-    // 5. En la celda A11 de la hoja ACTA, coloco la modalidad
-    let row = db.query_one("SELECT id_modalidad FROM grado_secciones WHERE id_grado_secciones = $1", &[&id_grado_secciones]).await.map_err(|e| e.to_string())?;
-    let id_modalidad: i32 = row.get(0);
-    let row_modalidad = db.query_one("SELECT nombre_modalidad FROM modalidades WHERE id_modalidad = $1", &[&id_modalidad]).await.map_err(|e| e.to_string())?;
-    let modalidad: String = row_modalidad.get(0);
+    println!("[ACTA] Consultando modalidad...");
+    let id_modalidad: i32 = {
+        let db = db_pool.lock().await;
+        let row = db.query_one("SELECT id_modalidad FROM grado_secciones WHERE id_grado_secciones = $1", &[&id_grado_secciones]).await.map_err(|e| {
+            println!("[ACTA][ERROR] Error consultando id_modalidad: {}", e);
+            e.to_string()
+        })?;
+        row.get(0)
+    };
+    let modalidad: String = {
+        let db = db_pool.lock().await;
+        let row_modalidad = db.query_one("SELECT nombre_modalidad FROM modalidades WHERE id_modalidad = $1", &[&id_modalidad]).await.map_err(|e| {
+            println!("[ACTA][ERROR] Error consultando nombre_modalidad: {}", e);
+            e.to_string()
+        })?;
+        row_modalidad.get(0)
+    };
     sheet.get_cell_mut("A11").set_value(&modalidad);
+    println!("[ACTA] Escrito en A11: {}", modalidad);
 
-    // Ajuste para modalidad Telemática en el nombre del acta y archivo
     let sigla_ext = if modalidad.to_lowercase().contains("tele") {
         format!("{}Tele", sigla)
     } else {
@@ -186,40 +236,35 @@ pub async fn generar_plantilla_acta(
     };
     let nombre_acta = format!("{}{}_{}_{}", sigla_ext, grado, seccion, lapso_str);
     sheet.get_cell_mut("D10").set_value(&nombre_acta);
+    println!("[ACTA] Escrito en D10: {}", nombre_acta);
 
-    // Llenar estudiantes en la hoja ACTA usando 'sheet'
     for (i, est) in estudiantes.iter().enumerate() {
         let row = 13 + i;
         let cell_cedula = format!("B{}", row);
         let cell_nombre = format!("C{}", row);
         sheet.get_cell_mut(&*cell_cedula).set_value(est.cedula.to_string());
         sheet.get_cell_mut(&*cell_nombre).set_value(format!("{} {}", est.apellido, est.nombre));
+        println!("[ACTA] Escrito estudiante en fila {}: cedula={}, nombre={}", row, est.cedula, format!("{} {}", est.apellido, est.nombre));
     }
 
-    // === Agregar hoja de carga masiva ===
     let nombre_lapso_campo = match lapso.as_str() {
         "1" | "1º" | "1er" | "1ero" => "lapso_1",
         "2" | "2º" | "2do" => "lapso_2",
         "3" | "3º" | "3er" | "3ero" => "lapso_3",
         _ => "calificacion",
     };
+    println!("[ACTA] nombre_lapso_campo: {}", nombre_lapso_campo);
 
-    // 2. Separar grado y sección para mostrar como '2do Año B', '3er Año A', etc.
-    // Ejemplo: '2do AñoB' -> grado: '2do Año', seccion: 'B'
-    let (nombre_grado_limpio, nombre_seccion_limpia) = {
-        let s = nombre_grado.replace("Año", "Año ").replace("año", "año ");
-        let s = s.trim();
-        if let Some(idx) = s.rfind(char::is_alphabetic) {
-            let (grado, seccion) = s.split_at(idx);
-            (grado.trim().to_string(), seccion.trim().to_string())
-        } else {
-            (s.to_string(), String::new())
+    let carga = match book.new_sheet("CARGA_MASIVA") {
+        Ok(c) => {
+            println!("[ACTA] Hoja CARGA_MASIVA creada correctamente");
+            c
+        },
+        Err(e) => {
+            println!("[ACTA][ERROR] Error creando hoja CARGA_MASIVA: {}", e);
+            return Err(e.to_string());
         }
     };
-
-    // 3. Hoja CARGA_MASIVA visible (la ocultación no es soportada en esta versión de umya-spreadsheet)
-    // carga.set_hidden(true); // No disponible en esta versión
-    let carga = book.new_sheet("CARGA_MASIVA").map_err(|e| e.to_string())?;
     carga.get_cell_mut("A1").set_value("id_estudiante");
     carga.get_cell_mut("B1").set_value("id_asignatura");
     carga.get_cell_mut("C1").set_value("id_periodo");
@@ -232,16 +277,22 @@ pub async fn generar_plantilla_acta(
         let celda_acta = format!("N{}", 13 + i); // N13, N14, ...
         let formula = format!("=ACTA!{}", celda_acta);
         carga.get_cell_mut(&*format!("D{}", row)).set_formula(&formula);
+        println!("[ACTA] Escrito en CARGA_MASIVA fila {}: id_estudiante={}, id_asignatura={}, id_periodo={}", row, est.id, id_asignatura, id_periodo);
     }
 
-    // === Guardar copia con el nombre del acta ===
-    println!("DEBUG FINAL: nombre_acta usado para guardar: '{}'", nombre_acta);
+    println!("[ACTA] Guardando archivo en: C:/plantillas/{}.xlsx", nombre_acta);
     let save_path_str = format!("C:/plantillas/{}.xlsx", nombre_acta);
     let save_path = Path::new(&save_path_str);
-    writer::xlsx::write(&book, save_path).map_err(|e| e.to_string())?;
+    match writer::xlsx::write(&book, save_path) {
+        Ok(_) => println!("[ACTA] Archivo guardado correctamente"),
+        Err(e) => {
+            println!("[ACTA][ERROR] Error guardando archivo: {}", e);
+            return Err(e.to_string());
+        }
+    }
 
     println!("=== FIN GENERACIÓN PLANTILLA ACTA ===");
-    println!("ANTES DE OK(nombre_acta)");
+    println!("[ACTA] ANTES DE OK(nombre_acta)");
     Ok(nombre_acta)
 }
 
@@ -464,4 +515,117 @@ pub async fn test_id_seccion_solo(
     let ids: Vec<i32> = rows.iter().map(|row| row.get("id_seccion")).collect();
     println!("IDs: {:?}", ids);
     Ok(ids)
+}
+
+// Nueva función para generación masiva eficiente
+pub async fn generar_plantilla_acta_desde_datos(
+    datos: crate::api::actas_masivas::DatosActa,
+    lapso: String,
+) -> Result<String, String> {
+    use umya_spreadsheet::{reader, writer};
+    use std::path::Path;
+    use std::collections::HashMap;
+    println!("[ACTA][MASIVO] Generando acta desde datos pre-cargados");
+    let plantilla_path = Path::new("C:/plantillas/acta_pantilla/acta_plantilla.xlsx");
+    let mut book = match reader::xlsx::read(plantilla_path) {
+        Ok(b) => b,
+        Err(e) => return Err(e.to_string()),
+    };
+    let sheet = match book.get_sheet_by_name_mut("ACTA") {
+        Some(s) => s,
+        None => return Err("No se encontró la hoja ACTA en la plantilla".to_string()),
+    };
+    let mut grado = datos.nombre_grado.trim().to_string();
+    if grado == "1er" { grado = "1ero".to_string(); }
+    if grado == "3er" { grado = "3ero".to_string(); }
+    let seccion = datos.nombre_seccion.trim();
+    let texto_d6 = format!("{} Año {}", datos.nombre_grado.trim(), datos.nombre_seccion.trim());
+    sheet.get_cell_mut("D6").set_value(&texto_d6);
+    let lapso_str = format!("{}º", lapso);
+    sheet.get_cell_mut("D7").set_value(lapso_str.clone());
+    sheet.get_cell_mut("D8").set_value(datos.nombre_asignatura.clone());
+    sheet.get_cell_mut("A11").set_value(&datos.modalidad);
+    let siglas = HashMap::from([
+        ("castellano".to_string(), "Ca"),
+        ("lengua".to_string(), "Ca"),
+        ("lenguayliteratura".to_string(), "Ca"),
+        ("lengua y literatura".to_string(), "Ca"),
+        ("ingles".to_string(), "In"),
+        ("matematica".to_string(), "Ma"),
+        ("educacionfisica".to_string(), "Ef"),
+        ("arteypatrimonio".to_string(), "Ap"),
+        ("bat".to_string(), "Ba"),
+        ("ghc".to_string(), "Gh"),
+        ("fisica".to_string(), "Fi"),
+        ("quimica".to_string(), "Qu"),
+        ("fsn".to_string(), "Fs"),
+        ("cienciasdelatierra".to_string(), "Cs"),
+        ("ciencias de la tierra".to_string(), "Cs"),
+        ("csdelatierra".to_string(), "Cs"),
+        ("cs.de.la.tierra".to_string(), "Cs"),
+        ("programacion".to_string(), "Pr"),
+        ("proyectodeeconomia".to_string(), "Pe"),
+        ("gcrp".to_string(), "Gc"),
+        ("orientacion".to_string(), "Or"),
+    ]);
+    let mut nombre_asignatura_normalizado = datos.nombre_asignatura
+        .to_lowercase()
+        .replace("á", "a").replace("é", "e").replace("í", "i")
+        .replace("ó", "o").replace("ú", "u")
+        .replace("à", "a").replace("è", "e").replace("ì", "i")
+        .replace("ò", "o").replace("ù", "u")
+        .replace(" ", "")
+        .replace(".", "")
+        .replace("-", "")
+        .replace("_", "");
+    if nombre_asignatura_normalizado == "lenguayliteratura" {
+        nombre_asignatura_normalizado = "castellano".to_string();
+    }
+    if nombre_asignatura_normalizado == "cienciasdelatierra" || nombre_asignatura_normalizado == "csdelatierra" {
+        nombre_asignatura_normalizado = "cienciasdelatierra".to_string();
+    }
+    let sigla = siglas.get(&nombre_asignatura_normalizado).unwrap_or(&"XX");
+    let sigla_ext = if datos.modalidad.to_lowercase().contains("tele") {
+        format!("{}Tele", sigla)
+    } else {
+        sigla.to_string()
+    };
+    let nombre_acta = format!("{}{}_{}_{}", sigla_ext, grado, seccion, lapso_str);
+    sheet.get_cell_mut("D10").set_value(&nombre_acta);
+    for (i, est) in datos.estudiantes.iter().enumerate() {
+        let row = 13 + i;
+        let cell_cedula = format!("B{}", row);
+        let cell_nombre = format!("C{}", row);
+        sheet.get_cell_mut(&*cell_cedula).set_value(est.1.to_string());
+        sheet.get_cell_mut(&*cell_nombre).set_value(format!("{} {}", est.3, est.2));
+    }
+    let nombre_lapso_campo = match lapso.as_str() {
+        "1" | "1º" | "1er" | "1ero" => "lapso_1",
+        "2" | "2º" | "2do" => "lapso_2",
+        "3" | "3º" | "3er" | "3ero" => "lapso_3",
+        _ => "calificacion",
+    };
+    let carga = match book.new_sheet("CARGA_MASIVA") {
+        Ok(c) => c,
+        Err(e) => return Err(e.to_string()),
+    };
+    carga.get_cell_mut("A1").set_value("id_estudiante");
+    carga.get_cell_mut("B1").set_value("id_asignatura");
+    carga.get_cell_mut("C1").set_value("id_periodo");
+    carga.get_cell_mut("D1").set_value(nombre_lapso_campo);
+    for (i, est) in datos.estudiantes.iter().enumerate() {
+        let row = 2 + i;
+        carga.get_cell_mut(&*format!("A{}", row)).set_value(est.0.to_string());
+        carga.get_cell_mut(&*format!("B{}", row)).set_value(datos.id_asignatura.to_string());
+        carga.get_cell_mut(&*format!("C{}", row)).set_value(datos.id_periodo.to_string());
+        let celda_acta = format!("N{}", 13 + i);
+        let formula = format!("=ACTA!{}", celda_acta);
+        carga.get_cell_mut(&*format!("D{}", row)).set_formula(&formula);
+    }
+    let save_path_str = format!("C:/plantillas/{}.xlsx", nombre_acta);
+    let save_path = Path::new(&save_path_str);
+    match writer::xlsx::write(&book, save_path) {
+        Ok(_) => Ok(nombre_acta),
+        Err(e) => Err(e.to_string()),
+    }
 } 

@@ -5,9 +5,10 @@ pub mod utils;
 use tauri::State;
 use tokio::sync::Mutex;
 use tokio_postgres::NoTls;
+use std::sync::Arc;
 
 pub struct AppState {
-    pub db: Mutex<tokio_postgres::Client>,
+    pub db: Arc<Mutex<tokio_postgres::Client>>,
 }
 
 pub async fn init_db() -> Result<tokio_postgres::Client, tokio_postgres::Error> {

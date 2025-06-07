@@ -28,4 +28,5 @@ bytes = "1.5"
 rust_xlsxwriter = "0.38.0"
 umya-spreadsheet = "2.3.0"
 regex = "1.10"
+futures = "0.3"
 

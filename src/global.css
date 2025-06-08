@@ -1,0 +1,28 @@
+/* Tarjetas de grados en modo oscuro */
+.card-grado-dark {
+  background-color: #11443c !important;
+  color: #7fffd4 !important;
+  border: 1px solid #11443c !important;
+}
+.card-grado-dark .MuiTypography-root,
+.card-grado-dark .MuiAvatar-root,
+.card-grado-dark .MuiChip-root,
+.card-grado-dark .MuiSvgIcon-root {
+  color: #7fffd4 !important;
+  border-color: #7fffd4 !important;
+}
+
+/* Tarjetas de grados en modo oscuro - ultra-específico */
+.card-grado-dark.MuiPaper-root.MuiCard-root {
+  background-color: #11443c !important;
+  color: #7fffd4 !important;
+  border: 1px solid #11443c !important;
+}
+.card-grado-dark .MuiTypography-root,
+.card-grado-dark .MuiAvatar-root,
+.card-grado-dark .MuiChip-root,
+.card-grado-dark .MuiSvgIcon-root,
+.card-grado-dark .MuiChip-label {
+  color: #7fffd4 !important;
+  border-color: #7fffd4 !important;
+} 

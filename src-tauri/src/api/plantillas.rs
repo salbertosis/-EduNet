@@ -14,6 +14,7 @@ use umya_spreadsheet::CellValue;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio_postgres;
+use rust_xlsxwriter::{Workbook, Format, FormatAlign, FormatBorder, XlsxError};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct EstudiantePlantilla {
@@ -53,6 +54,21 @@ pub struct SeccionTemp {
     pub id_seccion: i32,
     pub nombre_seccion: String,
     pub id_grado_secciones: i32,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct TarjetaCurso {
+    pub id_grado_secciones: i32,
+    pub id_grado: i32,
+    pub id_seccion: i32,
+    pub id_modalidad: i32,
+    pub nombre_grado: String,
+    pub nombre_seccion: String,
+    pub nombre_modalidad: String,
+    pub docente_guia: String,
+    pub total_estudiantes: i64,
+    pub estudiantes_femeninos: i64,
+    pub estudiantes_masculinos: i64,
 }
 
 pub async fn generar_plantilla_acta(
@@ -628,4 +644,48 @@ pub async fn generar_plantilla_acta_desde_datos(
         Ok(_) => Ok(nombre_acta),
         Err(e) => Err(e.to_string()),
     }
+}
+
+#[tauri::command]
+pub async fn obtener_tarjetas_cursos(state: tauri::State<'_, crate::AppState>) -> Result<Vec<TarjetaCurso>, String> {
+    let db = state.db.lock().await;
+    let rows = db.query(
+        "SELECT
+            gs.id_grado_secciones,
+            gs.id_grado,
+            gs.id_seccion,
+            gs.id_modalidad,
+            g.nombre_grado,
+            s.nombre_seccion,
+            m.nombre_modalidad,
+            CONCAT(d.nombres, ' ', d.apellidos) AS docente_guia,
+            COUNT(hge.id_estudiante) AS total_estudiantes,
+            SUM(CASE WHEN e.genero = 'F' THEN 1 ELSE 0 END) AS estudiantes_femeninos,
+            SUM(CASE WHEN e.genero = 'M' THEN 1 ELSE 0 END) AS estudiantes_masculinos
+        FROM historial_grado_estudiantes hge
+        JOIN grado_secciones gs ON hge.id_grado_secciones = gs.id_grado_secciones
+        JOIN grados g ON gs.id_grado = g.id_grado
+        JOIN secciones s ON gs.id_seccion = s.id_seccion
+        JOIN modalidades m ON gs.id_modalidad = m.id_modalidad
+        LEFT JOIN docentes d ON gs.id_docente_guia = d.id_docente
+        LEFT JOIN estudiantes e ON hge.id_estudiante = e.id
+        WHERE hge.es_actual = true AND hge.estado = 'activo'
+        GROUP BY gs.id_grado_secciones, gs.id_grado, gs.id_seccion, gs.id_modalidad, g.nombre_grado, s.nombre_seccion, m.nombre_modalidad, d.nombres, d.apellidos
+        ORDER BY gs.id_grado, s.nombre_seccion",
+        &[],
+    ).await.map_err(|e| e.to_string())?;
+    let tarjetas = rows.iter().map(|row| TarjetaCurso {
+        id_grado_secciones: row.get(0),
+        id_grado: row.get(1),
+        id_seccion: row.get(2),
+        id_modalidad: row.get(3),
+        nombre_grado: row.get(4),
+        nombre_seccion: row.get(5),
+        nombre_modalidad: row.get(6),
+        docente_guia: row.get(7),
+        total_estudiantes: row.get(8),
+        estudiantes_femeninos: row.get(9),
+        estudiantes_masculinos: row.get(10),
+    }).collect();
+    Ok(tarjetas)
 } 

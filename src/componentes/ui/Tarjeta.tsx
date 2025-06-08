@@ -4,7 +4,7 @@ interface TarjetaProps {
   titulo: string;
   icono: ReactNode;
   valor: string | number | ReactNode;
-  descripcion?: string;
+  descripcion?: string | ReactNode;
   color?: 'primary' | 'success' | 'warning' | 'danger';
 }
 
@@ -23,7 +23,11 @@ export function Tarjeta({ titulo, icono, valor, descripcion, color = 'primary' }
           <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{titulo}</p>
           <p className="text-2xl font-semibold mt-2">{valor}</p>
           {descripcion && (
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{descripcion}</p>
+            typeof descripcion === 'string' ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{descripcion}</p>
+            ) : (
+              descripcion
+            )
           )}
         </div>
         <div className={`p-3 rounded-lg ${colores[color]}`}>
@@ -32,4 +36,4 @@ export function Tarjeta({ titulo, icono, valor, descripcion, color = 'primary' }
       </div>
     </div>
   );
-} 
+}

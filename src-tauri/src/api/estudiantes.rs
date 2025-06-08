@@ -339,4 +339,26 @@ pub async fn obtener_estudiante_por_id(
     })
 }
 
+#[tauri::command]
+pub async fn contar_estudiantes_femeninos(state: State<'_, AppState>) -> Result<i64, String> {
+    let db = state.db.lock().await;
+    let row = db
+        .query_one("SELECT COUNT(*) FROM estudiantes WHERE genero = 'F'", &[])
+        .await
+        .map_err(|e| e.to_string())?;
+    let total: i64 = row.get(0);
+    Ok(total)
+}
+
+#[tauri::command]
+pub async fn contar_estudiantes_masculinos(state: State<'_, AppState>) -> Result<i64, String> {
+    let db = state.db.lock().await;
+    let row = db
+        .query_one("SELECT COUNT(*) FROM estudiantes WHERE genero = 'M'", &[])
+        .await
+        .map_err(|e| e.to_string())?;
+    let total: i64 = row.get(0);
+    Ok(total)
+}
+
 // Funciones auxiliares necesarias para estudiantes (por ejemplo, verificar_cedula_duplicada, obtener_cedulas_existentes, etc.) 

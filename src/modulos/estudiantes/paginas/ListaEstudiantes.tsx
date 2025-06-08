@@ -68,7 +68,7 @@ export function ListaEstudiantes() {
   const cargarEstudiantes = async () => {
     try {
       setCargando(true);
-      const resultado = await invoke<{ datos: Estudiante[], paginacion: PaginacionInfo }>('obtener_estudiantes', {
+      const resultado = await invoke<{ datos: Estudiante[], paginacion: any }>('obtener_estudiantes', {
         filtro: Object.keys(filtros).length > 0 ? filtros : null,
         paginacion: {
           pagina: paginacion.paginaActual || 1,
@@ -78,10 +78,10 @@ export function ListaEstudiantes() {
       setEstudiantes(resultado.datos);
       const paginacionBackend = resultado.paginacion;
       const paginacionFrontend = {
-        paginaActual: paginacionBackend.paginaActual,
-        totalPaginas: paginacionBackend.totalPaginas,
-        totalRegistros: paginacionBackend.totalRegistros,
-        registrosPorPagina: paginacionBackend.registrosPorPagina
+        paginaActual: paginacionBackend.pagina_actual,
+        totalPaginas: paginacionBackend.total_paginas,
+        totalRegistros: paginacionBackend.total_registros,
+        registrosPorPagina: paginacionBackend.registros_por_pagina
       };
       setPaginacion(paginacionFrontend);
     } catch (error) {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Paginacion } from '../../../componentes/Paginacion';
-import { useGrados } from '../hooks/useGrados';
+import { useGrados, Grado } from '../hooks/useGrados';
 import { GraduationCap, Users, User, Search } from 'lucide-react';
 
 interface FiltrosGrados {
@@ -11,7 +11,7 @@ interface FiltrosGrados {
 }
 
 interface TarjetaCursoProps {
-    grado: any;
+    grado: Grado;
 }
 
 const TarjetaCurso: React.FC<TarjetaCursoProps> = ({ grado }) => (
@@ -20,24 +20,28 @@ const TarjetaCurso: React.FC<TarjetaCursoProps> = ({ grado }) => (
         <div className="flex items-center mb-2">
             <GraduationCap className="w-5 h-5 mr-2 text-blue-400" strokeWidth={1.5} />
             <span className="card-title font-extrabold text-xl text-[#232b36] dark:text-white">
-                {grado.grado}er Año {grado.seccion}
+                {grado.nombre_grado} Año {grado.nombre_seccion}
             </span>
+        </div>
+        {/* Modalidad */}
+        <div className="flex items-center mb-2">
+            <span className="text-xs text-gray-500 dark:text-gray-400">{grado.nombre_modalidad}</span>
         </div>
         {/* Docente guía */}
         <div className="flex items-center mb-2">
             <User className="w-4 h-4 mr-1 text-cyan-400" strokeWidth={1.5} />
             <span className="subtitle text-xs text-gray-700 dark:text-[#a0aec0]">
-                Docente Guía: <b className="text-cyan-600 dark:text-cyan-300">{grado.docenteGuia}</b>
+                Docente Guía: <b className="text-cyan-600 dark:text-cyan-300">{grado.docente_guia}</b>
             </span>
         </div>
         {/* Estadísticas */}
         <div className="flex items-center gap-3 mb-2">
             <Users className="w-4 h-4 text-blue-400" strokeWidth={1.5} />
-            <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">{grado.totalEstudiantes} estudiantes</span>
+            <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">{grado.total_estudiantes} estudiantes</span>
             <User className="w-4 h-4 text-pink-400 ml-2" strokeWidth={1.5} />
-            <span className="text-xs text-pink-500 dark:text-pink-400 font-medium">{grado.estudiantesFemeninos}</span>
+            <span className="text-xs text-pink-500 dark:text-pink-400 font-medium">{grado.estudiantes_femeninos}</span>
             <User className="w-4 h-4 text-blue-500 ml-2" strokeWidth={1.5} />
-            <span className="text-xs text-blue-700 dark:text-blue-500 font-medium">{grado.estudiantesMasculinos}</span>
+            <span className="text-xs text-blue-700 dark:text-blue-500 font-medium">{grado.estudiantes_masculinos}</span>
         </div>
         {/* Botón de detalles */}
         <div className="flex justify-end mt-3">
@@ -51,40 +55,41 @@ const TarjetaCurso: React.FC<TarjetaCursoProps> = ({ grado }) => (
 
 const AÑOS = ["1er Año", "2do Año", "3er Año", "4to Año", "5to Año"];
 const MODALIDADES = [
-    { value: "ciencias", label: "Ciencias" },
-    { value: "telematicas", label: "Telemáticas" },
+    { value: 1, label: "Ciencias" },
+    { value: 2, label: "Telemática" },
 ];
+
+// Función para normalizar strings (quitar tildes y pasar a minúsculas)
+function normalizar(str: string) {
+    return str.normalize('NFD').replace(/[00-\u036f]/g, '').toLowerCase();
+}
 
 export const ListaGrados: React.FC = () => {
     const [añoActivo, setAñoActivo] = useState(0);
-    const [modalidad, setModalidad] = useState("ciencias");
+    const [modalidad, setModalidad] = useState(1);
 
     const { 
         grados, 
         cargando, 
         error,
-        paginacion,
-        obtenerGrados,
-        cambiarPagina,
-        cambiarRegistrosPorPagina
+        obtenerGrados
     } = useGrados();
 
     useEffect(() => {
-        obtenerGrados({
-            busqueda: '',
-            grado: '',
-            seccion: ''
-        });
+        obtenerGrados();
     }, []);
 
-    // Filtrar tarjetas según año. Para 1er Año (añoActivo === 0), mostrar solo secciones A-G
+    // Filtrar tarjetas según año y modalidad seleccionada (por id_modalidad)
     const gradosFiltrados = grados.filter(
-        (g) => g.grado === añoActivo + 1 && (añoActivo !== 0 || ["A","B","C","D","E","F","G"].includes(g.seccion))
+        (g) =>
+            g.id_grado === añoActivo + 1 &&
+            g.id_modalidad === modalidad &&
+            (añoActivo !== 0 || ["A","B","C","D","E","F","G"].includes(g.nombre_seccion))
     ).sort((a, b) => {
         if (añoActivo === 0) {
             // Ordenar secciones de la A a la G
             const orden = ["A","B","C","D","E","F","G"];
-            return orden.indexOf(a.seccion) - orden.indexOf(b.seccion);
+            return orden.indexOf(a.nombre_seccion) - orden.indexOf(b.nombre_seccion);
         }
         return 0;
     });
@@ -109,7 +114,7 @@ export const ListaGrados: React.FC = () => {
                 <select
                     className="ml-4 px-3 py-2 rounded bg-gray-700 text-white"
                     value={modalidad}
-                    onChange={e => setModalidad(e.target.value)}
+                    onChange={e => setModalidad(Number(e.target.value))}
                 >
                     {MODALIDADES.map(m => (
                         <option key={m.value} value={m.value}>{m.label}</option>
@@ -119,7 +124,7 @@ export const ListaGrados: React.FC = () => {
             {/* Tarjetas filtradas con animación */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 transition-all duration-300">
                 {gradosFiltrados.map((grado) => (
-                    <TarjetaCurso key={grado.id} grado={grado} />
+                    <TarjetaCurso key={grado.id_grado_secciones} grado={grado} />
                 ))}
                 {gradosFiltrados.length === 0 && (
                     <div className="col-span-full text-center text-gray-400 py-12">No hay cursos para este año y modalidad.</div>

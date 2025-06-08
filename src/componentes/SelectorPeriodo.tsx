@@ -33,7 +33,7 @@ export function SelectorPeriodo({ value, onChange, className }: SelectorPeriodoP
 
   return (
     <select
-      className={className}
+      className={className + ' bg-white dark:bg-[#2a2a40] text-gray-900 dark:text-gray-100'}
       value={value ?? ''}
       onChange={e => onChange(Number(e.target.value))}
       disabled={loading}

@@ -23,6 +23,7 @@ coverage/
 
 # Rust/Tauri specific (CRUCIAL)
 /src-tauri/target/ # <-- Esta línea es la CLAVE
+/target/ # Carpeta target en la raíz
 **/*.iml
 
 # Editor directories and files

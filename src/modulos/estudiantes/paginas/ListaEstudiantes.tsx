@@ -328,76 +328,69 @@ export function ListaEstudiantes() {
       </div>
 
       {/* Tabla de estudiantes */}
-      <div className="bg-white dark:bg-dark-800 rounded-xl shadow-soft overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-dark-700">
-            <thead className="sticky top-0 z-10 bg-gray-100 dark:bg-dark-900">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-extrabold text-gray-700 dark:text-green-300 tracking-widest uppercase border-b border-gray-200 dark:border-dark-600">CÉDULA</th>
-                <th className="px-6 py-3 text-left text-xs font-extrabold text-gray-700 dark:text-green-300 tracking-widest uppercase border-b border-gray-200 dark:border-dark-600">APELLIDOS</th>
-                <th className="px-6 py-3 text-left text-xs font-extrabold text-gray-700 dark:text-green-300 tracking-widest uppercase border-b border-gray-200 dark:border-dark-600">NOMBRES</th>
-                <th className="px-6 py-3 text-left text-xs font-extrabold text-gray-700 dark:text-green-300 tracking-widest uppercase border-b border-gray-200 dark:border-dark-600">GRADO</th>
-                <th className="px-6 py-3 text-xs font-extrabold text-gray-700 dark:text-green-300 tracking-widest uppercase border-b border-gray-200 dark:border-dark-600 text-center">SECCIÓN</th>
-                <th className="px-6 py-3 text-xs font-extrabold text-gray-700 dark:text-green-300 tracking-widest uppercase border-b border-gray-200 dark:border-dark-600 text-center">MODALIDAD</th>
-                <th className="px-6 py-3 text-right text-xs font-extrabold text-gray-700 dark:text-green-300 tracking-widest uppercase border-b border-gray-200 dark:border-dark-600">ACCIONES</th>
-              </tr>
-            </thead>
-            <tbody>
-              {cargando ? (
-                [...Array(paginacion.registrosPorPagina)].map((_, idx) => (
-                  <tr key={idx} className={idx % 2 === 0 ? 'bg-white dark:bg-dark-800 border-b border-gray-200 dark:border-dark-600' : 'bg-gray-50 dark:bg-dark-700 border-b border-gray-200 dark:border-dark-600'}>
-                    <td colSpan={7} className="py-6 text-center animate-pulse text-gray-500 dark:text-gray-600">Cargando...</td>
-                  </tr>
-                ))
-              ) : estudiantes.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-8 text-center text-gray-400 bg-white dark:bg-dark-800">No se encontraron estudiantes.</td>
+      <div className="bg-white dark:bg-dark-800 rounded-2xl shadow-lg overflow-hidden">
+        <table className="min-w-full">
+          <thead className="sticky top-0 z-10 bg-gradient-to-r from-emerald-600 via-emerald-500 to-emerald-600 dark:from-emerald-900 dark:via-dark-800 dark:to-dark-900">
+            <tr>
+              <th className="px-6 py-4 text-left text-xs font-extrabold text-white dark:text-emerald-300 tracking-widest uppercase">CÉDULA</th>
+              <th className="px-6 py-4 text-left text-xs font-extrabold text-white dark:text-emerald-300 tracking-widest uppercase">APELLIDOS</th>
+              <th className="px-6 py-4 text-left text-xs font-extrabold text-white dark:text-emerald-300 tracking-widest uppercase">NOMBRES</th>
+              <th className="px-6 py-4 text-left text-xs font-extrabold text-white dark:text-emerald-300 tracking-widest uppercase">GRADO</th>
+              <th className="px-6 py-4 text-xs font-extrabold text-white dark:text-emerald-300 tracking-widest uppercase text-center">SECCIÓN</th>
+              <th className="px-6 py-4 text-xs font-extrabold text-white dark:text-emerald-300 tracking-widest uppercase text-center">MODALIDAD</th>
+              <th className="px-6 py-4 text-right text-xs font-extrabold text-white dark:text-emerald-300 tracking-widest uppercase">ACCIONES</th>
+            </tr>
+          </thead>
+          <tbody>
+            {cargando ? (
+              [...Array(paginacion.registrosPorPagina)].map((_, idx) => (
+                <tr key={idx} className={idx % 2 === 0 ? 'bg-white dark:bg-dark-800/80' : 'bg-gray-50 dark:bg-dark-700/80'}>
+                  <td colSpan={7} className="py-6 text-center animate-pulse text-gray-500 dark:text-gray-600">Cargando...</td>
                 </tr>
-              ) : (
-                estudiantes.map((estudiante, idx) => (
-                  <tr
-                    key={estudiante.id}
-                    className={
-                      (idx % 2 === 0
-                        ? 'bg-white dark:bg-dark-800 border-b border-gray-200 dark:border-dark-600'
-                        : 'bg-gray-50 dark:bg-dark-700 border-b border-gray-200 dark:border-dark-600') +
-                      ' transition-all duration-200 hover:shadow-lg hover:shadow-emerald-500/10'
-                    }
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">{estudiante.cedula}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">{estudiante.apellidos}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">{estudiante.nombres}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">{estudiante.nombre_grado}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 text-center">{estudiante.nombre_seccion}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200 text-center">{estudiante.nombre_modalidad}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex gap-2 justify-end">
+              ))
+            ) : estudiantes.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="py-8 text-center text-gray-400 bg-white dark:bg-dark-800">No se encontraron estudiantes.</td>
+              </tr>
+            ) : (
+              estudiantes.map((estudiante, idx) => (
+                <tr
+                  key={estudiante.id}
+                  className={`transition-all duration-200 ${idx % 2 === 0 ? 'bg-white dark:bg-dark-800/80' : 'bg-gray-50 dark:bg-dark-700/80'} hover:bg-emerald-50 dark:hover:bg-emerald-900/40`}
+                >
+                  <td className="px-6 py-4 whitespace-nowrap text-base text-gray-900 dark:text-gray-100 font-medium align-middle">{estudiante.cedula}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-base text-gray-900 dark:text-gray-100 font-medium align-middle">{estudiante.apellidos}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-base text-gray-900 dark:text-gray-100 font-medium align-middle">{estudiante.nombres}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-base text-gray-900 dark:text-gray-100 font-medium align-middle">{estudiante.nombre_grado}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-base text-gray-900 dark:text-gray-100 font-medium align-middle text-center">{estudiante.nombre_seccion}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-base text-gray-900 dark:text-gray-100 font-medium align-middle text-center">{estudiante.nombre_modalidad}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-base font-medium align-middle flex gap-2 justify-end">
                     <button
                       onClick={() => {
                         setEstudianteSeleccionado(estudiante);
                         setMostrarFormulario(true);
                       }}
-                        className="rounded-full p-2 text-emerald-400 hover:text-white hover:bg-emerald-900/40 hover:shadow-md hover:shadow-emerald-400/30 transition-all"
-                        title="Editar"
+                      className="rounded-full p-2 text-emerald-600 dark:text-emerald-400 hover:text-white hover:bg-emerald-600 dark:hover:bg-emerald-700/40 hover:scale-110 transition-all"
+                      title="Editar"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" className="w-5 h-5" viewBox="0 0 20 20"><path d="M17.414 2.586a2 2 0 0 0-2.828 0l-9.9 9.9A2 2 0 0 0 4 14.414V17a1 1 0 0 0 1 1h2.586a2 2 0 0 0 1.414-.586l9.9-9.9a2 2 0 0 0 0-2.828l-2.414-2.414z"/></svg>
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" className="w-5 h-5" viewBox="0 0 20 20"><path d="M17.414 2.586a2 2 0 0 0-2.828 0l-9.9 9.9A2 2 0 0 0 4 14.414V17a1 1 0 0 0 1 1h2.586a2 2 0 0 0 1.414-.586l9.9-9.9a2 2 0 0 0 0-2.828l-2.414-2.414z"/></svg>
                     </button>
                     <button
-                        onClick={() => setModalBorrar({ abierto: true, estudiante })}
-                        className="rounded-full p-2 text-red-400 hover:text-white hover:bg-red-900/40 hover:shadow-md hover:shadow-red-400/30 transition-all"
-                        title="Eliminar"
+                      onClick={() => setModalBorrar({ abierto: true, estudiante })}
+                      className="rounded-full p-2 text-red-600 dark:text-red-400 hover:text-white hover:bg-red-600 dark:hover:bg-red-700/40 hover:scale-110 transition-all"
+                      title="Eliminar"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" className="w-5 h-5" viewBox="0 0 20 20"><path d="M6 8a1 1 0 0 1 2 0v6a1 1 0 1 1-2 0V8zm4 0a1 1 0 0 1 2 0v6a1 1 0 1 1-2 0V8z"/><path fillRule="evenodd" d="M4 5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1H4V5zm2-3a4 4 0 0 0-4 4v1a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V6a4 4 0 0 0-4-4H6z" clipRule="evenodd"/></svg>
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" className="w-5 h-5" viewBox="0 0 20 20"><path d="M6 8a1 1 0 0 1 2 0v6a1 1 0 1 1-2 0V8zm4 0a1 1 0 0 1 2 0v6a1 1 0 1 1-2 0V8zm4 0a1 1 0 0 1 2 0v6a1 1 0 1 1-2 0V8z"/><path fillRule="evenodd" d="M4 5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1H4V5zm2-3a4 4 0 0 0-4 4v1a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V6a4 4 0 0 0-4-4H6z" clipRule="evenodd"/></svg>
                     </button>
-                      <OjoVerDetalles
-                        onClick={() => navigate(`/estudiantes/${estudiante.id}/calificaciones`)}
-                      />
+                    <OjoVerDetalles
+                      onClick={() => navigate(`/estudiantes/${estudiante.id}/calificaciones`)}
+                    />
                   </td>
                 </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
 
       {/* Paginación avanzada */}

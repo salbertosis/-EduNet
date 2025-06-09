@@ -11,6 +11,7 @@ export function CargaMasivaCalificaciones() {
   const [erroresPrevios, setErroresPrevios] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const { mostrarMensaje } = useMensajeGlobal();
+  const [nombreArchivo, setNombreArchivo] = useState<string>("");
 
   // Validación avanzada
   const validarCalificaciones = (rows: any[]): { validas: any[], advertencias: string[], errores: string[] } => {
@@ -62,11 +63,13 @@ export function CargaMasivaCalificaciones() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setNombreArchivo(file.name);
     const reader = new FileReader();
     reader.onload = (evt) => {
       const data = evt.target?.result;
       const workbook = XLSX.read(data, { type: 'binary' });
-      const sheetName = workbook.SheetNames[0];
+      // Buscar la hoja llamada 'CARGA_MASIVA' (insensible a mayúsculas/minúsculas)
+      const sheetName = workbook.SheetNames.find(name => name.toUpperCase().includes('CARGA_MASIVA')) || workbook.SheetNames[0];
       const sheet = workbook.Sheets[sheetName];
       const rows = XLSX.utils.sheet_to_json(sheet);
       const { validas, advertencias, errores } = validarCalificaciones(rows);
@@ -115,13 +118,25 @@ export function CargaMasivaCalificaciones() {
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-bold">Carga Masiva de Calificaciones</h2>
-      <input
-        type="file"
-        accept=".xlsx,.xls"
-        ref={inputRef}
-        onChange={handleFileChange}
-        className="mb-4"
-      />
+      <div className="flex items-center gap-4 mb-4">
+        <input
+          type="file"
+          accept=".xlsx,.xls"
+          ref={inputRef}
+          onChange={handleFileChange}
+          style={{ display: 'none' }}
+        />
+        <button
+          type="button"
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          onClick={() => inputRef.current?.click()}
+        >
+          Cargar Excel
+        </button>
+        {nombreArchivo && (
+          <span className="ml-2">{nombreArchivo}</span>
+        )}
+      </div>
       {erroresPrevios.length > 0 && (
         <div className="bg-red-50 border border-red-300 text-red-700 rounded-lg p-4 mb-2">
           <b>Errores críticos detectados:</b>

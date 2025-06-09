@@ -68,20 +68,6 @@ export function BuscadorEstudiante({ onSeleccionar, onCargarExcel }: BuscadorEst
       >
         {loading ? "Buscando..." : "Buscar"}
       </button>
-      <button
-        type="button"
-        className="px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 font-semibold shadow"
-        onClick={handleExcelClick}
-      >
-        Cargar Excel
-      </button>
-      <input
-        type="file"
-        accept=".xlsx,.xls"
-        ref={fileInputRef}
-        style={{ display: "none" }}
-        onChange={handleExcelChange}
-      />
       {error && <span className="text-red-500 ml-4">{error}</span>}
     </div>
   );

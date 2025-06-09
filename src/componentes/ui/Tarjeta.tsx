@@ -17,23 +17,27 @@ const colores = {
 
 export function Tarjeta({ titulo, icono, valor, descripcion, color = 'primary' }: TarjetaProps) {
   return (
-    <div className="bg-white dark:bg-dark-800 rounded-xl shadow-soft p-6">
-      <div className="flex items-center justify-between">
+    <div
+      className={
+        `group bg-white dark:bg-dark-800 rounded-2xl shadow-soft p-7 transition-all duration-200 hover:shadow-xl hover:-translate-y-1 flex flex-col justify-between min-h-[180px]`
+      }
+    >
+      <div className="flex items-start justify-between mb-2">
         <div>
-          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{titulo}</p>
-          <p className="text-2xl font-semibold mt-2">{valor}</p>
-          {descripcion && (
-            typeof descripcion === 'string' ? (
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{descripcion}</p>
-            ) : (
-              descripcion
-            )
-          )}
+          <p className="text-base font-semibold text-gray-700 dark:text-gray-200 tracking-tight mb-1">{titulo}</p>
+          <p className="text-4xl font-extrabold text-gray-900 dark:text-white leading-tight mb-2">{valor}</p>
         </div>
-        <div className={`p-3 rounded-lg ${colores[color]}`}>
+        <div className={`flex items-center justify-center w-14 h-14 rounded-full shadow-inner ${colores[color]} transition-all duration-200 group-hover:scale-105`}>
           {icono}
         </div>
       </div>
+      {descripcion && (
+        typeof descripcion === 'string' ? (
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">{descripcion}</p>
+        ) : (
+          <div className="mt-2">{descripcion}</div>
+        )
+      )}
     </div>
   );
 }

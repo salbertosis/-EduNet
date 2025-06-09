@@ -1,5 +1,5 @@
 use tauri::State;
-use crate::models::estudiante::{Estudiante, EstadoEstudiante, FiltroEstudiantes, NuevoEstudiante};
+use crate::models::estudiante::{Estudiante, FiltroEstudiantes, NuevoEstudiante};
 use crate::AppState;
 use chrono::NaiveDate;
 use postgres_types::ToSql;

@@ -42,13 +42,33 @@ interface PaginacionInfo {
   registrosPorPagina: number;
 }
 
+interface Grado {
+  id_grado: number;
+  nombre_grado: string;
+}
+
+interface Modalidad {
+  id_modalidad: number;
+  nombre_modalidad: string;
+}
+
+interface ResultadoEstudiantes {
+  datos: Estudiante[];
+  paginacion: {
+    pagina_actual: number;
+    total_paginas: number;
+    total_registros: number;
+    registros_por_pagina: number;
+  };
+}
+
 export function ListaEstudiantes() {
   const [estudiantes, setEstudiantes] = useState<Estudiante[]>([]);
   const [filtros, setFiltros] = useState<FiltroEstudiantes>({});
   const [estudianteSeleccionado, setEstudianteSeleccionado] = useState<Estudiante | null>(null);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
-  const [grados, setGrados] = useState<{ id_grado: number; nombre_grado: string }[]>([]);
-  const [modalidades, setModalidades] = useState<{ id_modalidad: number; nombre_modalidad: string }[]>([]);
+  const [grados, setGrados] = useState<Grado[]>([]);
+  const [modalidades, setModalidades] = useState<Modalidad[]>([]);
   const [resumenInsercion, setResumenInsercion] = useState<ResumenInsercion | null>(null);
   const [modalBorrar, setModalBorrar] = useState<{ abierto: boolean, estudiante?: Estudiante }>({ abierto: false });
   const [paginacion, setPaginacion] = useState<PaginacionInfo>({
@@ -85,8 +105,8 @@ export function ListaEstudiantes() {
       };
       setPaginacion(paginacionFrontend);
     } catch (error) {
-      console.error('Error al cargar estudiantes:', error);
-      mostrarMensaje('Error al cargar estudiantes', 'error');
+      const mensajeError = error instanceof Error ? error.message : 'Error desconocido';
+      mostrarMensaje(`Error: ${mensajeError}`, 'error');
     } finally {
       setCargando(false);
     }
@@ -94,7 +114,7 @@ export function ListaEstudiantes() {
 
   useEffect(() => {
     cargarEstudiantes();
-  }, [filtros, paginacion.paginaActual]);
+  }, [filtros, paginacion.paginaActual, paginacion.registrosPorPagina]);
 
   useEffect(() => {
     // Cargar grados y modalidades al montar
@@ -163,8 +183,8 @@ export function ListaEstudiantes() {
         const workbook = XLSX.read(data, { type: 'binary' });
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
-        let estudiantes = XLSX.utils.sheet_to_json(sheet);
-        estudiantes = (estudiantes as Record<string, any>[]).map(est => ({
+        const estudiantesRaw = XLSX.utils.sheet_to_json<Estudiante>(sheet);
+        const estudiantes = (estudiantesRaw as Record<string, any>[]).map(est => ({
           ...est,
           fecha_nacimiento: typeof est.fecha_nacimiento === 'number' ? excelDateToISO(est.fecha_nacimiento) : est.fecha_nacimiento,
           fecha_ingreso: typeof est.fecha_ingreso === 'number' ? excelDateToISO(est.fecha_ingreso) : est.fecha_ingreso,

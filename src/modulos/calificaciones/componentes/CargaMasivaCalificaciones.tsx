@@ -425,7 +425,6 @@ export function CargaMasivaCalificaciones() {
           className="hidden"
           aria-label="Seleccionar archivo Excel individual"
         />
-        
         <button
           type="button"
           onClick={() => singleFileRef.current?.click()}
@@ -434,7 +433,6 @@ export function CargaMasivaCalificaciones() {
         >
           Cargar Excel
         </button>
-
         <input
           ref={multipleFilesRef}
           type="file"
@@ -445,7 +443,6 @@ export function CargaMasivaCalificaciones() {
           className="hidden"
           aria-label="Seleccionar múltiples archivos Excel"
         />
-        
         <button
           type="button"
           onClick={() => multipleFilesRef.current?.click()}
@@ -454,13 +451,11 @@ export function CargaMasivaCalificaciones() {
         >
           Cargar múltiples Excel
         </button>
-
         {state.fileName && (
           <span className="text-gray-600 dark:text-cyan-300 font-medium">
             {state.fileName}
           </span>
         )}
-
         {(isLoading || isPending) && (
           <div className="flex items-center gap-2 text-blue-600">
             <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />

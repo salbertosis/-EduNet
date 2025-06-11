@@ -1,13 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/tauri';
-import { Search, Plus, Pencil, Trash2, FileSpreadsheet, X } from 'lucide-react';
+import { Search, Plus, FileSpreadsheet, X } from 'lucide-react';
 import { FormularioEstudiante } from '../componentes/FormularioEstudiante';
 import * as XLSX from 'xlsx';
 import { useMensajeGlobal } from '../../../componentes/MensajeGlobalContext';
 import { ModalConfirmar } from '../../../componentes/ModalConfirmar';
 import { Paginacion } from '../../../componentes/Paginacion';
 import { OjoVerDetalles } from '../../calificaciones/componentes/OjoVerDetalles';
-import { DetalleCalificaciones } from '../../calificaciones/paginas/DetalleCalificaciones';
 import { useNavigate } from 'react-router-dom';
 
 interface Estudiante {
@@ -52,16 +51,6 @@ interface Modalidad {
   nombre_modalidad: string;
 }
 
-interface ResultadoEstudiantes {
-  datos: Estudiante[];
-  paginacion: {
-    pagina_actual: number;
-    total_paginas: number;
-    total_registros: number;
-    registros_por_pagina: number;
-  };
-}
-
 export function ListaEstudiantes() {
   const [estudiantes, setEstudiantes] = useState<Estudiante[]>([]);
   const [filtros, setFiltros] = useState<FiltroEstudiantes>({});
@@ -79,47 +68,64 @@ export function ListaEstudiantes() {
   });
   const { mostrarMensaje } = useMensajeGlobal();
   const [cargando, setCargando] = useState(false);
-  const [mostrarDetalleCalificaciones, setMostrarDetalleCalificaciones] = useState(false);
-  const [estudianteDetalle, setEstudianteDetalle] = useState<Estudiante | null>(null);
   const navigate = useNavigate();
   const [modalConfirmarExcel, setModalConfirmarExcel] = useState<{ abierto: boolean, cantidad: number, nombre: string, estudiantes: any[] } | null>(null);
   const inputExcelRef = useRef<HTMLInputElement>(null);
 
-  const cargarEstudiantes = async () => {
-    try {
-      setCargando(true);
-      const resultado = await invoke<{ datos: Estudiante[], paginacion: any }>('obtener_estudiantes', {
-        filtro: Object.keys(filtros).length > 0 ? filtros : null,
-        paginacion: {
-          pagina: paginacion.paginaActual || 1,
-          registros_por_pagina: paginacion.registrosPorPagina || 10
-        }
-      });
-      setEstudiantes(resultado.datos);
-      const paginacionBackend = resultado.paginacion;
-      const paginacionFrontend = {
-        paginaActual: paginacionBackend.pagina_actual,
-        totalPaginas: paginacionBackend.total_paginas,
-        totalRegistros: paginacionBackend.total_registros,
-        registrosPorPagina: paginacionBackend.registros_por_pagina
-      };
-      setPaginacion(paginacionFrontend);
-    } catch (error) {
-      const mensajeError = error instanceof Error ? error.message : 'Error desconocido';
-      mostrarMensaje(`Error: ${mensajeError}`, 'error');
-    } finally {
-      setCargando(false);
-    }
-  };
-
   useEffect(() => {
-    cargarEstudiantes();
+    let cancelado = false;
+    const cargar = async () => {
+      try {
+        setCargando(true);
+        const resultado = await invoke<{ datos: Estudiante[], paginacion: any }>('obtener_estudiantes', {
+          filtro: Object.keys(filtros).length > 0 ? filtros : null,
+          paginacion: {
+            pagina: paginacion.paginaActual || 1,
+            registros_por_pagina: paginacion.registrosPorPagina || 10
+          }
+        });
+        if (!cancelado) {
+          setEstudiantes(resultado.datos);
+          const paginacionBackend = resultado.paginacion;
+          setPaginacion({
+            paginaActual: paginacionBackend.pagina_actual,
+            totalPaginas: paginacionBackend.total_paginas,
+            totalRegistros: paginacionBackend.total_registros,
+            registrosPorPagina: paginacionBackend.registros_por_pagina
+          });
+        }
+      } catch (error) {
+        if (!cancelado) {
+          const mensajeError = error instanceof Error ? error.message : 'Error desconocido';
+          mostrarMensaje(`Error: ${mensajeError}`, 'error');
+        }
+      } finally {
+        if (!cancelado) setCargando(false);
+      }
+    };
+    cargar();
+    (window as any).recargarEstudiantes = cargar;
+    return () => { cancelado = true; };
   }, [filtros, paginacion.paginaActual, paginacion.registrosPorPagina]);
 
   useEffect(() => {
-    // Cargar grados y modalidades al montar
-    invoke('listar_grados').then((data: any) => setGrados(data)).catch(console.error);
-    invoke('listar_modalidades').then((data: any) => setModalidades(data)).catch(console.error);
+    let cancelado = false;
+    const cargarDatos = async () => {
+      try {
+        const [gradosData, modalidadesData] = await Promise.all([
+          invoke<Grado[]>('listar_grados'),
+          invoke<Modalidad[]>('listar_modalidades')
+        ]);
+        if (!cancelado) {
+          setGrados(gradosData);
+          setModalidades(modalidadesData);
+        }
+      } catch (e) {
+        // Puedes mostrar un mensaje si lo deseas
+      }
+    };
+    cargarDatos();
+    return () => { cancelado = true; };
   }, []);
 
   const handleFiltroChange = (campo: keyof FiltroEstudiantes, valor: string) => {
@@ -144,18 +150,13 @@ export function ListaEstudiantes() {
     setPaginacion(prev => ({ ...prev, paginaActual: nuevaPagina }));
   };
 
-  const handleEliminar = async (id: number) => {
-    // Ya no se usa confirm, ahora se usa el modal
-    // Esta función se mantiene para compatibilidad, pero no se llama directamente
-  };
-
   const handleConfirmarBorrar = async () => {
     if (!modalBorrar.estudiante) return;
     try {
       await invoke('eliminar_estudiante', { id: modalBorrar.estudiante.id });
       mostrarMensaje(`Estudiante "${modalBorrar.estudiante.nombres} ${modalBorrar.estudiante.apellidos}" eliminado correctamente`, "exito");
       setModalBorrar({ abierto: false });
-      cargarEstudiantes();
+      if ((window as any).recargarEstudiantes) (window as any).recargarEstudiantes();
     } catch (err) {
       mostrarMensaje("Error al eliminar estudiante: " + err, "error");
       setModalBorrar({ abierto: false });
@@ -169,6 +170,26 @@ export function ListaEstudiantes() {
     return date_info.toISOString().split('T')[0];
   }
 
+  const leerArchivoExcel = (file: File): Promise<any[]> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        try {
+          const data = evt.target?.result;
+          const workbook = XLSX.read(data, { type: 'binary' });
+          const sheetName = workbook.SheetNames[0];
+          const sheet = workbook.Sheets[sheetName];
+          const estudiantesRaw = XLSX.utils.sheet_to_json<Estudiante>(sheet);
+          resolve(estudiantesRaw as Record<string, any>[]);
+        } catch (err) {
+          reject(err);
+        }
+      };
+      reader.onerror = () => reject(reader.error);
+      reader.readAsBinaryString(file);
+    });
+  };
+
   const handleExcelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) {
@@ -176,28 +197,20 @@ export function ListaEstudiantes() {
       if (inputExcelRef.current) inputExcelRef.current.value = "";
       return;
     }
-    const reader = new FileReader();
-    reader.onload = async (evt) => {
-      const data = evt.target?.result;
-      try {
-        const workbook = XLSX.read(data, { type: 'binary' });
-        const sheetName = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[sheetName];
-        const estudiantesRaw = XLSX.utils.sheet_to_json<Estudiante>(sheet);
-        const estudiantes = (estudiantesRaw as Record<string, any>[]).map(est => ({
-          ...est,
-          fecha_nacimiento: typeof est.fecha_nacimiento === 'number' ? excelDateToISO(est.fecha_nacimiento) : est.fecha_nacimiento,
-          fecha_ingreso: typeof est.fecha_ingreso === 'number' ? excelDateToISO(est.fecha_ingreso) : est.fecha_ingreso,
-          fecha_retiro: typeof est.fecha_retiro === 'number' ? excelDateToISO(est.fecha_retiro) : est.fecha_retiro,
-        }));
-        setModalConfirmarExcel({ abierto: true, cantidad: estudiantes.length, nombre: file.name, estudiantes });
-      } catch (err) {
-        mostrarMensaje('Error al procesar el archivo Excel: ' + err, 'error');
-      } finally {
-        if (inputExcelRef.current) inputExcelRef.current.value = "";
-      }
-    };
-    reader.readAsBinaryString(file);
+    try {
+      const estudiantesRaw = await leerArchivoExcel(file);
+      const estudiantes = estudiantesRaw.map(est => ({
+        ...est,
+        fecha_nacimiento: typeof est.fecha_nacimiento === 'number' ? excelDateToISO(est.fecha_nacimiento) : est.fecha_nacimiento,
+        fecha_ingreso: typeof est.fecha_ingreso === 'number' ? excelDateToISO(est.fecha_ingreso) : est.fecha_ingreso,
+        fecha_retiro: typeof est.fecha_retiro === 'number' ? excelDateToISO(est.fecha_retiro) : est.fecha_retiro,
+      }));
+      setModalConfirmarExcel({ abierto: true, cantidad: estudiantes.length, nombre: file.name, estudiantes });
+    } catch (err) {
+      mostrarMensaje('Error al procesar el archivo Excel: ' + err, 'error');
+    } finally {
+      if (inputExcelRef.current) inputExcelRef.current.value = "";
+    }
   };
 
   const handleConfirmarInsertarExcel = async () => {
@@ -205,7 +218,7 @@ export function ListaEstudiantes() {
     try {
       const resumen = await invoke<ResumenInsercion>('insertar_estudiantes_masivo', { estudiantes: modalConfirmarExcel.estudiantes });
       setResumenInsercion(resumen);
-      cargarEstudiantes();
+      if ((window as any).recargarEstudiantes) (window as any).recargarEstudiantes();
     } catch (err) {
       mostrarMensaje('Error al procesar o insertar estudiantes: ' + err, 'error');
     } finally {
@@ -355,7 +368,7 @@ export function ListaEstudiantes() {
               <th className="px-6 py-4 text-left text-xs font-extrabold text-white dark:text-emerald-300 tracking-widest uppercase">CÉDULA</th>
               <th className="px-6 py-4 text-left text-xs font-extrabold text-white dark:text-emerald-300 tracking-widest uppercase">APELLIDOS</th>
               <th className="px-6 py-4 text-left text-xs font-extrabold text-white dark:text-emerald-300 tracking-widest uppercase">NOMBRES</th>
-              <th className="px-6 py-4 text-left text-xs font-extrabold text-white dark:text-emerald-300 tracking-widest uppercase">GRADO</th>
+              <th className="px-6 py-4 text-left text-xs font-extrabold text-white dark:text-emerald-300 tracking-widest uppercase text-center">GRADO</th>
               <th className="px-6 py-4 text-xs font-extrabold text-white dark:text-emerald-300 tracking-widest uppercase text-center">SECCIÓN</th>
               <th className="px-6 py-4 text-xs font-extrabold text-white dark:text-emerald-300 tracking-widest uppercase text-center">MODALIDAD</th>
               <th className="px-6 py-4 text-right text-xs font-extrabold text-white dark:text-emerald-300 tracking-widest uppercase">ACCIONES</th>
@@ -381,7 +394,7 @@ export function ListaEstudiantes() {
                   <td className="px-6 py-4 whitespace-nowrap text-base text-gray-900 dark:text-gray-100 font-medium align-middle">{estudiante.cedula}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-base text-gray-900 dark:text-gray-100 font-medium align-middle">{estudiante.apellidos}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-base text-gray-900 dark:text-gray-100 font-medium align-middle">{estudiante.nombres}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-base text-gray-900 dark:text-gray-100 font-medium align-middle">{estudiante.nombre_grado}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-base text-gray-900 dark:text-gray-100 font-medium align-middle text-center">{estudiante.nombre_grado}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-base text-gray-900 dark:text-gray-100 font-medium align-middle text-center">{estudiante.nombre_seccion}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-base text-gray-900 dark:text-gray-100 font-medium align-middle text-center">{estudiante.nombre_modalidad}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-base font-medium align-middle flex gap-2 justify-end">
@@ -437,7 +450,7 @@ export function ListaEstudiantes() {
                 estudiante={estudianteSeleccionado || undefined}
                 onGuardar={() => {
                   setMostrarFormulario(false);
-                  cargarEstudiantes();
+                  if ((window as any).recargarEstudiantes) (window as any).recargarEstudiantes();
                 }}
                 onCancelar={() => setMostrarFormulario(false)}
               />

@@ -67,13 +67,6 @@ export const CalificacionesActuales: React.FC<CalificacionesActualesProps> = ({
       <div className="flex flex-col items-end gap-2 mt-6">
         <div className="flex gap-4">
           <button
-            className="px-5 py-2 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 font-medium"
-            onClick={limpiarErrores}
-            disabled={loadingGuardarCalificaciones || loadingGuardarPendientes || loadingGuardarHistorial}
-          >
-            Limpiar
-          </button>
-          <button
             className="px-5 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 font-semibold shadow flex items-center gap-2"
             onClick={onGuardarCalificaciones}
             disabled={loadingGuardarCalificaciones}

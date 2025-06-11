@@ -28,6 +28,7 @@ export function ListaCalificaciones() {
   const [tab, setTab] = useState('datos');
   const [periodoActual, setPeriodoActual] = useState<number | null>(null);
   const { mostrarMensaje } = useMensajeGlobal();
+  const [mostrarModalGuardarHistorialEstudiante, setMostrarModalGuardarHistorialEstudiante] = useState(false);
 
   // Cargar periodo escolar actual cuando hay estudiante
   useEffect(() => {
@@ -97,42 +98,31 @@ export function ListaCalificaciones() {
               ) : errorCalificaciones ? (
                 <div className="text-red-500 text-center py-8">{errorCalificaciones}</div>
               ) : (
-                <>
-                  <div className="flex gap-4 mb-6 justify-end">
-                    <button
-                      className="px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 font-semibold shadow flex items-center gap-2"
-                      onClick={() => {
-                        if (estudiante && periodoActual && estudiante.id_grado_secciones) {
-                          guardarHistorial(estudiante.id, periodoActual, estudiante.id_grado_secciones);
-                        } else {
-                          mostrarMensaje('Faltan datos para guardar el historial.', 'error');
-                        }
-                      }}
-                      disabled={loadingGuardarHistorial}
-                    >
-                      {loadingGuardarHistorial ? 'Guardando…' : 'Guardar Historial'}
-                    </button>
-                  </div>
-                  <CalificacionesActuales
-                    asignaturas={asignaturas}
-                    calificaciones={calificaciones}
-                    errores={errores}
-                    onInputChange={handleInputChange}
-                    limpiarErrores={limpiarErrores}
-                    setCalificaciones={setCalificaciones}
-                    estudiante={estudiante}
-                    periodoActual={periodoActual}
-                    mostrarModalGuardarHistorialEstudiante={false}
-                    setMostrarModalGuardarHistorialEstudiante={() => {}}
-                    onGuardarHistorial={() => guardarHistorial(estudiante.id, periodoActual!, estudiante.id_grado_secciones)}
-                    loadingGuardarHistorial={loadingGuardarHistorial}
-                    exitoGuardarHistorial={exitoGuardarHistorial}
-                    onGuardarCalificaciones={() => guardarCalificaciones(calificaciones, estudiante.id, periodoActual!)}
-                    onGuardarPendientes={() => guardarPendientes(pendientes)}
-                    loadingGuardarCalificaciones={loadingGuardarCalificaciones}
-                    loadingGuardarPendientes={loadingGuardarPendientes}
-                  />
-                </>
+                <CalificacionesActuales
+                  asignaturas={asignaturas}
+                  calificaciones={calificaciones}
+                  errores={errores}
+                  onInputChange={handleInputChange}
+                  limpiarErrores={limpiarErrores}
+                  setCalificaciones={setCalificaciones}
+                  estudiante={estudiante}
+                  periodoActual={periodoActual}
+                  mostrarModalGuardarHistorialEstudiante={mostrarModalGuardarHistorialEstudiante}
+                  setMostrarModalGuardarHistorialEstudiante={setMostrarModalGuardarHistorialEstudiante}
+                  onGuardarHistorial={() => {
+                    if (estudiante && periodoActual && estudiante.id_grado_secciones) {
+                      guardarHistorial(estudiante.id, periodoActual, estudiante.id_grado_secciones);
+                    } else {
+                      mostrarMensaje('Faltan datos para guardar el historial.', 'error');
+                    }
+                  }}
+                  loadingGuardarHistorial={loadingGuardarHistorial}
+                  exitoGuardarHistorial={exitoGuardarHistorial}
+                  onGuardarCalificaciones={() => guardarCalificaciones(calificaciones, estudiante.id, periodoActual!)}
+                  onGuardarPendientes={() => guardarPendientes(pendientes)}
+                  loadingGuardarCalificaciones={loadingGuardarCalificaciones}
+                  loadingGuardarPendientes={loadingGuardarPendientes}
+                />
               )
             ) : (
               <div className="text-gray-500 dark:text-gray-400 text-lg text-center py-12">
@@ -152,15 +142,6 @@ export function ListaCalificaciones() {
           {tab === 'pendientes' && (
             estudiante ? (
               <>
-                <div className="flex gap-4 mb-6 justify-end">
-                  <button
-                    className="px-5 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 font-semibold shadow flex items-center gap-2"
-                    onClick={() => guardarPendientes(pendientes)}
-                    disabled={loadingGuardarPendientes}
-                  >
-                    {loadingGuardarPendientes ? 'Guardando…' : 'Guardar Asignaturas Pendientes'}
-                  </button>
-                </div>
                 <AsignaturasPendientes idEstudiante={estudiante.id} />
               </>
             ) : (

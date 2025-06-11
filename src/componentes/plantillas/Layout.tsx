@@ -56,6 +56,14 @@ const menuItems = [
     label: 'Configuración',
     children: [
       {
+        label: 'Nuevo año escolar',
+        path: '/nuevo-periodo'
+      },
+      {
+        label: 'Migrar Estudiantes',
+        path: '/migrar-estudiantes'
+      },
+      {
         label: 'Guardar Historial',
         onClick: () => setMostrarModalGuardarHistorial(true)
       }

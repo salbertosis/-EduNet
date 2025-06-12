@@ -9,6 +9,7 @@ import { ListaDocentes } from './modulos/docentes/paginas/ListaDocentes';
 import { ListaCalificaciones } from './modulos/calificaciones/paginas/ListaCalificaciones';
 import Reportes from './modulos/reportes';
 import { ListaGrados } from './modulos/grados/paginas/ListaGrados';
+import CrearPeriodoEscolar from './componentes/CrearPeriodoEscolar';
 
 function MensajeGlobalModal() {
   const { mensaje, cerrarMensaje } = useMensajeGlobal();
@@ -32,6 +33,7 @@ export function App() {
           <Route path="docentes" element={<ListaDocentes />} />
           <Route path="calificaciones" element={<ListaCalificaciones />} />
           <Route path="reportes" element={<Reportes />} />
+          <Route path="nuevo-periodo" element={<CrearPeriodoEscolar />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
       </Routes>

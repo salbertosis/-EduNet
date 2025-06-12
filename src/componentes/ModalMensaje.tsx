@@ -6,7 +6,7 @@ export function ModalMensaje({
   onClose,
 }: {
   mensaje: string;
-  tipo: "exito" | "error" | "info";
+  tipo: "exito" | "error" | "info" | "advertencia";
   onClose: () => void;
 }) {
   const estilos = {
@@ -31,10 +31,17 @@ export function ModalMensaje({
       icon: "ℹ️",
       btn: "bg-blue-600 hover:bg-blue-700",
     },
+    advertencia: {
+      bg: "bg-yellow-50 dark:bg-yellow-900/80",
+      border: "border-yellow-400",
+      text: "text-yellow-700 dark:text-yellow-200",
+      icon: "⚠️",
+      btn: "bg-yellow-600 hover:bg-yellow-700",
+    },
   }[tipo];
 
   useEffect(() => {
-    if (tipo !== "error") {
+    if (tipo !== "error" && tipo !== "advertencia") {
       const timer = setTimeout(() => {
         onClose();
       }, 4000);
@@ -54,6 +61,8 @@ export function ModalMensaje({
               ? "¡Éxito!"
               : tipo === "error"
               ? "Error"
+              : tipo === "advertencia"
+              ? "Advertencia"
               : "Información"}
           </h2>
         </div>

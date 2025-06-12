@@ -69,3 +69,24 @@ Thumbs.db
 # Archivos generados por NPM/Yarn
 package-lock.json
 yarn.lock
+
+# Archivos generados por Rust
+**/*.rs.bk
+Cargo.lock
+
+# Archivos generados por Node
+dist/
+build/
+*.log
+*.tmp
+*.bak
+
+# Archivos de IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db

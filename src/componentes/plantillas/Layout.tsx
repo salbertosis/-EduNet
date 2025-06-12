@@ -110,13 +110,23 @@ const menuItems = [
                 {mostrarConfig && (
                   <div className="ml-8 mt-2 space-y-2">
                     {item.children.map((child) => (
-                      <button
-                        key={child.label}
-                        className="flex items-center space-x-2 px-3 py-2 rounded-lg text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 w-full text-left"
-                        onClick={child.onClick}
-                      >
-                        <span>{child.label}</span>
-                      </button>
+                      child.path ? (
+                        <Link
+                          key={child.label}
+                          to={child.path}
+                          className="flex items-center space-x-2 px-3 py-2 rounded-lg text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 w-full text-left"
+                        >
+                          <span>{child.label}</span>
+                        </Link>
+                      ) : (
+                        <button
+                          key={child.label}
+                          className="flex items-center space-x-2 px-3 py-2 rounded-lg text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 w-full text-left"
+                          onClick={child.onClick}
+                        >
+                          <span>{child.label}</span>
+                        </button>
+                      )
                     ))}
                   </div>
                 )}

@@ -49,6 +49,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             api::catalogo::listar_grados,
             api::catalogo::listar_modalidades,
             api::catalogo::obtener_asignaturas_por_grado_modalidad,
+            api::catalogo::crear_periodo_escolar,
+            api::catalogo::establecer_periodo_activo,
             api::docente::obtener_docentes,
             api::docente::crear_docente,
             api::docente::actualizar_docente,

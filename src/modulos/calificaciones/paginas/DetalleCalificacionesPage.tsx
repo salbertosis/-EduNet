@@ -28,7 +28,7 @@ export function DetalleCalificacionesPage() {
 
   return (
     <div>
-      <CargaMasivaCalificaciones />
+      {/* <CargaMasivaCalificaciones /> */}
       <DetalleCalificaciones estudiante={estudiante} onVolver={() => navigate(-1)} />
     </div>
   );

@@ -688,4 +688,49 @@ pub async fn obtener_tarjetas_cursos(state: tauri::State<'_, crate::AppState>) -
         estudiantes_masculinos: row.get(10),
     }).collect();
     Ok(tarjetas)
+}
+
+#[tauri::command]
+pub async fn obtener_secciones_anio_anterior(
+    state: State<'_, AppState>,
+    id_grado: i32,
+    id_modalidad: i32,
+) -> Result<Vec<SeccionCompleta>, String> {
+    let db = state.db.lock().await;
+    // Buscar el período activo
+    let row = db.query_one(
+        "SELECT id_periodo FROM periodos_escolares WHERE activo = TRUE LIMIT 1",
+        &[],
+    ).await.map_err(|e| e.to_string())?;
+    let id_periodo_activo: i32 = row.get("id_periodo");
+    // Buscar el período anterior
+    let row_prev = db.query_opt(
+        "SELECT id_periodo FROM periodos_escolares WHERE id_periodo < $1 ORDER BY id_periodo DESC LIMIT 1",
+        &[&id_periodo_activo],
+    ).await.map_err(|e| e.to_string())?;
+    let id_periodo_anterior = match row_prev {
+        Some(r) => r.get::<_, i32>("id_periodo"),
+        None => return Err("No se encontró período anterior al activo".to_string()),
+    };
+    // Traer las secciones activas del período anterior
+    let rows = db.query(
+        "SELECT DISTINCT \
+            gs.id_grado_secciones::integer AS id_grado_secciones, \
+            s.id_seccion::integer AS id_seccion, \
+            s.nombre_seccion::text AS nombre_seccion \
+         FROM secciones s \
+         JOIN grado_secciones gs ON s.id_seccion = gs.id_seccion \
+         JOIN historial_grado_estudiantes h ON gs.id_grado_secciones = h.id_grado_secciones \
+         WHERE gs.id_grado = $1 AND gs.id_modalidad = $2 AND h.id_periodo = $3 AND h.estado = 'activo' AND h.es_actual = true \
+         ORDER BY s.id_seccion",
+        &[&id_grado, &id_modalidad, &id_periodo_anterior],
+    ).await.map_err(|e| e.to_string())?;
+
+    let secciones = rows.iter().map(|row| SeccionCompleta {
+        id_grado_secciones: row.get("id_grado_secciones"),
+        id_seccion: row.get("id_seccion"),
+        nombre_seccion: row.get("nombre_seccion"),
+    }).collect();
+
+    Ok(secciones)
 } 

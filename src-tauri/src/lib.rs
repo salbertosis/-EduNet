@@ -2,7 +2,6 @@ pub mod api;
 pub mod models;
 pub mod utils;
 
-use tauri::State;
 use tokio::sync::Mutex;
 use tokio_postgres::NoTls;
 use std::sync::Arc;

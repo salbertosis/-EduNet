@@ -10,6 +10,8 @@ import { ListaCalificaciones } from './modulos/calificaciones/paginas/ListaCalif
 import Reportes from './modulos/reportes';
 import { ListaGrados } from './modulos/grados/paginas/ListaGrados';
 import CrearPeriodoEscolar from './componentes/CrearPeriodoEscolar';
+import GuardarHistorialMasivoPage from './paginas/GuardarHistorialMasivoPage';
+import { MigrarEstudiantes } from './paginas/MigrarEstudiantes';
 
 function MensajeGlobalModal() {
   const { mensaje, cerrarMensaje } = useMensajeGlobal();
@@ -34,6 +36,8 @@ export function App() {
           <Route path="calificaciones" element={<ListaCalificaciones />} />
           <Route path="reportes" element={<Reportes />} />
           <Route path="nuevo-periodo" element={<CrearPeriodoEscolar />} />
+          <Route path="migrar-estudiantes" element={<MigrarEstudiantes />} />
+          <Route path="guardar-historial" element={<GuardarHistorialMasivoPage />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
       </Routes>

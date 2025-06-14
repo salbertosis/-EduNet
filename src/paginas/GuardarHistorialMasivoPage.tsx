@@ -21,6 +21,7 @@ interface Grado {
 interface Seccion {
   id_seccion: number;
   nombre_seccion: string;
+  id_grado_secciones: number;
 }
 
 const GuardarHistorialMasivoPage = () => {
@@ -41,7 +42,15 @@ const GuardarHistorialMasivoPage = () => {
     const cargarCatalogos = async () => {
       try {
         const periodosData: PeriodoEscolar[] = await invoke('listar_periodos_escolares');
-        setPeriodos(periodosData);
+        // Filtrar solo el período activo
+        const periodoActivo = periodosData.find(p => p.activo);
+        if (periodoActivo) {
+          setPeriodos([periodoActivo]);
+          setSelectedPeriodo(periodoActivo.id_periodo.toString());
+        } else {
+          setPeriodos([]);
+          setSelectedPeriodo('');
+        }
 
         const modalidadesData: Modalidad[] = await invoke('listar_modalidades');
         setModalidades(modalidadesData);
@@ -125,6 +134,7 @@ const GuardarHistorialMasivoPage = () => {
               value={selectedPeriodo}
               onChange={(e) => setSelectedPeriodo(e.target.value)}
               required
+              disabled
             >
               <option value="">Seleccione un período</option>
               {periodos.map((p) => (
@@ -177,7 +187,7 @@ const GuardarHistorialMasivoPage = () => {
             >
               <option value="">Todas las Secciones</option>
               {secciones.map((s) => (
-                <option key={s.id_seccion} value={s.id_seccion}>
+                <option key={s.id_seccion} value={s.id_grado_secciones}>
                   {s.nombre_seccion}
                 </option>
               ))}

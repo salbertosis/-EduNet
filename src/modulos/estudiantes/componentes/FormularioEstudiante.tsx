@@ -26,6 +26,12 @@ interface Estudiante {
   fecha_retiro?: string;
 }
 
+interface Seccion {
+  id_seccion: number;
+  nombre_seccion: string;
+  id_grado_secciones: number;
+}
+
 interface FormularioEstudianteProps {
   estudiante?: Estudiante;
   onGuardar: () => void;
@@ -56,6 +62,7 @@ export function FormularioEstudiante({ estudiante, onGuardar, onCancelar }: Form
   const [success, setSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [periodosEscolares, setPeriodosEscolares] = useState<{ id_periodo: number; periodo_escolar: string }[]>([]);
+  const [secciones, setSecciones] = useState<{ id_seccion: number; nombre_seccion: string; id_grado_secciones: number }[]>([]);
   const { mostrarMensaje } = useMensajeGlobal();
 
   useEffect(() => {
@@ -78,7 +85,6 @@ export function FormularioEstudiante({ estudiante, onGuardar, onCancelar }: Form
     // Obtener periodos escolares al montar el componente
     invoke('listar_periodos_escolares')
       .then((data: any) => {
-        // Suponiendo que data es un array de periodos
         setPeriodosEscolares(data);
       })
       .catch((err) => {
@@ -86,13 +92,52 @@ export function FormularioEstudiante({ estudiante, onGuardar, onCancelar }: Form
       });
   }, []);
 
+  useEffect(() => {
+    const cargarSecciones = async () => {
+      console.log('Intentando cargar secciones con:', {
+        idGrado: formData.id_grado,
+        idModalidad: formData.id_modalidad,
+        idPeriodo: formData.id_periodoactual
+      });
+      
+      if (formData.id_grado && formData.id_modalidad && formData.id_periodoactual) {
+        try {
+          const seccionesData = await invoke<Seccion[]>('obtener_secciones_por_grado_modalidad_periodo', {
+            idGrado: formData.id_grado,
+            idModalidad: formData.id_modalidad,
+            idPeriodo: formData.id_periodoactual
+          });
+          console.log('Secciones cargadas:', seccionesData);
+          setSecciones(seccionesData);
+        } catch (err) {
+          console.error('Error al cargar secciones:', err);
+          mostrarMensaje('Error al cargar las secciones', 'error');
+        }
+      } else {
+        console.log('No se cargan secciones porque faltan datos:', {
+          idGrado: formData.id_grado,
+          idModalidad: formData.id_modalidad,
+          idPeriodo: formData.id_periodoactual
+        });
+        setSecciones([]);
+      }
+    };
+
+    cargarSecciones();
+  }, [formData.id_grado, formData.id_modalidad, formData.id_periodoactual]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: name === 'cedula' ? Number(value) : name.startsWith('id_') ? Number(value) :
-        name === 'id_periodoactual' ? Number(value) : value,
-    }));
+    console.log('handleChange:', { name, value });
+    setFormData(prev => {
+      const newData = {
+        ...prev,
+        [name]: name === 'cedula' ? Number(value) : name.startsWith('id_') ? Number(value) :
+          name === 'id_periodoactual' ? Number(value) : value,
+      };
+      console.log('Nuevo formData:', newData);
+      return newData;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -269,14 +314,11 @@ export function FormularioEstudiante({ estudiante, onGuardar, onCancelar }: Form
                   className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-dark-600 bg-white dark:bg-dark-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
                 >
                   <option value="">Seleccione una sección</option>
-                  <option value={1}>A</option>
-                  <option value={2}>B</option>
-                  <option value={3}>C</option>
-                  <option value={4}>D</option>
-                  <option value={5}>E</option>
-                  <option value={6}>F</option>
-                  <option value={7}>G</option>
-                  <option value={8}>H</option>
+                  {secciones.map((seccion) => (
+                    <option key={seccion.id_seccion} value={seccion.id_grado_secciones}>
+                      {seccion.nombre_seccion}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="space-y-2">

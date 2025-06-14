@@ -5,4 +5,5 @@ pub mod historial;
 pub mod pendiente;
 pub mod docente;
 pub mod plantillas;
-pub mod actas_masivas; 
+pub mod actas_masivas;
+pub mod migracion; 

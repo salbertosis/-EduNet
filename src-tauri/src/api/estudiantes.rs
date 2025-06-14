@@ -1,7 +1,6 @@
 use tauri::State;
 use crate::models::estudiante::{Estudiante, FiltroEstudiantes, NuevoEstudiante};
 use crate::AppState;
-use chrono::NaiveDate;
 use postgres_types::ToSql;
 use std::collections::HashSet;
 use serde::{Serialize, Deserialize};
@@ -359,6 +358,4 @@ pub async fn contar_estudiantes_masculinos(state: State<'_, AppState>) -> Result
         .map_err(|e| e.to_string())?;
     let total: i64 = row.get(0);
     Ok(total)
-}
-
-// Funciones auxiliares necesarias para estudiantes (por ejemplo, verificar_cedula_duplicada, obtener_cedulas_existentes, etc.) 
+} 

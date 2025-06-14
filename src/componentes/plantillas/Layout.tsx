@@ -65,7 +65,7 @@ const menuItems = [
       },
       {
         label: 'Guardar Historial',
-        onClick: () => setMostrarModalGuardarHistorial(true)
+        path: '/guardar-historial'
       }
     ]
   },
@@ -115,6 +115,7 @@ const menuItems = [
                           key={child.label}
                           to={child.path}
                           className="flex items-center space-x-2 px-3 py-2 rounded-lg text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 w-full text-left"
+                          onClick={() => setMostrarConfig(false)}
                         >
                           <span>{child.label}</span>
                         </Link>

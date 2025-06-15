@@ -72,6 +72,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             api::plantillas::obtener_tarjetas_cursos,
             api::migracion::migrar_estudiantes,
             api::plantillas::obtener_secciones_anio_anterior,
+            api::plantillas::obtener_grado_secciones_por_id,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

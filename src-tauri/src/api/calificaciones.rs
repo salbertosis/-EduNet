@@ -62,15 +62,20 @@ pub async fn obtener_calificaciones_estudiante(
     println!("[DEBUG][BACKEND] >>>>> FUNCION obtener_calificaciones_estudiante llamada");
     println!("[DEBUG][BACKEND] Parámetros recibidos: id_estudiante={}, id_periodo={}", id_estudiante, id_periodo);
     let db = state.db.lock().await;
-    // Log antes de la consulta de grado y modalidad
-    println!("[DEBUG][BACKEND] Consultando grado y modalidad del estudiante...");
+    // Obtener id_grado_secciones del estudiante
     let estudiante = db.query_one(
-        "SELECT id_grado, id_modalidad FROM estudiantes WHERE id = $1",
+        "SELECT id_grado_secciones FROM estudiantes WHERE id = $1",
         &[&id_estudiante]
     ).await.map_err(|e| format!("Error al verificar estudiante: {}", e))?;
-    let id_grado: i32 = estudiante.get(0);
-    let id_modalidad: i32 = estudiante.get(1);
-    println!("[DEBUG][BACKEND] Estudiante encontrado: id_grado={}, id_modalidad={}", id_grado, id_modalidad);
+    let id_grado_secciones: i32 = estudiante.get(0);
+    // Obtener id_grado y id_modalidad desde grado_secciones
+    let grado_seccion = db.query_one(
+        "SELECT id_grado, id_modalidad FROM grado_secciones WHERE id_grado_secciones = $1",
+        &[&id_grado_secciones]
+    ).await.map_err(|e| format!("Error al obtener grado_secciones: {}", e))?;
+    let id_grado: i32 = grado_seccion.get(0);
+    let id_modalidad: i32 = grado_seccion.get(1);
+    println!("[DEBUG][BACKEND] Estudiante encontrado: id_grado_secciones={}, id_grado={}, id_modalidad={}", id_grado_secciones, id_grado, id_modalidad);
     // Log antes de la consulta principal
     println!("[DEBUG][BACKEND] Ejecutando consulta principal de calificaciones con parámetros: id_grado={}, id_modalidad={}, id_estudiante={}, id_periodo={}", id_grado, id_modalidad, id_estudiante, id_periodo);
     let query = "

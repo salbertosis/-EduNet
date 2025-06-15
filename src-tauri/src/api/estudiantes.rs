@@ -58,13 +58,13 @@ pub async fn obtener_estudiantes(
     let db = state.db.lock().await;
     let mut query_base = String::from(
         "SELECT e.id, e.cedula, e.nombres, e.apellidos, e.genero, e.fecha_nacimiento, \
-        e.id_grado_secciones, e.fecha_ingreso, e.municipionac, e.paisnac, e.entidadfed, \
-        e.ciudadnac, e.estadonac, e.id_grado, g.nombre_grado, e.id_seccion, s.nombre_seccion, \
-        e.id_modalidad, m.nombre_modalidad, e.id_periodoactual, e.estado, e.fecha_retiro \
+        e.id_grado_secciones, e.fecha_ingreso, e.id_periodoactual, e.estado, e.fecha_retiro, \
+        g.nombre_grado, s.nombre_seccion, m.nombre_modalidad \
         FROM estudiantes e \
-        LEFT JOIN grados g ON e.id_grado = g.id_grado \
-        LEFT JOIN secciones s ON e.id_seccion = s.id_seccion \
-        LEFT JOIN modalidades m ON e.id_modalidad = m.id_modalidad \
+        LEFT JOIN grado_secciones gs ON e.id_grado_secciones = gs.id_grado_secciones \
+        LEFT JOIN grados g ON gs.id_grado = g.id_grado \
+        LEFT JOIN secciones s ON gs.id_seccion = s.id_seccion \
+        LEFT JOIN modalidades m ON gs.id_modalidad = m.id_modalidad \
         WHERE 1=1"
     );
     let mut param_values: Vec<ParamValue> = Vec::new();
@@ -78,11 +78,11 @@ pub async fn obtener_estudiantes(
             param_values.push(ParamValue::String(format!("{}%", apellidos)));
         }
         if let Some(grado_num) = f.grado {
-            query_base.push_str(&format!(" AND e.id_grado = ${}", param_values.len() + 1));
+            query_base.push_str(&format!(" AND gs.id_grado = ${}", param_values.len() + 1));
             param_values.push(ParamValue::I32(grado_num));
         }
         if let Some(modalidad_num) = f.modalidad {
-            query_base.push_str(&format!(" AND e.id_modalidad = ${}", param_values.len() + 1));
+            query_base.push_str(&format!(" AND gs.id_modalidad = ${}", param_values.len() + 1));
             param_values.push(ParamValue::I32(modalidad_num));
         }
         if let Some(estado) = f.estado {
@@ -118,20 +118,20 @@ pub async fn obtener_estudiantes(
             fecha_nacimiento: row.get(5),
             id_grado_secciones: row.get(6),
             fecha_ingreso: row.get(7),
-            municipionac: row.get(8),
-            paisnac: row.get(9),
-            entidadfed: row.get(10),
-            ciudadnac: row.get(11),
-            estadonac: row.get(12),
-            id_grado: row.get(13),
-            nombre_grado: row.get(14),
-            id_seccion: row.get(15),
-            nombre_seccion: row.get(16),
-            id_modalidad: row.get(17),
-            nombre_modalidad: row.get(18),
-            id_periodoactual: row.get(19),
-            estado: row.get(20),
-            fecha_retiro: row.get(21),
+            id_periodoactual: row.get(8),
+            estado: row.get(9),
+            fecha_retiro: row.get(10),
+            nombre_grado: row.get(11),
+            nombre_seccion: row.get(12),
+            nombre_modalidad: row.get(13),
+            municipionac: None,
+            paisnac: None,
+            entidadfed: None,
+            ciudadnac: None,
+            estadonac: None,
+            id_grado: None,
+            id_seccion: None,
+            id_modalidad: None,
         })
         .collect::<Vec<_>>();
     let paginacion_info = PaginacionInfo {
@@ -297,21 +297,26 @@ pub async fn obtener_estudiante_por_id(
     state: State<'_, AppState>,
 ) -> Result<Estudiante, String> {
     let db = state.db.lock().await;
-    let row = db
-        .query_one(
+    let row_opt = db
+        .query_opt(
             "SELECT e.id, e.cedula, e.nombres, e.apellidos, e.genero, e.fecha_nacimiento, \
-            e.id_grado_secciones, e.fecha_ingreso, e.municipionac, e.paisnac, e.entidadfed, \
-            e.ciudadnac, e.estadonac, e.id_grado, g.nombre_grado, e.id_seccion, s.nombre_seccion, \
-            e.id_modalidad, m.nombre_modalidad, e.id_periodoactual, e.estado, e.fecha_retiro \
+            e.id_grado_secciones, e.fecha_ingreso, e.id_periodoactual, e.estado, e.fecha_retiro, \
+            gs.id_grado, g.nombre_grado, gs.id_seccion, s.nombre_seccion, \
+            gs.id_modalidad, m.nombre_modalidad \
             FROM estudiantes e \
-            LEFT JOIN grados g ON e.id_grado = g.id_grado \
-            LEFT JOIN secciones s ON e.id_seccion = s.id_seccion \
-            LEFT JOIN modalidades m ON e.id_modalidad = m.id_modalidad \
+            LEFT JOIN grado_secciones gs ON e.id_grado_secciones = gs.id_grado_secciones \
+            LEFT JOIN grados g ON gs.id_grado = g.id_grado \
+            LEFT JOIN secciones s ON gs.id_seccion = s.id_seccion \
+            LEFT JOIN modalidades m ON gs.id_modalidad = m.id_modalidad \
             WHERE e.id = $1",
             &[&id],
         )
         .await
         .map_err(|e| e.to_string())?;
+    let row = match row_opt {
+        Some(r) => r,
+        None => return Err(format!("No se encontró el estudiante con id {}", id)),
+    };
     Ok(Estudiante {
         id: row.get(0),
         cedula: row.get(1),
@@ -321,20 +326,20 @@ pub async fn obtener_estudiante_por_id(
         fecha_nacimiento: row.get(5),
         id_grado_secciones: row.get(6),
         fecha_ingreso: row.get(7),
-        municipionac: row.get(8),
-        paisnac: row.get(9),
-        entidadfed: row.get(10),
-        ciudadnac: row.get(11),
-        estadonac: row.get(12),
-        id_grado: row.get(13),
-        nombre_grado: row.get(14),
-        id_seccion: row.get(15),
-        nombre_seccion: row.get(16),
-        id_modalidad: row.get(17),
-        nombre_modalidad: row.get(18),
-        id_periodoactual: row.get(19),
-        estado: row.get(20),
-        fecha_retiro: row.get(21),
+        municipionac: None,
+        paisnac: None,
+        entidadfed: None,
+        ciudadnac: None,
+        estadonac: None,
+        id_grado: row.get(11),
+        nombre_grado: row.get(12),
+        id_seccion: row.get(13),
+        nombre_seccion: row.get(14),
+        id_modalidad: row.get(15),
+        nombre_modalidad: row.get(16),
+        id_periodoactual: row.get(8),
+        estado: row.get(9),
+        fecha_retiro: row.get(10),
     })
 }
 

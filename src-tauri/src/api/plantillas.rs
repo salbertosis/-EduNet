@@ -15,6 +15,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio_postgres;
 use rust_xlsxwriter::{Workbook, Format, FormatAlign, FormatBorder, XlsxError};
+use serde_json;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct EstudiantePlantilla {
@@ -733,4 +734,19 @@ pub async fn obtener_secciones_anio_anterior(
     }).collect();
 
     Ok(secciones)
+}
+
+#[tauri::command]
+pub async fn obtener_grado_secciones_por_id(
+    id: i32,
+    state: tauri::State<'_, crate::AppState>,
+) -> Result<serde_json::Value, String> {
+    let db = state.db.lock().await;
+    let row = db.query_one(
+        "SELECT id_grado, id_modalidad FROM grado_secciones WHERE id_grado_secciones = $1",
+        &[&id],
+    ).await.map_err(|e| format!("No se encontró grado_secciones: {}", e))?;
+    let id_grado: i32 = row.get(0);
+    let id_modalidad: i32 = row.get(1);
+    Ok(serde_json::json!({ "id_grado": id_grado, "id_modalidad": id_modalidad }))
 } 

@@ -55,7 +55,11 @@ export function ListaCalificaciones() {
   }, [estudiante, mostrarMensaje]);
 
   // Hooks para asignaturas y calificaciones SOLO si hay estudiante y periodo actual
-  const { asignaturas, loading: loadingAsignaturas, error: errorAsignaturas } = useAsignaturas(estudiante?.id_grado ?? 0, estudiante?.id_modalidad ?? 0);
+  const { asignaturas, loading: loadingAsignaturas, error: errorAsignaturas } = useAsignaturas(
+    estudiante?.id_grado ?? 0,
+    estudiante?.id_modalidad ?? 0,
+    estudiante?.id_grado_secciones ?? undefined
+  );
   const { calificaciones, setCalificaciones, loading: loadingCalificaciones, error: errorCalificaciones } = useCalificaciones(estudiante?.id ?? 0, periodoActual ?? 0);
   const { handleInputChange, errores, limpiarErrores } = useInputCalificaciones(asignaturas, calificaciones, setCalificaciones);
   const { guardarCalificaciones, loading: loadingGuardarCalificaciones, exito: exitoGuardarCalificaciones } = useGuardarCalificaciones();

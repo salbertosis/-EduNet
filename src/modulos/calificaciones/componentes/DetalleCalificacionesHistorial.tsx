@@ -20,9 +20,16 @@ export function DetalleCalificacionesHistorial({ idEstudiante, idPeriodo }: Deta
       setCargando(true);
       try {
         const estudiante = await invoke<any>('obtener_estudiante_por_id', { id: idEstudiante });
+        let id_grado = estudiante.id_grado;
+        let id_modalidad = estudiante.id_modalidad;
+        if (estudiante.id_grado_secciones) {
+          const gradoSeccion = await invoke<any>('obtener_grado_secciones_por_id', { id: estudiante.id_grado_secciones });
+          id_grado = gradoSeccion.id_grado;
+          id_modalidad = gradoSeccion.id_modalidad;
+        }
         const asignaturasData = await invoke<Asignatura[]>('obtener_asignaturas_por_grado_modalidad', {
-          idGrado: estudiante.id_grado,
-          idModalidad: estudiante.id_modalidad,
+          idGrado: id_grado,
+          idModalidad: id_modalidad,
         });
         const calificacionesData = await invoke<CalificacionEstudiante[]>('obtener_calificaciones_estudiante', {
           idEstudiante: idEstudiante,

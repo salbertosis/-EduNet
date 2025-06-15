@@ -40,7 +40,11 @@ interface DetalleCalificacionesProps {
 
 export function DetalleCalificaciones({ estudiante, onVolver }: DetalleCalificacionesProps) {
   const [tab, setTab] = useState('datos');
-  const { asignaturas } = useAsignaturas(estudiante.id_grado ?? 0, estudiante.id_modalidad ?? 0);
+  const { asignaturas } = useAsignaturas(
+    estudiante.id_grado ?? 0,
+    estudiante.id_modalidad ?? 0,
+    estudiante.id_grado_secciones ?? undefined
+  );
   const [periodoActual, setPeriodoActual] = useState<number | null>(null);
   const { calificaciones, setCalificaciones } = useCalificaciones(estudiante.id, periodoActual ?? 0);
   const { mostrarMensaje } = useMensajeGlobal();

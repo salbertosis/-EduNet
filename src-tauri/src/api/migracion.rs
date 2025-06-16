@@ -153,4 +153,44 @@ pub async fn migrar_estudiantes(
         }
     }
     Ok(resumen)
+}
+
+#[tauri::command(rename_all = "snake_case")]
+pub async fn migrar_estudiantes_nuevos(
+    id_grado_secciones: i32,
+    id_periodo: i32,
+    state: tauri::State<'_, crate::AppState>,
+) -> Result<usize, String> {
+    let db = state.db.lock().await;
+
+    // 1. Obtener fechas del periodo escolar
+    let row_periodo = db.query_one(
+        "SELECT fecha_inicio, fecha_final FROM periodos_escolares WHERE id_periodo = $1",
+        &[&id_periodo]
+    ).await.map_err(|e| format!("No se encontró el período escolar: {}", e))?;
+    let fecha_inicio: chrono::NaiveDate = row_periodo.get(0);
+    let fecha_fin: chrono::NaiveDate = row_periodo.get(1);
+
+    // 2. Buscar estudiantes activos con el id_grado_secciones dado, que no tengan historial en ese periodo
+    let estudiantes = db.query(
+        "SELECT id FROM estudiantes WHERE estado = 'activo' AND id_grado_secciones = $1 AND id NOT IN (
+            SELECT id_estudiante FROM historial_grado_estudiantes WHERE id_periodo = $2
+        )",
+        &[&id_grado_secciones, &id_periodo]
+    ).await.map_err(|e| format!("Error al buscar estudiantes: {}", e))?;
+
+    let mut migrados = 0;
+    for row in estudiantes {
+        let id_estudiante: i32 = row.get(0);
+        // Insertar en historial_grado_estudiantes
+        let res = db.execute(
+            "INSERT INTO historial_grado_estudiantes (id_estudiante, id_grado_secciones, id_periodo, fecha_inicio, fecha_fin, es_actual, estado)
+             VALUES ($1, $2, $3, $4, $5, TRUE, 'activo')",
+            &[&id_estudiante, &id_grado_secciones, &id_periodo, &fecha_inicio, &fecha_fin]
+        ).await;
+        if res.is_ok() {
+            migrados += 1;
+        }
+    }
+    Ok(migrados)
 } 

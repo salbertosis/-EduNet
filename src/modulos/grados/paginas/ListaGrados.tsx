@@ -1,142 +1,463 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { 
+  GraduationCap, 
+  Users, 
+  User, 
+  Search, 
+  BookOpen, 
+  Award, 
+  Feather, 
+  ScrollText, 
+  UserPlus,
+  X,
+  Loader2
+} from 'lucide-react';
+import { invoke } from '@tauri-apps/api/tauri';
 import { Paginacion } from '../../../componentes/Paginacion';
-import { useGrados, Grado } from '../hooks/useGrados';
-import { GraduationCap, Users, User, Search, BookOpen, Award, Feather, ScrollText } from 'lucide-react';
+import { useGrados, type Grado } from '../hooks/useGrados';
+import { useMensajeGlobal } from '../../../componentes/MensajeGlobalContext';
 
+// Types y constantes
 interface FiltrosGrados {
-    busqueda: string;
-    grado: string;
-    seccion: string;
-    modalidad: string;
+  busqueda: string;
+  grado: string;
+  seccion: string;
+  modalidad: string;
+}
+
+interface Docente {
+  id_docente: number;
+  nombres: string;
+  apellidos: string;
 }
 
 interface TarjetaCursoProps {
-    grado: Grado;
+  grado: Grado;
+  onDocenteAsignado?: () => void;
 }
 
-const IconoGrado: React.FC<{ idGrado: number }> = ({ idGrado }) => {
-    const IconComponent = (() => {
-        switch (idGrado) {
-            case 1: return GraduationCap;
-            case 2: return BookOpen;
-            case 3: return Award;
-            case 4: return Feather;
-            case 5: return ScrollText;
-            default: return GraduationCap;
-        }
-    })();
-    return <IconComponent className="w-7 h-7 text-white" />;
-};
+type GradoIcon = 1 | 2 | 3 | 4 | 5;
 
-const TarjetaCurso: React.FC<TarjetaCursoProps> = ({ grado }) => (
-    <div className="relative rounded-2xl border border-cyan-200 dark:border-cyan-800 shadow-2xl shadow-cyan-100/40 dark:shadow-cyan-900/40 bg-white dark:bg-[#232c3d] p-6 flex flex-col hover:scale-105 hover:shadow-emerald-400/30 transition-transform duration-200">
-        {/* Gradiente superior */}
-        <div className="h-2 w-full rounded-t-2xl bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-400 mb-3"></div>
-        {/* Icono destacado */}
-        <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 shadow-lg mb-2 mx-auto">
-            <IconoGrado idGrado={grado.id_grado} />
-        </div>
-        {/* Encabezado */}
-        <span className="font-extrabold text-2xl text-gray-900 dark:text-white mb-1 text-center">{grado.nombre_grado} Año {grado.nombre_seccion}</span>
-        {/* Modalidad */}
-        <span className="text-sm text-cyan-600 dark:text-cyan-300 mb-2 text-center">{grado.nombre_modalidad}</span>
-        {/* Docente guía */}
-        <span className="text-xs text-gray-500 dark:text-gray-400 mb-2 text-center">Docente Guía: <b className="text-cyan-600 dark:text-cyan-300">{grado.docente_guia}</b></span>
-        {/* Estadísticas */}
-        <div className="flex items-center justify-center gap-4 my-2">
-            <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400 text-sm bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-full font-medium"><Users className="w-4 h-4" /> {grado.total_estudiantes}</span>
-            <span className="flex items-center gap-1 text-pink-500 dark:text-pink-400 text-sm bg-pink-50 dark:bg-pink-900/30 px-2 py-1 rounded-full font-medium"><User className="w-4 h-4" /> {grado.estudiantes_femeninos}</span>
-            <span className="flex items-center gap-1 text-blue-700 dark:text-blue-500 text-sm bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded-full font-medium"><User className="w-4 h-4" /> {grado.estudiantes_masculinos}</span>
-        </div>
-        {/* Botón de detalles */}
-        <div className="flex justify-end mt-4">
-            <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-100 text-blue-700 border border-blue-200 shadow hover:bg-blue-200 transition dark:bg-blue-900 dark:text-blue-200 dark:border-blue-700 dark:hover:bg-blue-800">
-                <Search className="w-5 h-5" />
-                Ver detalles
-            </button>
-        </div>
-    </div>
-);
+// Constantes mejoradas con tipado estricto
+const AÑOS = [
+  { id: 1, label: "1er Año" },
+  { id: 2, label: "2do Año" },
+  { id: 3, label: "3er Año" },
+  { id: 4, label: "4to Año" },
+  { id: 5, label: "5to Año" }
+] as const;
 
-const AÑOS = ["1er Año", "2do Año", "3er Año", "4to Año", "5to Año"];
 const MODALIDADES = [
-    { value: 1, label: "Ciencias" },
-    { value: 2, label: "Telemática" },
-];
+  { value: 1, label: "Ciencias" },
+  { value: 2, label: "Telemática" },
+] as const;
 
-// Función para normalizar strings (quitar tildes y pasar a minúsculas)
-function normalizar(str: string) {
-    return str.normalize('NFD').replace(/[00-\u036f]/g, '').toLowerCase();
-}
+const SECCIONES_ORDEN = ["A", "B", "C", "D", "E", "F", "G"] as const;
 
+const ICONOS_GRADO: Record<GradoIcon, React.ComponentType<{ className?: string }>> = {
+  1: GraduationCap,
+  2: BookOpen,
+  3: Award,
+  4: Feather,
+  5: ScrollText,
+} as const;
+
+// Utilities
+const normalizar = (str: string): string => 
+  str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+const formatearNombreCompleto = (nombres: string, apellidos: string): string =>
+  `${nombres.trim()} ${apellidos.trim()}`.trim();
+
+// Componentes optimizados
+const IconoGrado = React.memo<{ idGrado: number }>(({ idGrado }) => {
+  const IconComponent = ICONOS_GRADO[idGrado as GradoIcon] || GraduationCap;
+  return (
+    <IconComponent 
+      className="w-7 h-7 text-white" 
+      aria-hidden="true"
+    />
+  );
+});
+
+IconoGrado.displayName = 'IconoGrado';
+
+// Modal mejorado con autocompletado de docentes
+const ModalAsignarDocente = React.memo<{
+  isOpen: boolean;
+  onClose: () => void;
+  onAsignar: (docenteId: number) => Promise<void>;
+  cargandoDocentes: boolean;
+  asignando: boolean;
+  error?: boolean;
+}>(({ isOpen, onClose, onAsignar, cargandoDocentes, asignando, error = false }) => {
+  const [busqueda, setBusqueda] = useState('');
+  const [docentes, setDocentes] = useState<Docente[]>([]);
+  const [docenteSeleccionado, setDocenteSeleccionado] = useState<number | null>(null);
+  const [cargandoBusqueda, setCargandoBusqueda] = useState(false);
+  const [errorBusqueda, setErrorBusqueda] = useState(false);
+
+  // Buscar docentes al escribir
+  useEffect(() => {
+    if (!isOpen || busqueda.length < 2) {
+      setDocentes([]);
+      return;
+    }
+    setCargandoBusqueda(true);
+    setErrorBusqueda(false);
+    invoke<any>('obtener_docentes', {
+      filtro: { nombres: busqueda },
+      paginacion: { pagina: 1, registros_por_pagina: 10 }
+    })
+      .then((res) => setDocentes(res.datos ?? []))
+      .catch(() => {
+        setDocentes([]);
+        setErrorBusqueda(true);
+      })
+      .finally(() => setCargandoBusqueda(false));
+  }, [busqueda, isOpen]);
+
+  const handleAsignar = useCallback(async () => {
+    if (!docenteSeleccionado) return;
+    await onAsignar(docenteSeleccionado);
+    setDocenteSeleccionado(null);
+    setBusqueda('');
+    setDocentes([]);
+  }, [docenteSeleccionado, onAsignar]);
+
+  const handleClose = useCallback(() => {
+    if (!asignando) {
+      setDocenteSeleccionado(null);
+      setBusqueda('');
+      setDocentes([]);
+      onClose();
+    }
+  }, [asignando, onClose]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-50 p-4" role="dialog" aria-modal="true" aria-labelledby="modal-title" onClick={e => e.target === e.currentTarget && handleClose()}>
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-auto">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-slate-700">
+          <h2 id="modal-title" className="text-xl font-semibold text-gray-900 dark:text-white">Asignar Docente Guía</h2>
+          <button type="button" onClick={handleClose} disabled={asignando} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-50" aria-label="Cerrar modal">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="p-6 space-y-4">
+          <label htmlFor="busqueda-docente" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Buscar docente (nombre o apellido)</label>
+          <input
+            id="busqueda-docente"
+            type="text"
+            className="w-full p-3 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            placeholder="Escriba al menos 2 letras..."
+            value={busqueda}
+            onChange={e => setBusqueda(e.target.value)}
+            disabled={asignando}
+            autoFocus
+          />
+          {cargandoBusqueda ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+              <span className="ml-2 text-gray-600 dark:text-gray-300">Buscando docentes...</span>
+            </div>
+          ) : errorBusqueda ? (
+            <div className="text-center py-4 text-red-600 dark:text-red-400">Error al buscar docentes</div>
+          ) : (
+            docentes.length > 0 && (
+              <ul className="border border-gray-200 dark:border-slate-700 rounded-lg max-h-48 overflow-auto divide-y divide-gray-100 dark:divide-slate-700">
+                {docentes.map(docente => (
+                  <li key={docente.id_docente} className={`p-2 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 ${docenteSeleccionado === docente.id_docente ? 'bg-blue-100 dark:bg-blue-800' : ''}`} onClick={() => setDocenteSeleccionado(docente.id_docente)}>
+                    <span className="font-medium">{formatearNombreCompleto(docente.nombres, docente.apellidos)}</span>
+                  </li>
+                ))}
+              </ul>
+            )
+          )}
+        </div>
+        <div className="flex justify-end gap-3 p-6 border-t border-gray-200 dark:border-slate-700">
+          <button type="button" onClick={handleClose} disabled={asignando} className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-slate-700 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors disabled:opacity-50">Cerrar</button>
+          <button type="button" onClick={handleAsignar} disabled={!docenteSeleccionado || asignando} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2">{asignando ? <Loader2 className="w-4 h-4 animate-spin" /> : null}{asignando ? 'Asignando...' : 'Asignar'}</button>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+ModalAsignarDocente.displayName = 'ModalAsignarDocente';
+
+// Componente principal de tarjeta optimizado
+const TarjetaCurso = React.memo<TarjetaCursoProps>(({ grado, onDocenteAsignado }) => {
+  const { mostrarMensaje } = useMensajeGlobal();
+  const [modalAbierto, setModalAbierto] = useState(false);
+  const [docentes, setDocentes] = useState<Docente[]>([]);
+  const [cargandoDocentes, setCargandoDocentes] = useState(false);
+  const [asignando, setAsignando] = useState(false);
+  const [errorCargandoDocentes, setErrorCargandoDocentes] = useState(false);
+
+  const abrirModal = useCallback(async () => {
+    setModalAbierto(true);
+    setCargandoDocentes(true);
+    setErrorCargandoDocentes(false);
+
+    try {
+      const listaDocentes = await invoke<any>('obtener_docentes', {
+        filtro: null,
+        paginacion: { pagina: 1, registros_por_pagina: 1000 }
+      });
+      setDocentes(listaDocentes.datos ?? []);
+    } catch (error) {
+      console.error('Error al obtener docentes:', error);
+      setErrorCargandoDocentes(true);
+      mostrarMensaje('Error al cargar la lista de docentes', 'error');
+      setDocentes([]);
+    } finally {
+      setCargandoDocentes(false);
+    }
+  }, [mostrarMensaje]);
+
+  const asignarDocenteGuia = useCallback(async (docenteId: number) => {
+    setAsignando(true);
+    
+    try {
+      await invoke('asignar_docente_guia', {
+        id_grado_secciones: grado.id_grado_secciones,
+        id_docente_guia: docenteId
+      });
+      
+      mostrarMensaje('Docente guía asignado correctamente', 'exito');
+      onDocenteAsignado?.();
+      setModalAbierto(false);
+    } catch (error) {
+      console.error('Error al asignar docente:', error);
+      mostrarMensaje('Error al asignar docente guía', 'error');
+    } finally {
+      setAsignando(false);
+    }
+  }, [grado.id_grado_secciones, mostrarMensaje, onDocenteAsignado]);
+
+  const cerrarModal = useCallback(() => {
+    setModalAbierto(false);
+    setErrorCargandoDocentes(false);
+  }, []);
+
+  return (
+    <>
+      <article className="w-full min-w-[440px] max-w-[480px] px-8 group relative rounded-2xl border border-slate-200 dark:border-slate-700 shadow-lg bg-white dark:bg-slate-800 p-6 transition-all duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-blue-500/10">
+        {/* Gradiente superior */}
+        <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-400" />
+        
+        {/* Botón de asignar docente */}
+        <button
+          type="button"
+          onClick={abrirModal}
+          className="absolute top-4 right-4 p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-full hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors group/btn"
+          title="Asignar docente guía"
+          aria-label={`Asignar docente guía para ${grado.nombre_grado} Año ${grado.nombre_seccion}`}
+        >
+          <UserPlus className="w-5 h-5 text-emerald-600 dark:text-emerald-400 group-hover/btn:scale-110 transition-transform" />
+        </button>
+
+        {/* Icono del grado */}
+        <div className="flex justify-center mb-4">
+          <div className="flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 shadow-lg">
+            <IconoGrado idGrado={grado.id_grado} />
+          </div>
+        </div>
+
+        {/* Información principal */}
+        <div className="text-center space-y-2 mb-4">
+          <h3 className="font-bold text-xl text-gray-900 dark:text-white">
+            {grado.nombre_grado} Año {grado.nombre_seccion}
+          </h3>
+          <p className="text-sm text-cyan-600 dark:text-cyan-400 font-medium">
+            {grado.nombre_modalidad}
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Docente Guía: 
+            <span className="font-semibold text-cyan-600 dark:text-cyan-400 ml-1">
+              {grado.docente_guia || 'Sin asignar'}
+            </span>
+          </p>
+        </div>
+
+        {/* Estadísticas - Ajustado para una sola línea */}
+        <div className="flex justify-center gap-2 mb-4">
+          <div className="flex items-center gap-1 text-blue-600 dark:text-blue-400 text-sm bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-full font-medium">
+            <Users className="w-3 h-3" aria-hidden="true" />
+            <span aria-label={`${grado.total_estudiantes} estudiantes en total`}>
+              {grado.total_estudiantes}
+            </span>
+          </div>
+          <div className="flex items-center gap-1 text-pink-500 dark:text-pink-400 text-sm bg-pink-50 dark:bg-pink-900/30 px-2 py-1 rounded-full font-medium">
+            <User className="w-3 h-3" aria-hidden="true" />
+            <span aria-label={`${grado.estudiantes_femeninos} estudiantes femeninas`}>
+              {grado.estudiantes_femeninos}F
+            </span>
+          </div>
+          <div className="flex items-center gap-1 text-indigo-600 dark:text-indigo-400 text-sm bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-full font-medium">
+            <User className="w-3 h-3" aria-hidden="true" />
+            <span aria-label={`${grado.estudiantes_masculinos} estudiantes masculinos`}>
+              {grado.estudiantes_masculinos}M
+            </span>
+          </div>
+        </div>
+
+        {/* Botón de detalles */}
+        <div className="flex justify-center">
+          <button
+            type="button"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors font-medium"
+          >
+            <Search className="w-4 h-4" aria-hidden="true" />
+            Ver detalles
+          </button>
+        </div>
+      </article>
+
+      <ModalAsignarDocente
+        isOpen={modalAbierto}
+        onClose={cerrarModal}
+        onAsignar={asignarDocenteGuia}
+        cargandoDocentes={cargandoDocentes}
+        asignando={asignando}
+      />
+    </>
+  );
+});
+
+TarjetaCurso.displayName = 'TarjetaCurso';
+
+// Componente principal
 export const ListaGrados: React.FC = () => {
-    const [añoActivo, setAñoActivo] = useState(0);
-    const [modalidad, setModalidad] = useState(1);
+  const [añoActivo, setAñoActivo] = useState(1);
+  const [modalidad, setModalidad] = useState(1);
 
-    const { 
-        grados, 
-        cargando, 
-        error,
-        obtenerGrados
-    } = useGrados();
+  const { grados, cargando, error, obtenerGrados } = useGrados();
 
-    useEffect(() => {
-        obtenerGrados();
-    }, []);
+  useEffect(() => {
+    obtenerGrados();
+  }, [obtenerGrados]);
 
-    // Filtrar tarjetas según año y modalidad seleccionada (por id_modalidad)
-    const gradosFiltrados = grados.filter(
-        (g) =>
-            g.id_grado === añoActivo + 1 &&
-            g.id_modalidad === modalidad &&
-            (añoActivo !== 0 || ["A","B","C","D","E","F","G"].includes(g.nombre_seccion))
-    ).sort((a, b) => {
-        if (añoActivo === 0) {
-            // Ordenar secciones de la A a la G
-            const orden = ["A","B","C","D","E","F","G"];
-            return orden.indexOf(a.nombre_seccion) - orden.indexOf(b.nombre_seccion);
+  // Memoizar grados filtrados para optimizar rendimiento
+  const gradosFiltrados = useMemo(() => {
+    return grados
+      .filter((grado) => {
+        const cumpleAño = grado.id_grado === añoActivo;
+        const cumpleModalidad = grado.id_modalidad === modalidad;
+        const cumpleSeccion = añoActivo !== 1 || SECCIONES_ORDEN.includes(grado.nombre_seccion as any);
+        
+        return cumpleAño && cumpleModalidad && cumpleSeccion;
+      })
+      .sort((a, b) => {
+        if (añoActivo === 1) {
+          const ordenA = SECCIONES_ORDEN.indexOf(a.nombre_seccion as any);
+          const ordenB = SECCIONES_ORDEN.indexOf(b.nombre_seccion as any);
+          return ordenA - ordenB;
         }
         return 0;
-    });
+      });
+  }, [grados, añoActivo, modalidad]);
 
+  const handleRefresh = useCallback(() => {
+    obtenerGrados();
+  }, [obtenerGrados]);
+
+  if (error) {
     return (
-        <div className="p-6">
-            {/* Tabs y selector de modalidad */}
-            <div className="flex items-center justify-between mb-4">
-                <div className="flex gap-2">
-                    {AÑOS.map((año, idx) => (
-                        <button
-                            key={año}
-                            className={`px-4 py-2 rounded-t-lg font-semibold transition-all duration-200 focus:outline-none
-                                ${añoActivo === idx
-                                    ? "bg-gradient-to-r from-teal-400 to-blue-400 text-white shadow"
-                                    : "bg-gray-100 text-gray-600 dark:bg-dark-700 dark:text-gray-300 hover:bg-emerald-900/30 hover:text-emerald-300"}
-                            `}
-                            onClick={() => setAñoActivo(idx)}
-                        >
-                            {año}
-                        </button>
-                    ))}
-                </div>
-                <select
-                    className="ml-4 px-3 py-2 rounded bg-white text-gray-800 border border-cyan-300 dark:bg-gray-700 dark:text-white dark:border-cyan-800 shadow"
-                    value={modalidad}
-                    onChange={e => setModalidad(Number(e.target.value))}
-                >
-                    {MODALIDADES.map(m => (
-                        <option key={m.value} value={m.value}>{m.label}</option>
-                    ))}
-                </select>
-            </div>
-            {/* Tarjetas filtradas con animación */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 transition-all duration-300">
-                {gradosFiltrados.map((grado) => (
-                    <TarjetaCurso key={grado.id_grado_secciones} grado={grado} />
-                ))}
-                {gradosFiltrados.length === 0 && (
-                    <div className="col-span-full text-center text-gray-400 py-12">No hay cursos para este año y modalidad.</div>
-                )}
-            </div>
+      <div className="p-6">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-center">
+          <p className="text-red-700 dark:text-red-400 font-medium">Error al cargar los grados</p>
+          <button
+            onClick={handleRefresh}
+            className="mt-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Reintentar
+          </button>
         </div>
+      </div>
     );
-}; 
+  }
+
+  return (
+    <div className="p-6 space-y-6">
+      {/* Header con controles */}
+      <header>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          {/* Tabs de años */}
+          <nav role="tablist" aria-label="Seleccionar año académico">
+            <div className="flex gap-1 p-1 bg-gray-100 dark:bg-slate-800 rounded-lg">
+              {AÑOS.map((año) => (
+                <button
+                  key={año.id}
+                  role="tab"
+                  aria-selected={añoActivo === año.id}
+                  className={`px-4 py-2 rounded-md font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-100 dark:focus:ring-offset-slate-800 ${
+                    añoActivo === año.id
+                      ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md"
+                      : "text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-slate-700 hover:text-gray-900 dark:hover:text-white"
+                  }`}
+                  onClick={() => setAñoActivo(año.id)}
+                >
+                  {año.label}
+                </button>
+              ))}
+            </div>
+          </nav>
+
+          {/* Selector de modalidad */}
+          <div className="flex items-center gap-2">
+            <label htmlFor="modalidad-select" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Modalidad:
+            </label>
+            <select
+              id="modalidad-select"
+              className="px-3 py-2 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white border border-gray-300 dark:border-slate-600 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              value={modalidad}
+              onChange={(e) => setModalidad(Number(e.target.value))}
+            >
+              {MODALIDADES.map((mod) => (
+                <option key={mod.value} value={mod.value}>
+                  {mod.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </header>
+
+      {/* Contenido principal */}
+      <main>
+        {cargando ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            <span className="ml-3 text-gray-600 dark:text-gray-300">Cargando grados...</span>
+          </div>
+        ) : gradosFiltrados.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
+            {gradosFiltrados.map((grado) => (
+              <TarjetaCurso 
+                key={grado.id_grado_secciones} 
+                grado={grado} 
+                onDocenteAsignado={handleRefresh}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <div className="max-w-md mx-auto">
+              <GraduationCap className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                No hay cursos disponibles
+              </h3>
+              <p className="text-gray-500 dark:text-gray-400">
+                No se encontraron cursos para el año y modalidad seleccionados.
+              </p>
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+};

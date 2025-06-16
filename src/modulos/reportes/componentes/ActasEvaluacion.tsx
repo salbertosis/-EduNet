@@ -51,14 +51,14 @@ export default function ActasEvaluacion() {
     console.log('[ActasEvaluacion] filtros.id_periodo:', filtros.id_periodo);
     if (filtros.id_grado && filtros.id_modalidad && filtros.id_periodo) {
       console.log('[ActasEvaluacion] Llamando a obtener_secciones_por_grado_modalidad_periodo con:', {
-        idGrado: filtros.id_grado,
-        idModalidad: filtros.id_modalidad,
-        idPeriodo: filtros.id_periodo
+        id_grado: filtros.id_grado,
+        id_modalidad: filtros.id_modalidad,
+        id_periodo: filtros.id_periodo
       });
       invoke<any[]>("obtener_secciones_por_grado_modalidad_periodo", {
-        idGrado: filtros.id_grado,
-        idModalidad: filtros.id_modalidad,
-        idPeriodo: filtros.id_periodo
+        id_grado: Number(filtros.id_grado),
+        id_modalidad: Number(filtros.id_modalidad),
+        id_periodo: Number(filtros.id_periodo)
       })
         .then((res) => {
           setSecciones(res);

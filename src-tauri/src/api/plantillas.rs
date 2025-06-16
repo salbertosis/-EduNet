@@ -436,7 +436,7 @@ pub async fn obtener_grados_por_modalidad(
     Ok(grados)
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn obtener_secciones_por_grado_modalidad_periodo(
     state: State<'_, AppState>,
     id_grado: i32,

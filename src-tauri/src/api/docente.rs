@@ -160,4 +160,18 @@ pub async fn contar_docentes(state: State<'_, AppState>) -> Result<i64, String> 
         .map_err(|e| e.to_string())?;
     let total: i64 = row.get(0);
     Ok(total)
+}
+
+#[tauri::command(rename_all = "snake_case")]
+pub async fn asignar_docente_guia(
+    id_grado_secciones: i32,
+    id_docente_guia: i32,
+    state: tauri::State<'_, crate::AppState>,
+) -> Result<(), String> {
+    let db = state.db.lock().await;
+    db.execute(
+        "UPDATE grado_secciones SET id_docente_guia = $1 WHERE id_grado_secciones = $2",
+        &[&id_docente_guia, &id_grado_secciones]
+    ).await.map_err(|e| e.to_string())?;
+    Ok(())
 } 

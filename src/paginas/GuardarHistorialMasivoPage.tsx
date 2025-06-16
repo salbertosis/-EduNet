@@ -73,9 +73,9 @@ const GuardarHistorialMasivoPage = () => {
       if (selectedGrado && selectedModalidad) {
         try {
           const seccionesData: Seccion[] = await invoke('obtener_secciones_por_grado_modalidad_periodo', {
-            idGrado: Number(selectedGrado),
-            idModalidad: Number(selectedModalidad),
-            idPeriodo: Number(selectedPeriodo) // Aunque no lo usemos para filtrar secciones en sí, lo mandamos si es requerido
+            id_grado: Number(selectedGrado),
+            id_modalidad: Number(selectedModalidad),
+            id_periodo: Number(selectedPeriodo)
           });
           setSecciones(seccionesData);
         } catch (error) {

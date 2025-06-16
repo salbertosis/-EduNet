@@ -37,7 +37,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             api::estudiantes::contar_estudiantes,
             api::estudiantes::contar_estudiantes_femeninos,
             api::estudiantes::contar_estudiantes_masculinos,
-            api::estudiantes::insertar_estudiantes_masivo,
             api::historial::obtener_historial_academico_estudiante,
             api::historial::upsert_historial_academico,
             api::historial::guardar_historial_masivo,
@@ -48,10 +47,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             api::pendiente::eliminar_asignatura_pendiente,
             api::catalogo::listar_periodos_escolares,
             api::catalogo::listar_grados,
+            api::catalogo::listar_secciones,
             api::catalogo::listar_modalidades,
             api::catalogo::obtener_asignaturas_por_grado_modalidad,
             api::catalogo::crear_periodo_escolar,
             api::catalogo::establecer_periodo_activo,
+            api::catalogo::listar_paises,
+            api::catalogo::listar_estados_por_pais,
+            api::catalogo::listar_municipios_por_estado,
+            api::catalogo::listar_ciudades_por_municipio,
             api::docente::obtener_docentes,
             api::docente::crear_docente,
             api::docente::actualizar_docente,
@@ -73,6 +77,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             api::migracion::migrar_estudiantes,
             api::plantillas::obtener_secciones_anio_anterior,
             api::plantillas::obtener_grado_secciones_por_id,
+            api::catalogo::listar_secciones_por_grado_modalidad,
+            api::catalogo::obtener_id_grado_secciones,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

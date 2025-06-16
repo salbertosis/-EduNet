@@ -3,6 +3,36 @@ use crate::AppState;
 use crate::models::catalogo::{PeriodoEscolar, Grado, Modalidad, Asignatura};
 use chrono::NaiveDate;
 
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct Pais {
+    pub id: i32,
+    pub nombre: String,
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct Estado {
+    pub id: i32,
+    pub nombre: String,
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct Ciudad {
+    pub id: i32,
+    pub nombre: String,
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct Municipio {
+    pub id: i32,
+    pub nombre: String,
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct Seccion {
+    pub id: i32,
+    pub nombre: String,
+}
+
 #[tauri::command]
 pub async fn listar_periodos_escolares(state: State<'_, AppState>) -> Result<Vec<PeriodoEscolar>, String> {
     let db = state.db.lock().await;
@@ -19,25 +49,25 @@ pub async fn listar_periodos_escolares(state: State<'_, AppState>) -> Result<Vec
 }
 
 #[tauri::command]
-pub async fn listar_grados(state: State<'_, AppState>) -> Result<Vec<Grado>, String> {
+pub async fn listar_grados(state: tauri::State<'_, crate::AppState>) -> Result<Vec<Grado>, String> {
     let db = state.db.lock().await;
-    let query = "SELECT id_grado, nombre_grado FROM grados ORDER BY id_grado ASC";
-    let rows = db.query(query, &[]).await.map_err(|e| e.to_string())?;
+    let rows = db.query("SELECT id_grado, nombre_grado FROM grados ORDER BY nombre_grado", &[])
+        .await.map_err(|e| e.to_string())?;
     let grados = rows.iter().map(|row| Grado {
-        id_grado: row.get("id_grado"),
-        nombre_grado: row.get("nombre_grado"),
+        id_grado: row.get(0),
+        nombre_grado: row.get(1),
     }).collect();
     Ok(grados)
 }
 
 #[tauri::command]
-pub async fn listar_modalidades(state: State<'_, AppState>) -> Result<Vec<Modalidad>, String> {
+pub async fn listar_modalidades(state: tauri::State<'_, crate::AppState>) -> Result<Vec<Modalidad>, String> {
     let db = state.db.lock().await;
-    let query = "SELECT id_modalidad, nombre_modalidad FROM modalidades ORDER BY id_modalidad ASC";
-    let rows = db.query(query, &[]).await.map_err(|e| e.to_string())?;
+    let rows = db.query("SELECT id_modalidad, nombre_modalidad FROM modalidades ORDER BY nombre_modalidad", &[])
+        .await.map_err(|e| e.to_string())?;
     let modalidades = rows.iter().map(|row| Modalidad {
-        id_modalidad: row.get("id_modalidad"),
-        nombre_modalidad: row.get("nombre_modalidad"),
+        id_modalidad: row.get(0),
+        nombre_modalidad: row.get(1),
     }).collect();
     Ok(modalidades)
 }
@@ -118,4 +148,98 @@ pub async fn establecer_periodo_activo(
         .map_err(|e| format!("Error al activar el nuevo periodo: {}", e))?;
 
     Ok(())
+}
+
+#[tauri::command]
+pub async fn listar_paises(state: tauri::State<'_, crate::AppState>) -> Result<Vec<Pais>, String> {
+    let db = state.db.lock().await;
+    let rows = db.query("SELECT id, nombre FROM paises ORDER BY nombre", &[])
+        .await.map_err(|e| e.to_string())?;
+    let paises = rows.iter().map(|row| Pais {
+        id: row.get(0),
+        nombre: row.get(1),
+    }).collect();
+    Ok(paises)
+}
+
+#[tauri::command]
+pub async fn listar_estados_por_pais(state: tauri::State<'_, crate::AppState>, id_pais: i32) -> Result<Vec<Estado>, String> {
+    let db = state.db.lock().await;
+    let rows = db.query("SELECT id, nombre FROM estados WHERE pais_id = $1 ORDER BY nombre", &[&id_pais])
+        .await.map_err(|e| e.to_string())?;
+    let estados = rows.iter().map(|row| Estado {
+        id: row.get(0),
+        nombre: row.get(1),
+    }).collect();
+    Ok(estados)
+}
+
+#[tauri::command]
+pub async fn listar_municipios_por_estado(state: tauri::State<'_, crate::AppState>, id_estado: i32) -> Result<Vec<Municipio>, String> {
+    let db = state.db.lock().await;
+    let rows = db.query("SELECT id, nombre FROM municipios WHERE estado_id = $1 ORDER BY nombre", &[&id_estado])
+        .await.map_err(|e| e.to_string())?;
+    let municipios = rows.iter().map(|row| Municipio {
+        id: row.get(0),
+        nombre: row.get(1),
+    }).collect();
+    Ok(municipios)
+}
+
+#[tauri::command]
+pub async fn listar_ciudades_por_municipio(state: tauri::State<'_, crate::AppState>, id_municipio: i32) -> Result<Vec<Ciudad>, String> {
+    let db = state.db.lock().await;
+    let rows = db.query("SELECT id, nombre FROM ciudades WHERE municipio_id = $1 ORDER BY nombre", &[&id_municipio])
+        .await.map_err(|e| e.to_string())?;
+    let ciudades = rows.iter().map(|row| Ciudad {
+        id: row.get(0),
+        nombre: row.get(1),
+    }).collect();
+    Ok(ciudades)
+}
+
+#[tauri::command]
+pub async fn obtener_id_grado_secciones(state: tauri::State<'_, crate::AppState>, grado_id: i32, seccion_id: i32, modalidad_id: i32) -> Result<i32, String> {
+    println!("[DEBUG] Buscando id_grado_secciones para grado={}, seccion={}, modalidad={}", grado_id, seccion_id, modalidad_id);
+    let db = state.db.lock().await;
+    let query = "SELECT id_grado_secciones FROM grado_secciones WHERE id_grado = $1 AND id_seccion = $2 AND id_modalidad = $3";
+    println!("[DEBUG] Ejecutando query: {}", query);
+    let row = db.query_one(query, &[&grado_id, &seccion_id, &modalidad_id])
+        .await.map_err(|e| {
+            println!("[ERROR] Error en query: {}", e);
+            e.to_string()
+        })?;
+    Ok(row.get(0))
+}
+
+#[tauri::command]
+pub async fn listar_secciones_por_grado_modalidad(state: tauri::State<'_, crate::AppState>, grado_id: i32, modalidad_id: i32) -> Result<Vec<Seccion>, String> {
+    println!("[LOG] listar_secciones_por_grado_modalidad: grado_id={}, modalidad_id={}", grado_id, modalidad_id);
+    let db = state.db.lock().await;
+    let query = "SELECT s.id_seccion, s.nombre_seccion FROM secciones s INNER JOIN grado_secciones gs ON gs.seccion_id = s.id_seccion WHERE gs.grado_id = $1 AND gs.modalidad_id = $2 ORDER BY s.nombre_seccion";
+    println!("[LOG] Ejecutando query: {}", query);
+    let rows = db.query(query, &[&grado_id, &modalidad_id])
+        .await.map_err(|e| {
+            println!("[ERROR] Error en query: {}", e);
+            e.to_string()
+        })?;
+    println!("[LOG] Filas obtenidas: {}", rows.len());
+    let secciones = rows.iter().map(|row| Seccion {
+        id: row.get(0),
+        nombre: row.get(1),
+    }).collect();
+    println!("[LOG] Secciones serializadas: {:?}", secciones);
+    Ok(secciones)
+}
+
+#[tauri::command]
+pub async fn listar_secciones(state: tauri::State<'_, crate::AppState>) -> Result<Vec<Seccion>, String> {
+    let db = state.db.lock().await;
+    let rows = db.query("SELECT id_seccion, nombre_seccion FROM secciones ORDER BY nombre_seccion", &[])
+        .await.map_err(|e| e.to_string())?;
+    let secciones = rows.iter().map(|row| Seccion {
+        id: row.get(0),
+        nombre: row.get(1),
+    }).collect();
+    Ok(secciones)
 } 

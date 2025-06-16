@@ -178,8 +178,8 @@ pub async fn crear_estudiante(
         return Err("Ya existe un estudiante con esta cédula".to_string());
     }
     match db.execute(
-        "INSERT INTO estudiantes (cedula, nombres, apellidos, genero, fecha_nacimiento, id_grado_secciones, fecha_ingreso, municipionac, paisnac, entidadfed, ciudadnac, estadonac, id_grado, id_seccion, id_modalidad, id_periodoactual, estado, fecha_retiro) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)",
-        &[&estudiante.cedula, &estudiante.nombres, &estudiante.apellidos, &estudiante.genero, &estudiante.fecha_nacimiento, &estudiante.id_grado_secciones, &estudiante.fecha_ingreso, &estudiante.municipionac, &estudiante.paisnac, &estudiante.entidadfed, &estudiante.ciudadnac, &estudiante.estadonac, &estudiante.id_grado, &estudiante.id_seccion, &estudiante.id_modalidad, &estudiante.id_periodoactual, &estudiante.estado, &estudiante.fecha_retiro]
+        "INSERT INTO estudiantes (cedula, nombres, apellidos, genero, fecha_nacimiento, id_grado_secciones, fecha_ingreso, paisnac_id, estado_nac_id, municipio_nac_id, ciudad_nac_id, id_periodoactual, estado, fecha_retiro) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)",
+        &[&estudiante.cedula, &estudiante.nombres, &estudiante.apellidos, &estudiante.genero, &estudiante.fecha_nacimiento, &estudiante.id_grado_secciones, &estudiante.fecha_ingreso, &estudiante.paisnac_id, &estudiante.estado_nac_id, &estudiante.municipio_nac_id, &estudiante.ciudad_nac_id, &estudiante.id_periodoactual, &estudiante.estado, &estudiante.fecha_retiro]
     ).await {
         Ok(_) => Ok(()),
         Err(e) => {
@@ -201,8 +201,8 @@ pub async fn actualizar_estudiante(
         return Err("Ya existe otro estudiante con esta cédula".to_string());
     }
     db.execute(
-        "UPDATE estudiantes SET cedula=$1, nombres=$2, apellidos=$3, genero=$4, fecha_nacimiento=$5, id_grado_secciones=$6, fecha_ingreso=$7, municipionac=$8, paisnac=$9, entidadfed=$10, ciudadnac=$11, estadonac=$12, id_grado=$13, id_seccion=$14, id_modalidad=$15, id_periodoactual=$16, estado=$17, fecha_retiro=$18 WHERE id=$19",
-        &[&estudiante.cedula, &estudiante.nombres, &estudiante.apellidos, &estudiante.genero, &estudiante.fecha_nacimiento, &estudiante.id_grado_secciones, &estudiante.fecha_ingreso, &estudiante.municipionac, &estudiante.paisnac, &estudiante.entidadfed, &estudiante.ciudadnac, &estudiante.estadonac, &estudiante.id_grado, &estudiante.id_seccion, &estudiante.id_modalidad, &estudiante.id_periodoactual, &estudiante.estado, &estudiante.fecha_retiro, &id]
+        "UPDATE estudiantes SET cedula=$1, nombres=$2, apellidos=$3, genero=$4, fecha_nacimiento=$5, id_grado_secciones=$6, fecha_ingreso=$7, paisnac_id=$8, estado_nac_id=$9, municipio_nac_id=$10, ciudad_nac_id=$11, id_periodoactual=$12, estado=$13, fecha_retiro=$14 WHERE id=$15",
+        &[&estudiante.cedula, &estudiante.nombres, &estudiante.apellidos, &estudiante.genero, &estudiante.fecha_nacimiento, &estudiante.id_grado_secciones, &estudiante.fecha_ingreso, &estudiante.paisnac_id, &estudiante.estado_nac_id, &estudiante.municipio_nac_id, &estudiante.ciudad_nac_id, &estudiante.id_periodoactual, &estudiante.estado, &estudiante.fecha_retiro, &id]
     )
     .await
     .map_err(|e| e.to_string())?;
@@ -238,57 +238,6 @@ pub async fn contar_estudiantes(state: State<'_, AppState>) -> Result<i64, Strin
 async fn obtener_cedulas_existentes(db: &tokio_postgres::Client) -> Result<HashSet<i64>, String> {
     let rows = db.query("SELECT cedula FROM estudiantes", &[]).await.map_err(|e| e.to_string())?;
     Ok(rows.iter().map(|row| row.get::<_, i64>(0)).collect())
-}
-
-#[tauri::command]
-pub async fn insertar_estudiantes_masivo(
-    estudiantes: Vec<serde_json::Value>,
-    state: State<'_, AppState>,
-) -> Result<ResumenInsercion, String> {
-    let mut db = state.db.lock().await;
-    let mut cedulas_existentes = obtener_cedulas_existentes(&*db).await?;
-    let trans = db.transaction().await.map_err(|e| e.to_string())?;
-    let mut resumen = ResumenInsercion {
-        total_registros: estudiantes.len(),
-        insertados: 0,
-        duplicados: 0,
-        errores: Vec::new(),
-    };
-    for (index, est_json) in estudiantes.iter().enumerate() {
-        let estudiante: NuevoEstudiante = match serde_json::from_value(est_json.clone()) {
-            Ok(est) => est,
-            Err(e) => {
-                let msg = format!("Fila {}: Error al deserializar - {}", index + 1, e);
-                resumen.errores.push(msg);
-                continue;
-            }
-        };
-        if cedulas_existentes.contains(&estudiante.cedula) {
-            let msg = format!("Fila {}: Cédula duplicada {}", index + 1, estudiante.cedula);
-            resumen.duplicados += 1;
-            resumen.errores.push(msg);
-            continue;
-        }
-        match trans.execute(
-            "INSERT INTO estudiantes (cedula, nombres, apellidos, genero, fecha_nacimiento, id_grado_secciones, fecha_ingreso, municipionac, paisnac, entidadfed, ciudadnac, estadonac, id_grado, id_seccion, id_modalidad, id_periodoactual, estado, fecha_retiro) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)",
-            &[&estudiante.cedula, &estudiante.nombres, &estudiante.apellidos, &estudiante.genero, &estudiante.fecha_nacimiento, &estudiante.id_grado_secciones, &estudiante.fecha_ingreso, &estudiante.municipionac, &estudiante.paisnac, &estudiante.entidadfed, &estudiante.ciudadnac, &estudiante.estadonac, &estudiante.id_grado, &estudiante.id_seccion, &estudiante.id_modalidad, &estudiante.id_periodoactual, &estudiante.estado, &estudiante.fecha_retiro]
-        ).await {
-            Ok(_) => {
-                resumen.insertados += 1;
-                cedulas_existentes.insert(estudiante.cedula);
-            },
-            Err(e) => {
-                let msg = format!("Fila {}: Error al insertar - {}", index + 1, e);
-                resumen.errores.push(msg);
-            },
-        }
-    }
-    if resumen.insertados == 0 {
-        trans.rollback().await.map_err(|e| e.to_string())?;
-    } else {
-        trans.commit().await.map_err(|e| e.to_string())?;
-    }
-    Ok(resumen)
 }
 
 #[tauri::command]

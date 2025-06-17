@@ -25,6 +25,9 @@ pub struct Asignatura {
     pub nombre_asignatura: String,
     pub id_grado: i32,
     pub id_modalidad: i32,
+    pub id_docente: Option<i32>,
+    pub nombres_docente: Option<String>,
+    pub apellidos_docente: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

@@ -174,4 +174,21 @@ pub async fn asignar_docente_guia(
         &[&id_docente_guia, &id_grado_secciones]
     ).await.map_err(|e| e.to_string())?;
     Ok(())
+}
+
+#[tauri::command(rename_all = "snake_case")]
+pub async fn asignar_docente_asignatura(
+    id_grado_secciones: i32,
+    id_asignatura: i32,
+    id_docente: i32,
+    state: tauri::State<'_, crate::AppState>,
+) -> Result<(), String> {
+    let db = state.db.lock().await;
+    db.execute(
+        "UPDATE grado_seccion_asignatura_docente
+         SET id_docente = $1
+         WHERE id_grado_secciones = $2 AND id_asignatura = $3",
+        &[&id_docente, &id_grado_secciones, &id_asignatura]
+    ).await.map_err(|e| e.to_string())?;
+    Ok(())
 } 

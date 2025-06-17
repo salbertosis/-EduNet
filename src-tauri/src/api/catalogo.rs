@@ -74,8 +74,8 @@ pub async fn listar_modalidades(state: tauri::State<'_, crate::AppState>) -> Res
 
 #[tauri::command]
 pub async fn obtener_asignaturas_por_grado_modalidad(
-    id_grado: i32,
-    id_modalidad: i32,
+    idGrado: i32,
+    idModalidad: i32,
     state: State<'_, AppState>,
 ) -> Result<Vec<Asignatura>, String> {
     let db = state.db.lock().await;
@@ -92,7 +92,7 @@ pub async fn obtener_asignaturas_por_grado_modalidad(
             AND gma.id_modalidad = $2
         ORDER BY gma.orden";
     
-    let rows = db.query(query, &[&id_grado, &id_modalidad])
+    let rows = db.query(query, &[&idGrado, &idModalidad])
         .await
         .map_err(|e| e.to_string())?;
 
@@ -101,6 +101,9 @@ pub async fn obtener_asignaturas_por_grado_modalidad(
         nombre_asignatura: row.get("nombre_asignatura"),
         id_grado: row.get("id_grado"),
         id_modalidad: row.get("id_modalidad"),
+        id_docente: None,
+        nombres_docente: None,
+        apellidos_docente: None,
     }).collect();
 
     Ok(asignaturas)

@@ -48,6 +48,11 @@ pub struct Grado {
 pub struct Asignatura {
     pub id_asignatura: i32,
     pub nombre_asignatura: String,
+    pub id_grado: i32,
+    pub id_modalidad: i32,
+    pub id_docente: Option<i32>,
+    pub nombres_docente: Option<String>,
+    pub apellidos_docente: Option<String>,
 }
 
 #[derive(serde::Serialize)]
@@ -377,6 +382,9 @@ pub async fn obtener_asignaturas(
             nombre_asignatura: row.get(1),
             id_grado,
             id_modalidad,
+            id_docente: None,
+            nombres_docente: None,
+            apellidos_docente: None,
         })
         .collect();
 

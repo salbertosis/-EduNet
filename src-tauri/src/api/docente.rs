@@ -24,6 +24,15 @@ pub struct ResultadoPaginado<T> {
     pub paginacion: PaginacionInfo,
 }
 
+#[derive(Serialize)]
+pub struct AsignaturaConDocente {
+    pub id_asignatura: i32,
+    pub nombre_asignatura: String,
+    pub id_docente: Option<i32>,
+    pub nombres_docente: Option<String>,
+    pub apellidos_docente: Option<String>,
+}
+
 #[tauri::command]
 pub async fn obtener_docentes(
     filtro: Option<FiltroDocentes>,
@@ -191,4 +200,51 @@ pub async fn asignar_docente_asignatura(
         &[&id_docente, &id_grado_secciones, &id_asignatura]
     ).await.map_err(|e| e.to_string())?;
     Ok(())
+}
+
+#[tauri::command(rename_all = "snake_case")]
+pub async fn obtener_docentes_por_asignatura_seccion(
+    id_grado_secciones: i32,
+    state: tauri::State<'_, crate::AppState>,
+) -> Result<Vec<AsignaturaConDocente>, String> {
+    println!("[DEBUG] Recibido id_grado_secciones: {}", id_grado_secciones);
+    let db = state.db.lock().await;
+    let query = "
+        SELECT
+            a.id_asignatura,
+            a.nombre AS nombre_asignatura,
+            d.id_docente,
+            d.nombres AS nombres_docente,
+            d.apellidos AS apellidos_docente
+        FROM grado_seccion_asignatura_docente gsad
+        JOIN asignaturas a ON gsad.id_asignatura = a.id_asignatura
+        LEFT JOIN docentes d ON gsad.id_docente = d.id_docente
+        WHERE gsad.id_grado_secciones = $1
+        ORDER BY a.nombre
+    ";
+    println!("[DEBUG] Ejecutando consulta SQL para id_grado_secciones={}", id_grado_secciones);
+    let rows = match db.query(query, &[&id_grado_secciones]).await {
+        Ok(r) => r,
+        Err(e) => {
+            println!("[ERROR] Error en la consulta SQL: {}", e);
+            return Err(format!("Error en la consulta SQL: {}", e));
+        }
+    };
+    println!("[DEBUG] Filas obtenidas: {}", rows.len());
+    for (i, row) in rows.iter().enumerate() {
+        let id_asignatura: i32 = row.get("id_asignatura");
+        let nombre_asignatura: String = row.get("nombre_asignatura");
+        let id_docente: Option<i32> = row.get("id_docente");
+        let nombres_docente: Option<String> = row.get("nombres_docente");
+        let apellidos_docente: Option<String> = row.get("apellidos_docente");
+        println!("[DEBUG][Fila {}] id_asignatura={}, nombre_asignatura={}, id_docente={:?}, nombres_docente={:?}, apellidos_docente={:?}", i, id_asignatura, nombre_asignatura, id_docente, nombres_docente, apellidos_docente);
+    }
+    let result = rows.iter().map(|row| AsignaturaConDocente {
+        id_asignatura: row.get("id_asignatura"),
+        nombre_asignatura: row.get("nombre_asignatura"),
+        id_docente: row.get("id_docente"),
+        nombres_docente: row.get("nombres_docente"),
+        apellidos_docente: row.get("apellidos_docente"),
+    }).collect();
+    Ok(result)
 } 

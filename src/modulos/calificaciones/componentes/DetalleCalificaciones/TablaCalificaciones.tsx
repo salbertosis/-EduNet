@@ -36,20 +36,20 @@ export const TablaCalificaciones: React.FC<TablaCalificacionesProps> = ({ asigna
   const { calcularNotaFinal, calcularEstadoAsignatura } = useCalculosCalificaciones(asignaturas, calificaciones);
   const totalPendientes = calcularTotalPendientes(asignaturas, calificaciones);
   return (
-    <div className="overflow-x-auto max-h-[60vh]">
+    <div className="w-full">
       <table className="min-w-full divide-y divide-emerald-400 dark:divide-cyan-800 text-sm rounded-xl overflow-hidden shadow-lg">
         <thead>
           <tr>
-            <th className="px-4 py-3 text-center text-emerald-700 dark:text-cyan-200 font-bold uppercase bg-white dark:bg-transparent">ASIGNATURA</th>
-            <th className="px-2 py-3 text-center text-emerald-700 dark:text-cyan-200 font-bold uppercase bg-white dark:bg-transparent">1ER LAPSO</th>
-            {mostrarAjustes && <th className="px-2 py-3 text-center text-cyan-700 dark:text-cyan-200 font-bold uppercase bg-white dark:bg-transparent">AJUSTE 1</th>}
-            <th className="px-2 py-3 text-center text-emerald-700 dark:text-cyan-200 font-bold uppercase bg-white dark:bg-transparent">2DO LAPSO</th>
-            {mostrarAjustes && <th className="px-2 py-3 text-center text-cyan-700 dark:text-cyan-200 font-bold uppercase bg-white dark:bg-transparent">AJUSTE 2</th>}
-            <th className="px-2 py-3 text-center text-emerald-700 dark:text-cyan-200 font-bold uppercase bg-white dark:bg-transparent">3ER LAPSO</th>
-            {mostrarAjustes && <th className="px-2 py-3 text-center text-cyan-700 dark:text-cyan-200 font-bold uppercase bg-white dark:bg-transparent">AJUSTE 3</th>}
-            <th className="px-2 py-3 text-center text-emerald-700 dark:text-cyan-200 font-bold uppercase bg-white dark:bg-transparent">FINAL</th>
-            <th className="px-2 py-3 text-center text-emerald-700 dark:text-cyan-200 font-bold uppercase bg-white dark:bg-transparent">REVISIÓN</th>
-            <th className="px-2 py-3 text-center text-emerald-700 dark:text-cyan-200 font-bold uppercase bg-white dark:bg-transparent">ESTADO</th>
+            <th className="sticky top-0 z-20 bg-white dark:bg-slate-800 border-b-2 border-emerald-400 dark:border-cyan-800 px-4 py-3 text-center text-emerald-700 dark:text-cyan-200 font-bold uppercase">ASIGNATURA</th>
+            <th className="sticky top-0 z-20 bg-white dark:bg-slate-800 border-b-2 border-emerald-400 dark:border-cyan-800 px-2 py-3 text-center text-emerald-700 dark:text-cyan-200 font-bold uppercase">1ER LAPSO</th>
+            {mostrarAjustes && <th className="sticky top-0 z-20 bg-white dark:bg-slate-800 border-b-2 border-emerald-400 dark:border-cyan-800 px-2 py-3 text-center text-cyan-700 dark:text-cyan-200 font-bold uppercase">AJUSTE 1</th>}
+            <th className="sticky top-0 z-20 bg-white dark:bg-slate-800 border-b-2 border-emerald-400 dark:border-cyan-800 px-2 py-3 text-center text-emerald-700 dark:text-cyan-200 font-bold uppercase">2DO LAPSO</th>
+            {mostrarAjustes && <th className="sticky top-0 z-20 bg-white dark:bg-slate-800 border-b-2 border-emerald-400 dark:border-cyan-800 px-2 py-3 text-center text-cyan-700 dark:text-cyan-200 font-bold uppercase">AJUSTE 2</th>}
+            <th className="sticky top-0 z-20 bg-white dark:bg-slate-800 border-b-2 border-emerald-400 dark:border-cyan-800 px-2 py-3 text-center text-emerald-700 dark:text-cyan-200 font-bold uppercase">3ER LAPSO</th>
+            {mostrarAjustes && <th className="sticky top-0 z-20 bg-white dark:bg-slate-800 border-b-2 border-emerald-400 dark:border-cyan-800 px-2 py-3 text-center text-cyan-700 dark:text-cyan-200 font-bold uppercase">AJUSTE 3</th>}
+            <th className="sticky top-0 z-20 bg-white dark:bg-slate-800 border-b-2 border-emerald-400 dark:border-cyan-800 px-2 py-3 text-center text-emerald-700 dark:text-cyan-200 font-bold uppercase">FINAL</th>
+            <th className="sticky top-0 z-20 bg-white dark:bg-slate-800 border-b-2 border-emerald-400 dark:border-cyan-800 px-2 py-3 text-center text-emerald-700 dark:text-cyan-200 font-bold uppercase">REVISIÓN</th>
+            <th className="sticky top-0 z-20 bg-white dark:bg-slate-800 border-b-2 border-emerald-400 dark:border-cyan-800 px-2 py-3 text-center text-emerald-700 dark:text-cyan-200 font-bold uppercase">ESTADO</th>
           </tr>
         </thead>
         <tbody>

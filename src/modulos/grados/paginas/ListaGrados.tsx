@@ -194,43 +194,79 @@ ModalAsignarDocente.displayName = 'ModalAsignarDocente';
 const ModalVerDocentesPorAsignatura: React.FC<{
   isOpen: boolean;
   onClose: () => void;
-  asignaturas: any[];
-  docentes: any[];
-}> = ({ isOpen, onClose, asignaturas, docentes }) => {
-  if (!isOpen) return null;
-  const getNombreDocente = (id_docente?: number) => {
-    if (!id_docente) return <span className="text-gray-400 italic">Sin asignar</span>;
-    const docente = docentes.find((d: any) => d.id_docente === id_docente);
-    return docente ? `${docente.nombres} ${docente.apellidos}` : <span className="text-gray-400 italic">Sin asignar</span>;
+  id_grado_secciones: number;
+}> = ({ isOpen, onClose, id_grado_secciones }) => {
+  const [asignaturas, setAsignaturas] = React.useState<any[]>([]);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setLoading(true);
+    setError(null);
+    console.log('[DEBUG][ModalVerDocentesPorAsignatura] Llamando a obtener_docentes_por_asignatura_seccion con id_grado_secciones:', id_grado_secciones);
+    invoke('obtener_docentes_por_asignatura_seccion', { id_grado_secciones })
+      .then((data) => {
+        const asignaturas = data as any[];
+        console.log('[DEBUG][ModalVerDocentesPorAsignatura] Respuesta recibida:', asignaturas);
+        setAsignaturas(asignaturas);
+      })
+      .catch((err: any) => {
+        console.error('[DEBUG][ModalVerDocentesPorAsignatura] Error recibido:', err);
+        setError(err?.message || 'Error al cargar docentes');
+      })
+      .finally(() => setLoading(false));
+  }, [isOpen, id_grado_secciones]);
+
+  const getNombreDocente = (asig: any) => {
+    if (asig.nombres_docente && asig.apellidos_docente) {
+      return `${asig.nombres_docente} ${asig.apellidos_docente}`;
+    }
+    return <span className="text-gray-400 italic">Sin asignar</span>;
   };
+
+  if (!isOpen) return null;
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-50 p-4" role="dialog" aria-modal="true" aria-labelledby="modal-docentes-title" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-auto focus:outline-none" tabIndex={-1}>
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-slate-700">
-          <h2 id="modal-docentes-title" className="text-xl font-semibold text-gray-900 dark:text-white">Docentes por asignatura</h2>
-          <button type="button" onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors" aria-label="Cerrar modal" autoFocus>
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-auto focus:outline-none border border-gray-200 dark:border-slate-700" tabIndex={-1}>
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-slate-700 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-slate-700 dark:to-slate-800 sticky top-0 z-20">
+          <h2 id="modal-docentes-title" className="text-xl font-bold text-blue-900 dark:text-blue-100 tracking-wide">Docentes por asignatura</h2>
+          <button type="button" onClick={onClose} className="p-2 rounded-lg hover:bg-blue-100 dark:hover:bg-slate-700 transition-colors" aria-label="Cerrar modal" autoFocus>
             <X className="w-5 h-5" />
           </button>
         </div>
         <div className="p-6">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
-            <thead>
-              <tr>
-                <th className="px-4 py-2 text-left text-sm font-semibold text-gray-700 dark:text-gray-200">Asignatura</th>
-                <th className="px-4 py-2 text-left text-sm font-semibold text-gray-700 dark:text-gray-200">Docente asignado</th>
-              </tr>
-            </thead>
-            <tbody>
-              {asignaturas.map((asig: any) => (
-                <tr key={asig.id_asignatura} className="hover:bg-gray-50 dark:hover:bg-slate-700">
-                  <td className="px-4 py-2 text-gray-900 dark:text-white">{asig.nombre_asignatura}</td>
-                  <td className="px-4 py-2">{getNombreDocente(asig.id_docente)}</td>
+          {loading ? (
+            <div className="flex items-center justify-center py-4">Cargando...</div>
+          ) : error ? (
+            <div className="text-center py-4 text-red-600 dark:text-red-400">{error}</div>
+          ) : (
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700 text-base">
+              <thead className="bg-blue-50 dark:bg-slate-700 sticky top-0 z-10">
+                <tr>
+                  <th className="px-4 py-2 text-left font-semibold text-blue-800 dark:text-blue-200 tracking-wide w-1/3">Asignatura</th>
+                  <th className="px-4 py-2 text-left font-semibold text-blue-800 dark:text-blue-200 tracking-wide">Docente asignado</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {asignaturas.map((asig: any, idx: number) => (
+                  <tr
+                    key={asig.id_asignatura}
+                    className={`transition-colors ${idx % 2 === 0 ? 'bg-white dark:bg-slate-800' : 'bg-gray-50 dark:bg-slate-700'} hover:bg-blue-50 dark:hover:bg-blue-900/30`}
+                  >
+                    <td className="px-4 py-2 font-medium text-gray-900 dark:text-white whitespace-nowrap border-b border-gray-100 dark:border-slate-700 align-top">{asig.nombre_asignatura}</td>
+                    <td className="px-4 py-2 border-b border-gray-100 dark:border-slate-700 align-top">
+                      <span className="text-gray-800 dark:text-gray-100 font-semibold tracking-wide break-words whitespace-pre-line block">
+                        {getNombreDocente(asig)}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
           <div className="flex justify-end mt-6">
-            <button type="button" onClick={onClose} className="px-6 py-2 rounded-lg bg-blue-600 text-white font-semibold shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all">Cerrar</button>
+            <button type="button" onClick={onClose} className="px-6 py-2 rounded-lg bg-blue-700 text-white font-semibold shadow hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all">Cerrar</button>
           </div>
         </div>
       </div>
@@ -375,17 +411,6 @@ const TarjetaCurso = React.memo<TarjetaCursoProps>(({ grado, onDocenteAsignado }
           </div>
         </div>
 
-        {/* Botón de detalles */}
-        <div className="flex justify-center">
-          <button
-            type="button"
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors font-medium"
-          >
-            <Search className="w-4 h-4" aria-hidden="true" />
-            Ver detalles
-          </button>
-        </div>
-
         {/* Botones de acción: Docentes y Estudiantes */}
         <div className="flex justify-center gap-2 mt-4">
           <button
@@ -431,8 +456,7 @@ const TarjetaCurso = React.memo<TarjetaCursoProps>(({ grado, onDocenteAsignado }
       <ModalVerDocentesPorAsignatura
         isOpen={modalVerDocentesAbierto}
         onClose={() => setModalVerDocentesAbierto(false)}
-        asignaturas={asignaturas}
-        docentes={docentes}
+        id_grado_secciones={grado.id_grado_secciones}
       />
     </>
   );

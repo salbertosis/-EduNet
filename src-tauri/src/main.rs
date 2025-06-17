@@ -64,6 +64,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             api::docente::contar_docentes,
             api::docente::asignar_docente_guia,
             api::docente::asignar_docente_asignatura,
+            api::docente::obtener_docentes_por_asignatura_seccion,
             api::plantillas::obtener_grados,
             api::plantillas::obtener_secciones,
             api::plantillas::obtener_asignaturas,

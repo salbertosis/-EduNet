@@ -19,6 +19,7 @@ import { useGrados, type Grado } from '../hooks/useGrados';
 import { useMensajeGlobal } from '../../../componentes/MensajeGlobalContext';
 import { ModalAsignarDocentes } from '../componentes/ModalAsignarDocentes';
 import { useAsignaturas } from '../../calificaciones/hooks/useAsignaturas';
+import { ModalPDF } from '../../../componentes/ModalPDF';
 
 // Types y constantes
 interface FiltrosGrados {
@@ -284,6 +285,10 @@ const TarjetaCurso = React.memo<TarjetaCursoProps>(({ grado, onDocenteAsignado }
   const [asignando, setAsignando] = useState(false);
   const [errorCargandoDocentes, setErrorCargandoDocentes] = useState(false);
   const [modalVerDocentesAbierto, setModalVerDocentesAbierto] = useState(false);
+  const [modalPdfOpen, setModalPdfOpen] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [loadingPdf, setLoadingPdf] = useState(false);
+  const [errorPdf, setErrorPdf] = useState<string | null>(null);
 
   // Usar el hook useAsignaturas para cargar las asignaturas
   const { asignaturas, loading: cargandoAsignaturas, error: errorAsignaturas } = useAsignaturas(
@@ -337,6 +342,22 @@ const TarjetaCurso = React.memo<TarjetaCursoProps>(({ grado, onDocenteAsignado }
     setModalAbierto(false);
     setErrorCargandoDocentes(false);
   }, []);
+
+  const handleVerEstudiantes = async (idGradoSecciones: number) => {
+    setLoadingPdf(true);
+    setErrorPdf(null);
+    setModalPdfOpen(true);
+    try {
+      const base64 = await invoke<string>('generar_pdf_estudiantes_curso', { idGradoSecciones });
+      const blob = await fetch(`data:application/pdf;base64,${base64}`).then(res => res.blob());
+      setPdfUrl(URL.createObjectURL(blob));
+    } catch (err: any) {
+      console.error("Error al generar PDF:", err);
+      setErrorPdf(err?.message || 'Error al generar PDF');
+    } finally {
+      setLoadingPdf(false);
+    }
+  };
 
   return (
     <>
@@ -423,9 +444,9 @@ const TarjetaCurso = React.memo<TarjetaCursoProps>(({ grado, onDocenteAsignado }
           </button>
           <button
             type="button"
+            onClick={() => handleVerEstudiantes(grado.id_grado_secciones)}
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors font-medium"
             aria-label="Ver estudiantes de la sección"
-            // onClick={...}  // Aquí puedes agregar la lógica para el modal de estudiantes
           >
             <Users className="w-5 h-5" /> Estudiantes
           </button>
@@ -457,6 +478,14 @@ const TarjetaCurso = React.memo<TarjetaCursoProps>(({ grado, onDocenteAsignado }
         isOpen={modalVerDocentesAbierto}
         onClose={() => setModalVerDocentesAbierto(false)}
         id_grado_secciones={grado.id_grado_secciones}
+      />
+
+      <ModalPDF
+        open={modalPdfOpen}
+        onClose={() => { setModalPdfOpen(false); setPdfUrl(null); }}
+        pdfUrl={pdfUrl}
+        loading={loadingPdf}
+        error={errorPdf}
       />
     </>
   );

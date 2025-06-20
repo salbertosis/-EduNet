@@ -2,25 +2,28 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::sync::Arc;
-use tokio::sync::Mutex;
-
-mod config;
-mod db;
-mod utils;
-mod models;
-mod api;
-
-pub struct AppState {
-    pub db: Arc<Mutex<tokio_postgres::Client>>,
-}
+use base64::{engine::general_purpose, Engine as _};
+use std::fs;
+use app::{AppState, db, api}; // Importar todo lo necesario desde la librería
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Iniciando EduNet...");
-    // Inicializar la base de datos
+    // Usar la función de inicialización de la librería
     let db_pool = db::connection::init_db().await?;
-    let app_state = AppState { db: db_pool };
+
+    // Cargar y codificar logos
+    let logo_izq_bytes = fs::read("imagenes/LogoMppe.jpg")?;
+    let logo_der_bytes = fs::read("imagenes/Logo_liceo.jpg")?;
+    let logo_izq_base64 = general_purpose::STANDARD.encode(&logo_izq_bytes);
+    let logo_der_base64 = general_purpose::STANDARD.encode(&logo_der_bytes);
+    
+    // Crear la instancia de AppState importada
+    let app_state = AppState { 
+        db: db_pool,
+        logo_izq: logo_izq_base64,
+        logo_der: logo_der_base64,
+    };
 
     // Configurar Tauri
     tauri::Builder::default()
@@ -83,6 +86,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             api::plantillas::obtener_grado_secciones_por_id,
             api::catalogo::listar_secciones_por_grado_modalidad,
             api::catalogo::obtener_id_grado_secciones,
+            api::pdf_estudiantes::generar_pdf_estudiantes_curso,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

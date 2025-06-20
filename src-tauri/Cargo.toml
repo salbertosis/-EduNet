@@ -29,4 +29,7 @@ rust_xlsxwriter = "0.38.0"
 umya-spreadsheet = "2.3.0"
 regex = "1.10"
 futures = "0.3"
+printpdf = { version = "0.6", features = ["embedded_images"] }
+base64 = "0.21"
+image = "0.24"
 

@@ -1,20 +1,13 @@
 use crate::AppState;
 use tauri::State;
-use std::fs;
 use std::path::Path;
-use chrono::Local;
 use serde::{Deserialize, Serialize};
 use umya_spreadsheet::{reader, writer};
-use umya_spreadsheet::helper::coordinate::CellCoordinates;
 use std::collections::HashMap;
 use crate::models::catalogo::{SeccionCatalogo, SeccionCompleta};
-use regex;
-use regex::Regex;
-use umya_spreadsheet::CellValue;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio_postgres;
-use rust_xlsxwriter::{Workbook, Format, FormatAlign, FormatBorder, XlsxError};
 use serde_json;
 
 #[derive(Debug, Serialize, Deserialize)]

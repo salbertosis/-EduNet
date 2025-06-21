@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import ActasEvaluacion from './componentes/ActasEvaluacion';
+import ActaResumen from './componentes/ActaResumen';
 
 const TABS = [
   { key: 'actas', label: 'Actas de Evaluación' },
+  { key: 'actas_resumen', label: 'Planilla de Calificaciones' },
   { key: 'boletines', label: 'Boletines' },
   { key: 'resumen', label: 'Resumen Final' },
   { key: 'certificaciones', label: 'Certificaciones' },
@@ -28,6 +30,7 @@ export default function Reportes() {
       </div>
       <div className="mt-6">
         {tab === 'actas' && <ActasEvaluacion />}
+        {tab === 'actas_resumen' && <ActaResumen />}
         {tab === 'boletines' && <div>Boletines (próximamente)</div>}
         {tab === 'resumen' && <div>Resumen Final (próximamente)</div>}
         {tab === 'certificaciones' && <div>Certificaciones (próximamente)</div>}

@@ -750,4 +750,71 @@ pub async fn obtener_grado_secciones_por_id(
     let id_grado: i32 = row.get(0);
     let id_modalidad: i32 = row.get(1);
     Ok(serde_json::json!({ "id_grado": id_grado, "id_modalidad": id_modalidad }))
+}
+
+#[tauri::command]
+pub async fn obtener_grado_secciones_por_filtros(
+    state: State<'_, AppState>,
+    id_periodo: i32,
+    id_modalidad: i32,
+    id_grado: i32,
+    id_seccion: Option<i32>,
+) -> Result<Vec<GradoSeccion>, String> {
+    let db = state.db.lock().await;
+    
+    let query = if let Some(seccion_id) = id_seccion {
+        "SELECT DISTINCT 
+            gs.id_grado_secciones,
+            g.nombre_grado,
+            s.nombre_seccion
+         FROM grado_secciones gs
+         JOIN grados g ON gs.id_grado = g.id_grado
+         JOIN secciones s ON gs.id_seccion = s.id_seccion
+         JOIN historial_grado_estudiantes hge ON gs.id_grado_secciones = hge.id_grado_secciones
+         WHERE gs.id_grado = $1 
+           AND gs.id_modalidad = $2 
+           AND gs.id_seccion = $3
+           AND hge.id_periodo = $4 
+           AND hge.estado = 'activo' 
+           AND hge.es_actual = true
+         ORDER BY s.nombre_seccion"
+    } else {
+        "SELECT DISTINCT 
+            gs.id_grado_secciones,
+            g.nombre_grado,
+            s.nombre_seccion
+         FROM grado_secciones gs
+         JOIN grados g ON gs.id_grado = g.id_grado
+         JOIN secciones s ON gs.id_seccion = s.id_seccion
+         JOIN historial_grado_estudiantes hge ON gs.id_grado_secciones = hge.id_grado_secciones
+         WHERE gs.id_grado = $1 
+           AND gs.id_modalidad = $2 
+           AND hge.id_periodo = $3 
+           AND hge.estado = 'activo' 
+           AND hge.es_actual = true
+         ORDER BY s.nombre_seccion"
+    };
+
+    let rows = if let Some(seccion_id) = id_seccion {
+        db.query(query, &[&id_grado, &id_modalidad, &seccion_id, &id_periodo]).await
+    } else {
+        db.query(query, &[&id_grado, &id_modalidad, &id_periodo]).await
+    };
+
+    let rows = rows.map_err(|e| e.to_string())?;
+
+    let grado_secciones = rows.iter().map(|row| GradoSeccion {
+        id_grado_secciones: row.get("id_grado_secciones"),
+        nombre_grado: row.get("nombre_grado"),
+        nombre_seccion: row.get("nombre_seccion"),
+    }).collect();
+
+    Ok(grado_secciones)
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct GradoSeccion {
+    pub id_grado_secciones: i32,
+    pub nombre_grado: String,
+    pub nombre_seccion: String,
 } 

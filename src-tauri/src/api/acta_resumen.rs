@@ -1,11 +1,48 @@
-use printpdf::{BuiltinFont, IndirectFontRef, Line, Mm, PdfDocument, PdfLayerReference, Point};
+use printpdf::{BuiltinFont, IndirectFontRef, Line, Mm, PdfDocument, PdfLayerReference, Point, Rgb, Color};
 use std::io::BufWriter;
 use base64::{engine::general_purpose, Engine as _};
 use crate::AppState;
 use tauri::State;
 
-// Estructuras para los datos del PDF
+// Constantes para el diseño (Oficio horizontal optimizado)
+const MARGIN_LEFT: f32 = 8.0; // Margen más estrecho
+const MARGIN_RIGHT: f32 = 8.0;
+const MARGIN_TOP: f32 = 8.0;
+const MARGIN_BOTTOM: f32 = 8.0;
+const PAGE_WIDTH: f32 = 355.6; // Oficio horizontal (14 pulgadas)
+const PAGE_HEIGHT: f32 = 215.9; // Oficio horizontal (8.5 pulgadas)
+const CONTENT_WIDTH: f32 = PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT;
 
+// Funciones para colores modernos
+fn primary_color() -> Rgb {
+    Rgb::new(41.0/255.0, 128.0/255.0, 185.0/255.0, None)
+}
+
+fn secondary_color() -> Rgb {
+    Rgb::new(52.0/255.0, 73.0/255.0, 94.0/255.0, None)
+}
+
+fn accent_color() -> Rgb {
+    Rgb::new(230.0/255.0, 126.0/255.0, 34.0/255.0, None)
+}
+
+fn light_gray() -> Rgb {
+    Rgb::new(236.0/255.0, 240.0/255.0, 241.0/255.0, None)
+}
+
+fn white_color() -> Rgb {
+    Rgb::new(1.0, 1.0, 1.0, None)
+}
+
+fn green_color() -> Rgb {
+    Rgb::new(39.0/255.0, 174.0/255.0, 96.0/255.0, None)
+}
+
+fn red_color() -> Rgb {
+    Rgb::new(231.0/255.0, 76.0/255.0, 60.0/255.0, None)
+}
+
+// Estructuras para los datos del PDF
 #[derive(Debug, Clone)]
 pub struct InfoEncabezado {
     pub grado: String,
@@ -19,6 +56,9 @@ pub struct CalificacionDetalle {
     pub lapso1: Option<i32>,
     pub lapso2: Option<i32>,
     pub lapso3: Option<i32>,
+    pub lapso_ajustado_1: Option<i32>,
+    pub lapso_ajustado_2: Option<i32>,
+    pub lapso_ajustado_3: Option<i32>,
     pub definitiva: Option<i32>,
 }
 
@@ -33,6 +73,12 @@ pub struct EstudianteCalificaciones {
     pub apellidos: String,
     pub nombres: String,
     pub asignaturas: Vec<AsignaturaCalificaciones>,
+}
+
+#[derive(Debug, Clone)]
+pub struct AsignaturaInfo {
+    pub id: i32,
+    pub nombre: String,
 }
 
 async fn obtener_info_encabezado(client: &tokio_postgres::Client, id_grado_secciones: i32) -> Result<InfoEncabezado, String> {
@@ -57,12 +103,6 @@ async fn obtener_info_encabezado(client: &tokio_postgres::Client, id_grado_secci
         docente_guia: row.try_get("docente_guia").unwrap_or_else(|_| "N/A".to_string()),
         periodo_escolar: row.get("periodo_escolar"),
     })
-}
-
-#[derive(Debug, Clone)]
-pub struct AsignaturaInfo {
-    pub id: i32,
-    pub nombre: String,
 }
 
 async fn obtener_asignaturas_del_grado(client: &tokio_postgres::Client, id_grado_secciones: i32) -> Result<Vec<AsignaturaInfo>, String> {
@@ -109,7 +149,10 @@ async fn obtener_calificaciones_estudiantes(
             c.id_asignatura,
             c.lapso_1 as lapso1,
             c.lapso_2 as lapso2,
-            c.lapso_3 as lapso3
+            c.lapso_3 as lapso3,
+            c.lapso_1_ajustado,
+            c.lapso_2_ajustado,
+            c.lapso_3_ajustado
         FROM calificaciones c
         WHERE c.id_estudiante = $1 AND c.id_periodo = $2"
     ).await.map_err(|e| format!("Error preparando consulta de calificaciones: {}", e))?;
@@ -124,6 +167,9 @@ async fn obtener_calificaciones_estudiantes(
                 lapso1: row.get("lapso1"),
                 lapso2: row.get("lapso2"),
                 lapso3: row.get("lapso3"),
+                lapso_ajustado_1: row.get("lapso_1_ajustado"),
+                lapso_ajustado_2: row.get("lapso_2_ajustado"),
+                lapso_ajustado_3: row.get("lapso_3_ajustado"),
                 definitiva: None, // La calcularemos después
             };
             (id_asig, detalle)
@@ -132,7 +178,13 @@ async fn obtener_calificaciones_estudiantes(
         let mut asignaturas_calificadas = Vec::new();
         for asig_info in asignaturas_grado {
             let calificacion_detalle = calificaciones_por_asignatura.get(&asig_info.id).cloned().unwrap_or(CalificacionDetalle {
-                lapso1: None, lapso2: None, lapso3: None, definitiva: None
+                lapso1: None, 
+                lapso2: None, 
+                lapso3: None, 
+                lapso_ajustado_1: None,
+                lapso_ajustado_2: None,
+                lapso_ajustado_3: None,
+                definitiva: None
             });
             asignaturas_calificadas.push(AsignaturaCalificaciones {
                 nombre_asignatura: asig_info.nombre.clone(),
@@ -150,216 +202,379 @@ async fn obtener_calificaciones_estudiantes(
     Ok(resultado_final)
 }
 
-fn iniciales_asignatura(nombre: &str) -> String {
-    let nombre = nombre.trim().to_uppercase();
-    match nombre.as_str() {
-        "CIENCIAS DE LA TIERRA" => "C. TIERRA".to_string(),
-        "EDUCACION FISICA" | "EDUCACIÓN FÍSICA" => "ED. FISICA".to_string(),
-        "ARTE Y PATRIMONIO" => "ARTE Y\nPATRIM.".to_string(),
-        "ORIENTACION Y CONVIVENCIA" | "ORIENTACIÓN Y CONVIVENCIA" => "ORIENT.".to_string(),
-        "GRUPOS DE CREACION, RECREACION Y PRODUCCION" => "GCRP".to_string(),
-        _ => nombre,
+fn abreviar_asignatura(nombre: &str) -> String {
+    let nombre_upper = nombre.trim().to_uppercase();
+    match nombre_upper.as_str() {
+        "MATEMATICA" | "MATEMÁTICA" => "MAT".to_string(),
+        "CASTELLANO" | "LENGUA Y LITERATURA" => "CAST".to_string(),
+        "INGLES" | "INGLÉS" => "ING".to_string(),
+        "HISTORIA" | "HISTORIA DE VENEZUELA" => "HIST".to_string(),
+        "GEOGRAFIA" | "GEOGRAFÍA" => "GEO".to_string(),
+        "BIOLOGIA" | "BIOLOGÍA" => "BIO".to_string(),
+        "FISICA" | "FÍSICA" => "FIS".to_string(),
+        "QUIMICA" | "QUÍMICA" => "QUIM".to_string(),
+        "EDUCACION FISICA" | "EDUCACIÓN FÍSICA" => "ED.FIS".to_string(),
+        "ARTE Y PATRIMONIO" => "ARTE".to_string(),
+        "ORIENTACION Y CONVIVENCIA" | "ORIENTACIÓN Y CONVIVENCIA" => "ORIENT".to_string(),
+        "CIENCIAS DE LA TIERRA" => "C.TIERRA".to_string(),
+        _ => {
+            if nombre.len() > 8 {
+                nombre.chars().take(8).collect::<String>().to_uppercase()
+            } else {
+                nombre_upper
+            }
+        }
     }
 }
 
-fn dibujar_encabezado(
+fn dibujar_encabezado_compacto(
     layer: &mut PdfLayerReference,
     doc_info: &InfoEncabezado,
     font_bold: &IndirectFontRef,
-    font_regular: &IndirectFontRef,
+    _font_regular: &IndirectFontRef,
 ) {
-    // Títulos principales
-    layer.set_font(font_bold, 12.0);
+    let y_start = PAGE_HEIGHT - MARGIN_TOP;
+    
+    // Título principal más compacto
+    layer.set_font(font_bold, 10.0);
+    layer.set_fill_color(Color::Rgb(secondary_color()));
     layer.begin_text_section();
-    layer.set_text_cursor(Mm(15.0), Mm(200.0));
-    layer.write_text("COMPLEJO EDUCATIVO", font_bold);
+    layer.set_text_cursor(Mm(MARGIN_LEFT), Mm(y_start - 5.0));
+    layer.write_text("COMPLEJO EDUCATIVO PROFESOR JESÚS LÓPEZ CASTRO - ACTA DE RESUMEN DE CALIFICACIONES", font_bold);
     layer.end_text_section();
 
-    layer.begin_text_section();
-    layer.set_text_cursor(Mm(15.0), Mm(195.0));
-    layer.write_text("PROFESOR JESÚS LÓPEZ CASTRO", font_bold);
-    layer.end_text_section();
-
-    // Información del curso
-    layer.set_font(font_regular, 10.0);
-    let info_texto = format!(
+    // Información del curso en una línea ultra compacta
+    layer.set_font(font_bold, 8.0);
+    let info_text = format!(
         "GRADO: {}   SECCIÓN: {}   DOCENTE GUÍA: {}   AÑO ESCOLAR: {}",
         doc_info.grado, doc_info.seccion, doc_info.docente_guia, doc_info.periodo_escolar
     );
     layer.begin_text_section();
-    layer.set_text_cursor(Mm(15.0), Mm(185.0));
-    layer.write_text(info_texto, font_regular);
+    layer.set_text_cursor(Mm(MARGIN_LEFT), Mm(y_start - 12.0));
+    layer.write_text(&info_text, font_bold);
     layer.end_text_section();
 }
 
-fn dibujar_tabla_calificaciones(
+fn dibujar_tabla_acta_completa(
     layer: &mut PdfLayerReference,
     font_bold: &IndirectFontRef,
     font_regular: &IndirectFontRef,
     asignaturas: &[AsignaturaInfo],
     estudiantes: &[EstudianteCalificaciones],
 ) {
-    // --- Configuración de la tabla ---
-    let y_inicio_tabla = 180.0;
-    let x_inicio_tabla = 15.0;
-    let ancho_total_tabla = 279.4 - 30.0;
+    let table_start_y = PAGE_HEIGHT - MARGIN_TOP - 16.0; // Subir la tabla
+    let row_height = 7.0; // Filas más compactas
+    let header_height = 14.0; // Encabezado más compacto
     
-    let alto_fila_header_asignatura = 10.0;
-    let alto_fila_header_lapsos = 5.0;
-    let alto_fila_estudiante = 10.0;
-
-    let num_filas_a_dibujar = estudiantes.len().max(25);
-
-    // Anchos de las columnas
-    let ancho_col_n = 8.0;
-    let ancho_col_nombres = 65.0;
-    let ancho_disponible_asig = ancho_total_tabla - ancho_col_n - ancho_col_nombres;
-    let ancho_col_asignatura = ancho_disponible_asig / asignaturas.len() as f32;
-    let ancho_subcol_lapso = ancho_col_asignatura / 4.0;
-
-    // --- Coordenadas Y ---
-    let y_linea_superior = y_inicio_tabla;
-    let y_linea_media = y_inicio_tabla - alto_fila_header_asignatura;
-    let y_linea_inferior_header = y_linea_media - alto_fila_header_lapsos;
-
-    // --- Dibujar Cabecera de la Tabla ---
+    // Cálculo optimizado de anchos de columnas
+    let available_width = CONTENT_WIDTH;
+    let num_asignaturas = asignaturas.len();
+    let col_num_width = 6.0; // Columna N° más estrecha
+    let col_name_width = if num_asignaturas > 10 { 45.0 } else { 55.0 }; // Nombre adaptativo
+    let remaining_width = available_width - col_num_width - col_name_width;
+    let col_subject_width = remaining_width / num_asignaturas as f32;
+    let col_lapso_width = col_subject_width / 4.0; // Cada lapso dentro de asignatura
     
-    // Texto "ASIGNATURAS" centrado aproximado
-    let x_centro_area_asig = x_inicio_tabla + ancho_col_n + ancho_col_nombres + (ancho_disponible_asig / 2.0);
+    // Color negro para bordes
+    let black_color = Rgb::new(0.0, 0.0, 0.0, None);
+    layer.set_outline_color(Color::Rgb(black_color));
+    layer.set_outline_thickness(0.5);
+    
+    // ENCABEZADOS
+    layer.set_fill_color(Color::Rgb(secondary_color()));
+    layer.set_font(font_bold, 9.0); // Fuente más grande para encabezados
+    
+    // Encabezado N°
     layer.begin_text_section();
-    layer.set_font(font_bold, 8.0);
-    layer.set_text_cursor(Mm(x_centro_area_asig - 20.0), Mm(y_linea_media + 3.0));
-    layer.write_text("ASIGNATURAS", font_bold);
+    layer.set_text_cursor(Mm(MARGIN_LEFT + 1.0), Mm(table_start_y - 6.0));
+    layer.write_text("N°", font_bold);
     layer.end_text_section();
-
-    // Recorrer cada asignatura
-    let mut x_actual_asig = x_inicio_tabla + ancho_col_n + ancho_col_nombres;
-    for asig in asignaturas {
-        let nombre_corto = iniciales_asignatura(&asig.nombre);
+    
+    // Encabezado ESTUDIANTE
+    layer.begin_text_section();
+    layer.set_text_cursor(Mm(MARGIN_LEFT + col_num_width + 1.0), Mm(table_start_y - 6.0));
+    layer.write_text("ESTUDIANTE", font_bold);
+    layer.end_text_section();
+    
+    // Encabezados de asignaturas
+    let mut x_pos = MARGIN_LEFT + col_num_width + col_name_width;
+    for asignatura in asignaturas {
+        let nombre_corto = abreviar_asignatura(&asignatura.nombre);
         
-        // Dibujar nombre de la asignatura (centrado aproximado)
+        // Nombre de la asignatura (centrado, fuente más grande)
+        let center_x = x_pos + (col_subject_width / 2.0) - ((nombre_corto.len() as f32 * 1.8) / 2.0);
+        layer.set_font(font_bold, 8.0);
         layer.begin_text_section();
-        layer.set_font(font_bold, 7.0);
-        layer.set_text_cursor(
-            Mm(x_actual_asig + (ancho_col_asignatura / 2.0) - 10.0), // Ajuste manual
-            Mm(y_linea_media + 1.0)
-        );
+        layer.set_text_cursor(Mm(center_x), Mm(table_start_y - 4.0));
         layer.write_text(&nombre_corto, font_bold);
         layer.end_text_section();
-
-        // Dibujar sub-cabeceras "1, 2, 3, DF"
-        for i in 0..4 {
-            let texto_lapso = match i { 0 => "1", 1 => "2", 2 => "3", 3 => "DF", _ => "" };
+        
+        // Sub-encabezados de lapsos (1, 2, 3, DF)
+        layer.set_font(font_regular, 7.0); // Fuente más grande para lapsos
+        let sub_headers = ["1", "2", "3", "DF"];
+        for (i, header) in sub_headers.iter().enumerate() {
+            let sub_x = x_pos + (i as f32 * col_lapso_width) + (col_lapso_width / 2.0) - 1.5;
             layer.begin_text_section();
-            layer.set_font(font_regular, 7.0);
-            layer.set_text_cursor(
-                Mm(x_actual_asig + (i as f32 * ancho_subcol_lapso) + 2.0), // Ajuste manual
-                Mm(y_linea_inferior_header + 1.5)
-            );
-            layer.write_text(texto_lapso, font_regular);
+            layer.set_text_cursor(Mm(sub_x), Mm(table_start_y - 11.0));
+            layer.write_text(*header, font_regular);
             layer.end_text_section();
         }
-        x_actual_asig += ancho_col_asignatura;
+        
+        x_pos += col_subject_width;
     }
-
-    // --- Dibujar Filas de Estudiantes ---
-    let mut y_actual_fila = y_linea_inferior_header;
-    layer.set_outline_thickness(0.1);
     
-    for (i, estudiante) in estudiantes.iter().enumerate() {
-        let y_centro_fila = y_actual_fila - (alto_fila_estudiante / 2.0);
+    // LÍNEAS DE ENCABEZADO
+    // Línea horizontal superior
+    layer.add_line(Line {
+        points: vec![
+            (Point::new(Mm(MARGIN_LEFT), Mm(table_start_y)), false),
+            (Point::new(Mm(MARGIN_LEFT + CONTENT_WIDTH), Mm(table_start_y)), false)
+        ],
+        is_closed: false,
+    });
+    
+    // Línea horizontal intermedia (entre asignatura y lapsos)
+    layer.add_line(Line {
+        points: vec![
+            (Point::new(Mm(MARGIN_LEFT + col_num_width + col_name_width), Mm(table_start_y - 7.0)), false),
+            (Point::new(Mm(MARGIN_LEFT + CONTENT_WIDTH), Mm(table_start_y - 7.0)), false)
+        ],
+        is_closed: false,
+    });
+    
+    // Línea horizontal del final del encabezado
+    layer.add_line(Line {
+        points: vec![
+            (Point::new(Mm(MARGIN_LEFT), Mm(table_start_y - header_height)), false),
+            (Point::new(Mm(MARGIN_LEFT + CONTENT_WIDTH), Mm(table_start_y - header_height)), false)
+        ],
+        is_closed: false,
+    });
+    
+    // LÍNEAS VERTICALES DEL ENCABEZADO
+    let mut x_line = MARGIN_LEFT;
+    
+    // Borde izquierdo
+    layer.add_line(Line {
+        points: vec![
+            (Point::new(Mm(x_line), Mm(table_start_y)), false),
+            (Point::new(Mm(x_line), Mm(table_start_y - header_height)), false)
+        ],
+        is_closed: false,
+    });
+    
+    // Separación después de N°
+    x_line += col_num_width;
+    layer.add_line(Line {
+        points: vec![
+            (Point::new(Mm(x_line), Mm(table_start_y)), false),
+            (Point::new(Mm(x_line), Mm(table_start_y - header_height)), false)
+        ],
+        is_closed: false,
+    });
+    
+    // Separación después de ESTUDIANTE
+    x_line += col_name_width;
+    layer.add_line(Line {
+        points: vec![
+            (Point::new(Mm(x_line), Mm(table_start_y)), false),
+            (Point::new(Mm(x_line), Mm(table_start_y - header_height)), false)
+        ],
+        is_closed: false,
+    });
+    
+    // Separaciones entre asignaturas y entre lapsos
+    for _ in 0..num_asignaturas {
+        // Línea principal de asignatura
+        x_line += col_subject_width;
+        layer.add_line(Line {
+            points: vec![
+                (Point::new(Mm(x_line), Mm(table_start_y)), false),
+                (Point::new(Mm(x_line), Mm(table_start_y - header_height)), false)
+            ],
+            is_closed: false,
+        });
+        
+        // Líneas de separación entre lapsos (solo en la parte inferior del encabezado)
+        let asig_start_x = x_line - col_subject_width;
+        for i in 1..4 {
+            let lapso_x = asig_start_x + (i as f32 * col_lapso_width);
+            layer.add_line(Line {
+                points: vec![
+                    (Point::new(Mm(lapso_x), Mm(table_start_y - 7.0)), false),
+                    (Point::new(Mm(lapso_x), Mm(table_start_y - header_height)), false)
+                ],
+                is_closed: false,
+            });
+        }
+    }
+    
+    // FILAS DE ESTUDIANTES
+    layer.set_fill_color(Color::Rgb(secondary_color()));
+    let mut current_y = table_start_y - header_height;
+    
+    for (index, estudiante) in estudiantes.iter().enumerate().take(22) { // Máximo 22 estudiantes
+        // Línea horizontal de separación
+        layer.add_line(Line {
+            points: vec![
+                (Point::new(Mm(MARGIN_LEFT), Mm(current_y)), false),
+                (Point::new(Mm(MARGIN_LEFT + CONTENT_WIDTH), Mm(current_y)), false)
+            ],
+            is_closed: false,
+        });
+        
+        // Líneas verticales de la fila
+        let mut x_line = MARGIN_LEFT;
+        
+        // Columna N°
+        layer.add_line(Line {
+            points: vec![
+                (Point::new(Mm(x_line), Mm(current_y)), false),
+                (Point::new(Mm(x_line), Mm(current_y - row_height)), false)
+            ],
+            is_closed: false,
+        });
+        
+        x_line += col_num_width;
+        layer.add_line(Line {
+            points: vec![
+                (Point::new(Mm(x_line), Mm(current_y)), false),
+                (Point::new(Mm(x_line), Mm(current_y - row_height)), false)
+            ],
+            is_closed: false,
+        });
+        
+        // Columna ESTUDIANTE
+        x_line += col_name_width;
+        layer.add_line(Line {
+            points: vec![
+                (Point::new(Mm(x_line), Mm(current_y)), false),
+                (Point::new(Mm(x_line), Mm(current_y - row_height)), false)
+            ],
+            is_closed: false,
+        });
+        
+        // Columnas de asignaturas
+        for asig_index in 0..num_asignaturas {
+            // Líneas de separación entre lapsos
+            for i in 1..4 {
+                let lapso_x = x_line + (i as f32 * col_lapso_width);
+                layer.add_line(Line {
+                    points: vec![
+                        (Point::new(Mm(lapso_x), Mm(current_y)), false),
+                        (Point::new(Mm(lapso_x), Mm(current_y - row_height)), false)
+                    ],
+                    is_closed: false,
+                });
+            }
+            
+            x_line += col_subject_width;
+            layer.add_line(Line {
+                points: vec![
+                    (Point::new(Mm(x_line), Mm(current_y)), false),
+                    (Point::new(Mm(x_line), Mm(current_y - row_height)), false)
+                ],
+                is_closed: false,
+            });
+        }
+        
+        // CONTENIDO DE LA FILA
+        
+        // Número de estudiante
+        layer.set_font(font_bold, 8.0); // Fuente más grande
+        layer.begin_text_section();
+        layer.set_text_cursor(Mm(MARGIN_LEFT + 1.0), Mm(current_y - 4.5));
+        layer.write_text(&(index + 1).to_string(), font_bold);
+        layer.end_text_section();
+        
+        // Nombre del estudiante
+        layer.set_font(font_regular, 7.0); // Fuente más grande
         let nombre_completo = format!("{} {}", estudiante.apellidos, estudiante.nombres);
+        let max_chars = if num_asignaturas > 10 { 35 } else { 45 };
+        let nombre_truncado = if nombre_completo.len() > max_chars {
+            format!("{}...", &nombre_completo[..max_chars-3])
+        } else {
+            nombre_completo
+        };
         
-        // Escribir Número y Nombre del estudiante
-        layer.set_font(font_regular, 8.0);
         layer.begin_text_section();
-        layer.set_text_cursor(Mm(x_inicio_tabla + 2.0), Mm(y_centro_fila - 1.0));
-        layer.write_text((i + 1).to_string(), font_regular);
+        layer.set_text_cursor(Mm(MARGIN_LEFT + col_num_width + 0.5), Mm(current_y - 4.5));
+        layer.write_text(&nombre_truncado, font_regular);
         layer.end_text_section();
         
-        layer.begin_text_section();
-        layer.set_text_cursor(Mm(x_inicio_tabla + ancho_col_n + 2.0), Mm(y_centro_fila - 1.0));
-        layer.write_text(&nombre_completo, font_regular);
-        layer.end_text_section();
-
-        // Escribir calificaciones
-        let mut x_actual_calif = x_inicio_tabla + ancho_col_n + ancho_col_nombres;
+        // Calificaciones por asignatura
+        let mut x_pos = MARGIN_LEFT + col_num_width + col_name_width;
         for asig_calif in &estudiante.asignaturas {
             let calif = &asig_calif.calificaciones;
-            let notas = [calif.lapso1, calif.lapso2, calif.lapso3];
-            let mut suma = 0;
-            let mut cont = 0;
             
-            // Lapsos 1, 2, 3
-            for (j, nota_opt) in notas.iter().enumerate() {
-                if let Some(nota) = nota_opt {
-                    suma += nota;
-                    cont += 1;
-                    let nota_str = nota.to_string();
+            let lapsos = [calif.lapso1, calif.lapso2, calif.lapso3];
+            let lapsos_ajustados = [calif.lapso_ajustado_1, calif.lapso_ajustado_2, calif.lapso_ajustado_3];
+            
+            // Mostrar lapsos 1, 2, 3
+            for i in 0..3 {
+                let lapso_x = x_pos + (i as f32 * col_lapso_width) + (col_lapso_width / 2.0) - 2.0;
+                
+                // Nota principal
+                if let Some(nota) = lapsos[i] {
+                    layer.set_font(font_regular, 8.0); // Fuente más grande
+                    layer.set_fill_color(Color::Rgb(secondary_color()));
                     layer.begin_text_section();
-                    layer.set_text_cursor(
-                        Mm(x_actual_calif + (j as f32 * ancho_subcol_lapso) + 2.0), // Ajuste manual
-                        Mm(y_centro_fila - 1.0)
-                    );
-                    layer.write_text(&nota_str, font_regular);
+                    layer.set_text_cursor(Mm(lapso_x), Mm(current_y - 2.5));
+                    layer.write_text(&nota.to_string(), font_regular);
+                    layer.end_text_section();
+                }
+                
+                // Nota ajustada (debajo en rojo)
+                if let Some(nota_ajustada) = lapsos_ajustados[i] {
+                    layer.set_font(font_regular, 7.0); // Fuente más grande
+                    layer.set_fill_color(Color::Rgb(red_color()));
+                    layer.begin_text_section();
+                    layer.set_text_cursor(Mm(lapso_x), Mm(current_y - 5.5));
+                    layer.write_text(&nota_ajustada.to_string(), font_regular);
                     layer.end_text_section();
                 }
             }
-
+            
             // Definitiva
-            if cont > 0 {
-                let definitiva = (suma as f32 / cont as f32).round() as i32;
-                let def_str = definitiva.to_string();
-                layer.begin_text_section();
-                layer.set_font(font_bold, 8.0);
-                layer.set_text_cursor(
-                    Mm(x_actual_calif + (3.0 * ancho_subcol_lapso) + 2.0), // Ajuste manual
-                    Mm(y_centro_fila - 1.0)
-                );
-                layer.write_text(&def_str, font_bold);
-                layer.end_text_section();
-                layer.set_font(font_regular, 8.0); // Volver a fuente regular
+            let mut suma_definitiva = 0;
+            let mut cont_definitiva = 0;
+            
+            for i in 0..3 {
+                let nota_final = lapsos_ajustados[i].or(lapsos[i]);
+                if let Some(nota) = nota_final {
+                    suma_definitiva += nota;
+                    cont_definitiva += 1;
+                }
             }
-            x_actual_calif += ancho_col_asignatura;
+            
+            if cont_definitiva > 0 {
+                let definitiva = (suma_definitiva as f32 / cont_definitiva as f32).round() as i32;
+                let def_x = x_pos + (3.0 * col_lapso_width) + (col_lapso_width / 2.0) - 2.0;
+                
+                layer.set_font(font_bold, 8.0); // Fuente más grande
+                layer.set_fill_color(Color::Rgb(secondary_color()));
+                
+                layer.begin_text_section();
+                layer.set_text_cursor(Mm(def_x), Mm(current_y - 4.0));
+                layer.write_text(&definitiva.to_string(), font_bold);
+                layer.end_text_section();
+            }
+            
+            x_pos += col_subject_width;
         }
-
-        y_actual_fila -= alto_fila_estudiante;
-    }
-
-    // --- Dibujar Líneas de la Rejilla ---
-    let y_final_tabla = y_linea_inferior_header - (num_filas_a_dibujar as f32 * alto_fila_estudiante);
-    
-    // Líneas Horizontales
-    layer.add_line(Line { points: vec![(Point::new(Mm(x_inicio_tabla), Mm(y_linea_superior)), false), (Point::new(Mm(x_inicio_tabla + ancho_total_tabla), Mm(y_linea_superior)), false)], is_closed: false });
-    layer.add_line(Line { points: vec![(Point::new(Mm(x_inicio_tabla), Mm(y_linea_media)), false), (Point::new(Mm(x_inicio_tabla + ancho_total_tabla), Mm(y_linea_media)), false)], is_closed: false });
-    
-    let mut y_linea = y_linea_inferior_header;
-    for _ in 0..=num_filas_a_dibujar {
-        layer.add_line(Line { points: vec![(Point::new(Mm(x_inicio_tabla), Mm(y_linea)), false), (Point::new(Mm(x_inicio_tabla + ancho_total_tabla), Mm(y_linea)), false)], is_closed: false });
-        y_linea -= alto_fila_estudiante;
-    }
-
-    // Líneas Verticales
-    let mut x_linea_vert = x_inicio_tabla;
-    layer.add_line(Line { points: vec![(Point::new(Mm(x_linea_vert), Mm(y_linea_superior)), false), (Point::new(Mm(x_linea_vert), Mm(y_final_tabla)), false)], is_closed: false });
-    x_linea_vert += ancho_col_n;
-    layer.add_line(Line { points: vec![(Point::new(Mm(x_linea_vert), Mm(y_linea_superior)), false), (Point::new(Mm(x_linea_vert), Mm(y_final_tabla)), false)], is_closed: false });
-    x_linea_vert += ancho_col_nombres;
-    
-    for _ in 0..asignaturas.len() {
-        layer.add_line(Line { points: vec![(Point::new(Mm(x_linea_vert), Mm(y_linea_superior)), false), (Point::new(Mm(x_linea_vert), Mm(y_final_tabla)), false)], is_closed: false });
         
-        for i in 1..4 {
-            let x_sub_linea = x_linea_vert + i as f32 * ancho_subcol_lapso;
-            layer.add_line(Line { points: vec![(Point::new(Mm(x_sub_linea), Mm(y_linea_media)), false), (Point::new(Mm(x_sub_linea), Mm(y_final_tabla)), false)], is_closed: false });
-        }
-        x_linea_vert += ancho_col_asignatura;
+        current_y -= row_height;
     }
     
-    layer.add_line(Line { points: vec![(Point::new(Mm(x_linea_vert), Mm(y_linea_superior)), false), (Point::new(Mm(x_linea_vert), Mm(y_final_tabla)), false)], is_closed: false });
+    // Línea horizontal final
+    layer.add_line(Line {
+        points: vec![
+            (Point::new(Mm(MARGIN_LEFT), Mm(current_y)), false),
+            (Point::new(Mm(MARGIN_LEFT + CONTENT_WIDTH), Mm(current_y)), false)
+        ],
+        is_closed: false,
+    });
 }
-
-// Comando principal de Tauri
 
 #[tauri::command]
 pub async fn generar_acta_resumen(
@@ -379,11 +594,11 @@ pub async fn generar_acta_resumen(
     let asignaturas = obtener_asignaturas_del_grado(client, id_grado_secciones).await?;
     let estudiantes_con_calificaciones = obtener_calificaciones_estudiantes(client, id_grado_secciones, id_periodo_activo, &asignaturas).await?;
 
-    // --- Inicio de la generación del PDF ---
+    // --- Generación del PDF moderno ---
     let (doc, page1, layer1) = PdfDocument::new(
         "Acta de Resumen de Calificaciones",
-        Mm(279.4), // Ancho de Carta en horizontal
-        Mm(215.9), // Alto de Carta en horizontal
+        Mm(PAGE_WIDTH), 
+        Mm(PAGE_HEIGHT), 
         "Layer 1",
     );
     let mut current_layer = doc.get_page(page1).get_layer(layer1);
@@ -391,15 +606,8 @@ pub async fn generar_acta_resumen(
     let font_bold = doc.add_builtin_font(BuiltinFont::HelveticaBold).map_err(|e| e.to_string())?;
     let font_regular = doc.add_builtin_font(BuiltinFont::Helvetica).map_err(|e| e.to_string())?;
 
-    dibujar_encabezado(&mut current_layer, &info_encabezado, &font_bold, &font_regular);
-
-    dibujar_tabla_calificaciones(
-        &mut current_layer,
-        &font_bold,
-        &font_regular,
-        &asignaturas,
-        &estudiantes_con_calificaciones
-    );
+    dibujar_encabezado_compacto(&mut current_layer, &info_encabezado, &font_bold, &font_regular);
+    dibujar_tabla_acta_completa(&mut current_layer, &font_bold, &font_regular, &asignaturas, &estudiantes_con_calificaciones);
 
     // --- Finalización del PDF ---
     let mut buf = BufWriter::new(Vec::new());

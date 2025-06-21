@@ -1,5 +1,6 @@
-use printpdf::{BuiltinFont, IndirectFontRef, Line, Mm, PdfDocument, PdfLayerReference, Point, Rgb, Color};
-use std::io::BufWriter;
+use printpdf::{BuiltinFont, IndirectFontRef, Line, Mm, PdfDocument, PdfLayerReference, Point, Rgb, Color, Image, ImageTransform};
+use std::io::{BufWriter, Cursor};
+use ::image::{load, GenericImageView, DynamicImage, imageops::FilterType};
 use base64::{engine::general_purpose, Engine as _};
 use crate::AppState;
 use tauri::State;
@@ -214,9 +215,9 @@ fn abreviar_asignatura(nombre: &str) -> String {
         "FISICA" | "FÍSICA" => "FIS".to_string(),
         "QUIMICA" | "QUÍMICA" => "QUIM".to_string(),
         "EDUCACION FISICA" | "EDUCACIÓN FÍSICA" => "ED.FIS".to_string(),
-        "ARTE Y PATRIMONIO" => "ARTE".to_string(),
+        "ARTE Y PATRIMONIO" => "ART Y PAT".to_string(),
         "ORIENTACION Y CONVIVENCIA" | "ORIENTACIÓN Y CONVIVENCIA" => "ORIENT".to_string(),
-        "CIENCIAS DE LA TIERRA" => "C.TIERRA".to_string(),
+        "CIENCIAS DE LA TIERRA" => "CS. TIERRA".to_string(),
         _ => {
             if nombre.len() > 8 {
                 nombre.chars().take(8).collect::<String>().to_uppercase()
@@ -227,43 +228,128 @@ fn abreviar_asignatura(nombre: &str) -> String {
     }
 }
 
-fn dibujar_encabezado_compacto(
+fn formatear_calificacion(nota: i32) -> String {
+    if nota < 10 {
+        format!("0{}", nota)
+    } else {
+        nota.to_string()
+    }
+}
+
+// Función para procesar logos desde base64 (reutilizada de pdf_estudiantes.rs)
+fn procesar_logo(base64_str: &str, altura_max_mm: f32) -> Result<(DynamicImage, f32, f32), String> {
+    // Decodificar base64 a bytes
+    let bytes = general_purpose::STANDARD.decode(base64_str)
+        .map_err(|e| format!("Error decodificando base64: {}", e))?;
+    
+    // Cargar imagen desde bytes (probamos varios formatos)
+    let format = image::guess_format(&bytes)
+        .map_err(|e| format!("Error adivinando formato de imagen: {}", e))?;
+    let img = load(Cursor::new(bytes), format)
+        .map_err(|e| format!("Error cargando imagen: {}", e))?;
+    
+    // Obtener dimensiones originales
+    let (ancho_orig, alto_orig) = img.dimensions();
+    let relacion_aspecto = ancho_orig as f32 / alto_orig as f32;
+    
+    // Calcular nuevo tamaño manteniendo relación de aspecto
+    let alto_mm = altura_max_mm;
+    let ancho_mm = alto_mm * relacion_aspecto;
+    
+    // Redimensionar imagen (convertir mm a píxeles - 150 DPI)
+    let dpi = 150.0;
+    let mm_to_px = dpi / 25.4;
+    let alto_px = (alto_mm * mm_to_px) as u32;
+    let ancho_px = (ancho_mm * mm_to_px) as u32;
+    
+    let img_redim = img.resize_exact(
+        ancho_px,
+        alto_px,
+        FilterType::Lanczos3, // Filtro de alta calidad
+    );
+    
+    Ok((img_redim, ancho_mm, alto_mm))
+}
+
+fn dibujar_encabezado_con_logo(
     layer: &mut PdfLayerReference,
     doc_info: &InfoEncabezado,
     font_bold: &IndirectFontRef,
     _font_regular: &IndirectFontRef,
+    logo_base64: &str,
 ) {
     let y_start = PAGE_HEIGHT - MARGIN_TOP;
     
-    // Título principal más compacto
-    layer.set_font(font_bold, 10.0);
+    // Procesar el logo desde base64
+    let (_logo_width, _logo_height, text_start_x) = if let Ok((logo_dyn, ancho_logo, alto_logo)) = procesar_logo(logo_base64, 20.0) {
+        // Insertar el logo en la esquina superior izquierda
+                 Image::from_dynamic_image(&logo_dyn).add_to_layer(
+             layer.clone(),
+             ImageTransform {
+                 translate_x: Some(Mm(MARGIN_LEFT)),
+                 translate_y: Some(Mm(y_start - alto_logo + 3.0)), // Subir el logo 3mm
+                 dpi: Some(150.0),
+                 ..Default::default()
+             }
+         );
+        
+        let text_start_x = MARGIN_LEFT + ancho_logo + 5.0; // Espacio después del logo
+        (ancho_logo, alto_logo, text_start_x)
+    } else {
+        // Si no se puede cargar el logo, usar valores por defecto
+        (0.0, 0.0, MARGIN_LEFT)
+    };
+    
+    // Título principal alineado con el logo (ajustado para mejor alineación)
+    layer.set_font(font_bold, 11.0);
     layer.set_fill_color(Color::Rgb(secondary_color()));
     layer.begin_text_section();
-    layer.set_text_cursor(Mm(MARGIN_LEFT), Mm(y_start - 5.0));
-    layer.write_text("COMPLEJO EDUCATIVO PROFESOR JESÚS LÓPEZ CASTRO - ACTA DE RESUMEN DE CALIFICACIONES", font_bold);
+    layer.set_text_cursor(Mm(text_start_x), Mm(y_start - 2.0)); // Subir el título
+    layer.write_text("COMPLEJO EDUCATIVO PROFESOR JESÚS LÓPEZ CASTRO", font_bold);
+    layer.end_text_section();
+    
+    // Subtítulo
+    layer.set_font(font_bold, 9.0);
+    layer.set_fill_color(Color::Rgb(primary_color()));
+    layer.begin_text_section();
+    layer.set_text_cursor(Mm(text_start_x), Mm(y_start - 6.5)); // Ajustar posición
+    layer.write_text("ACTA DE RESUMEN DE CALIFICACIONES", font_bold);
     layer.end_text_section();
 
-    // Información del curso en una línea ultra compacta
+    // Información del curso en una línea compacta
     layer.set_font(font_bold, 8.0);
+    layer.set_fill_color(Color::Rgb(secondary_color()));
     let info_text = format!(
         "GRADO: {}   SECCIÓN: {}   DOCENTE GUÍA: {}   AÑO ESCOLAR: {}",
         doc_info.grado, doc_info.seccion, doc_info.docente_guia, doc_info.periodo_escolar
     );
     layer.begin_text_section();
-    layer.set_text_cursor(Mm(MARGIN_LEFT), Mm(y_start - 12.0));
+    layer.set_text_cursor(Mm(text_start_x), Mm(y_start - 10.5)); // Ajustar posición
     layer.write_text(&info_text, font_bold);
     layer.end_text_section();
+    
+    // Línea divisoria debajo del encabezado
+    layer.set_outline_color(Color::Rgb(primary_color()));
+    layer.set_outline_thickness(0.5);
+    layer.add_line(Line {
+        points: vec![
+            (Point::new(Mm(MARGIN_LEFT), Mm(y_start - 17.5)), false), // Bajar la línea otros 0.3mm más
+            (Point::new(Mm(PAGE_WIDTH - MARGIN_RIGHT), Mm(y_start - 17.5)), false)
+        ],
+        is_closed: false,
+    });
 }
 
-fn dibujar_tabla_acta_completa(
+fn dibujar_tabla_acta_pagina(
     layer: &mut PdfLayerReference,
     font_bold: &IndirectFontRef,
-    font_regular: &IndirectFontRef,
+    _font_regular: &IndirectFontRef,
     asignaturas: &[AsignaturaInfo],
     estudiantes: &[EstudianteCalificaciones],
+    inicio_numeracion: usize,
 ) {
-    let table_start_y = PAGE_HEIGHT - MARGIN_TOP - 16.0; // Subir la tabla
-    let row_height = 7.0; // Filas más compactas
+    let table_start_y = PAGE_HEIGHT - MARGIN_TOP - 21.0; // Bajar la tabla para dar más espacio al encabezado mejorado
+    let row_height = 7.2; // Filas un poco más altas (+0.2mm)
     let header_height = 14.0; // Encabezado más compacto
     
     // Cálculo optimizado de anchos de columnas
@@ -280,20 +366,29 @@ fn dibujar_tabla_acta_completa(
     layer.set_outline_color(Color::Rgb(black_color));
     layer.set_outline_thickness(0.5);
     
-    // ENCABEZADOS
-    layer.set_fill_color(Color::Rgb(secondary_color()));
-    layer.set_font(font_bold, 9.0); // Fuente más grande para encabezados
+    // ENCABEZADOS CON JERARQUÍA VISUAL MEJORADA
     
-    // Encabezado N°
+    // Encabezado N° (centrado)
+    layer.set_fill_color(Color::Rgb(secondary_color()));
+    layer.set_font(font_bold, 10.0); // Fuente prominente
+    let n_text_width = 4.0; // Aproximación del ancho de "N°"
+    let center_x_num = MARGIN_LEFT + (col_num_width / 2.0) - (n_text_width / 2.0);
     layer.begin_text_section();
-    layer.set_text_cursor(Mm(MARGIN_LEFT + 1.0), Mm(table_start_y - 6.0));
+    layer.set_text_cursor(Mm(center_x_num), Mm(table_start_y - 7.0)); // Centrado verticalmente
     layer.write_text("N°", font_bold);
     layer.end_text_section();
     
-    // Encabezado ESTUDIANTE
+    // Encabezado principal: APELLIDOS Y NOMBRES (perfectamente centrado y en mayúsculas)
+    layer.set_fill_color(Color::Rgb(primary_color())); // Color primario para mayor jerarquía
+    layer.set_font(font_bold, 10.0); // Fuente prominente
+    let apellidos_nombres_text = "APELLIDOS Y NOMBRES";
+    // Cálculo más preciso del centrado basado en el ancho real del texto
+    let char_width = 2.5; // Ancho promedio por carácter en fuente 10.0 bold
+    let text_width = apellidos_nombres_text.len() as f32 * char_width;
+    let center_x_apellidos = MARGIN_LEFT + col_num_width + (col_name_width / 2.0) - (text_width / 2.0);
     layer.begin_text_section();
-    layer.set_text_cursor(Mm(MARGIN_LEFT + col_num_width + 1.0), Mm(table_start_y - 6.0));
-    layer.write_text("ESTUDIANTE", font_bold);
+    layer.set_text_cursor(Mm(center_x_apellidos), Mm(table_start_y - 7.0)); // Centrado verticalmente
+    layer.write_text("APELLIDOS Y NOMBRES", font_bold);
     layer.end_text_section();
     
     // Encabezados de asignaturas
@@ -301,22 +396,24 @@ fn dibujar_tabla_acta_completa(
     for asignatura in asignaturas {
         let nombre_corto = abreviar_asignatura(&asignatura.nombre);
         
-        // Nombre de la asignatura (centrado, fuente más grande)
+        // Nombre de la asignatura (centrado, negro y negrita)
         let center_x = x_pos + (col_subject_width / 2.0) - ((nombre_corto.len() as f32 * 1.8) / 2.0);
         layer.set_font(font_bold, 8.0);
+        layer.set_fill_color(Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None))); // Negro
         layer.begin_text_section();
         layer.set_text_cursor(Mm(center_x), Mm(table_start_y - 4.0));
         layer.write_text(&nombre_corto, font_bold);
         layer.end_text_section();
         
-        // Sub-encabezados de lapsos (1, 2, 3, DF)
-        layer.set_font(font_regular, 7.0); // Fuente más grande para lapsos
-        let sub_headers = ["1", "2", "3", "DF"];
+        // Sub-encabezados de lapsos (1°, 2°, 3°, DF) - negro y negrita
+        layer.set_font(font_bold, 7.5); // Fuente más grande y en negrita para lapsos
+        layer.set_fill_color(Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None))); // Negro
+        let sub_headers = ["1°", "2°", "3°", "DF"];
         for (i, header) in sub_headers.iter().enumerate() {
-            let sub_x = x_pos + (i as f32 * col_lapso_width) + (col_lapso_width / 2.0) - 1.5;
+            let sub_x = x_pos + (i as f32 * col_lapso_width) + (col_lapso_width / 2.0) - 2.0;
             layer.begin_text_section();
             layer.set_text_cursor(Mm(sub_x), Mm(table_start_y - 11.0));
-            layer.write_text(*header, font_regular);
+            layer.write_text(*header, font_bold);
             layer.end_text_section();
         }
         
@@ -333,7 +430,7 @@ fn dibujar_tabla_acta_completa(
         is_closed: false,
     });
     
-    // Línea horizontal intermedia (entre asignatura y lapsos)
+    // Línea horizontal intermedia (entre nombres de asignaturas y lapsos)
     layer.add_line(Line {
         points: vec![
             (Point::new(Mm(MARGIN_LEFT + col_num_width + col_name_width), Mm(table_start_y - 7.0)), false),
@@ -413,7 +510,7 @@ fn dibujar_tabla_acta_completa(
     layer.set_fill_color(Color::Rgb(secondary_color()));
     let mut current_y = table_start_y - header_height;
     
-    for (index, estudiante) in estudiantes.iter().enumerate().take(22) { // Máximo 22 estudiantes
+    for (index, estudiante) in estudiantes.iter().enumerate().take(22) { // Máximo 22 estudiantes por página
         // Línea horizontal de separación
         layer.add_line(Line {
             points: vec![
@@ -455,7 +552,7 @@ fn dibujar_tabla_acta_completa(
         });
         
         // Columnas de asignaturas
-        for asig_index in 0..num_asignaturas {
+        for _asig_index in 0..num_asignaturas {
             // Líneas de separación entre lapsos
             for i in 1..4 {
                 let lapso_x = x_line + (i as f32 * col_lapso_width);
@@ -480,26 +577,34 @@ fn dibujar_tabla_acta_completa(
         
         // CONTENIDO DE LA FILA
         
-        // Número de estudiante
-        layer.set_font(font_bold, 8.0); // Fuente más grande
+        // Número de estudiante (numeración continua)
+        layer.set_font(font_bold, 10.0); // Fuente tamaño 10
         layer.begin_text_section();
         layer.set_text_cursor(Mm(MARGIN_LEFT + 1.0), Mm(current_y - 4.5));
-        layer.write_text(&(index + 1).to_string(), font_bold);
+        layer.write_text(&(inicio_numeracion + index + 1).to_string(), font_bold);
         layer.end_text_section();
         
-        // Nombre del estudiante
-        layer.set_font(font_regular, 7.0); // Fuente más grande
+        // Nombre del estudiante (negro y negrita, truncado inteligentemente)
+        layer.set_font(font_bold, 7.0); // Fuente en negrita
+        layer.set_fill_color(Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None))); // Negro
         let nombre_completo = format!("{} {}", estudiante.apellidos, estudiante.nombres);
-        let max_chars = if num_asignaturas > 10 { 35 } else { 45 };
-        let nombre_truncado = if nombre_completo.len() > max_chars {
+        
+        // Cálculo más preciso del truncado basado en el ancho disponible
+        let char_width_7pt = 1.59; // Ancho promedio por carácter en fuente 7.0 bold (ajustado para 34 chars)
+        let available_width_for_text = col_name_width - 1.0; // Dejar margen de 0.5mm a cada lado
+        let max_chars = (available_width_for_text / char_width_7pt) as usize;
+        
+        let nombre_truncado = if nombre_completo.len() > max_chars && max_chars > 3 {
             format!("{}...", &nombre_completo[..max_chars-3])
+        } else if nombre_completo.len() > max_chars {
+            nombre_completo[..max_chars].to_string()
         } else {
             nombre_completo
         };
         
         layer.begin_text_section();
         layer.set_text_cursor(Mm(MARGIN_LEFT + col_num_width + 0.5), Mm(current_y - 4.5));
-        layer.write_text(&nombre_truncado, font_regular);
+        layer.write_text(&nombre_truncado, font_bold);
         layer.end_text_section();
         
         // Calificaciones por asignatura
@@ -514,24 +619,48 @@ fn dibujar_tabla_acta_completa(
             for i in 0..3 {
                 let lapso_x = x_pos + (i as f32 * col_lapso_width) + (col_lapso_width / 2.0) - 2.0;
                 
-                // Nota principal
-                if let Some(nota) = lapsos[i] {
-                    layer.set_font(font_regular, 8.0); // Fuente más grande
-                    layer.set_fill_color(Color::Rgb(secondary_color()));
-                    layer.begin_text_section();
-                    layer.set_text_cursor(Mm(lapso_x), Mm(current_y - 2.5));
-                    layer.write_text(&nota.to_string(), font_regular);
-                    layer.end_text_section();
-                }
+                let tiene_ajuste = lapsos_ajustados[i].is_some();
+                let tiene_principal = lapsos[i].is_some();
                 
-                // Nota ajustada (debajo en rojo)
-                if let Some(nota_ajustada) = lapsos_ajustados[i] {
-                    layer.set_font(font_regular, 7.0); // Fuente más grande
-                    layer.set_fill_color(Color::Rgb(red_color()));
-                    layer.begin_text_section();
-                    layer.set_text_cursor(Mm(lapso_x), Mm(current_y - 5.5));
-                    layer.write_text(&nota_ajustada.to_string(), font_regular);
-                    layer.end_text_section();
+                // Si hay ajuste, mostrar formato dual (original arriba pequeña, ajuste abajo grande)
+                if tiene_ajuste {
+                    // Nota original (arriba, pequeña)
+                    if let Some(nota) = lapsos[i] {
+                        layer.set_font(font_bold, 8.0); // Fuente más pequeña para original
+                        if nota >= 10 {
+                            layer.set_fill_color(Color::Rgb(primary_color())); // Azul
+                        } else {
+                            layer.set_fill_color(Color::Rgb(red_color())); // Rojo
+                        }
+                        layer.begin_text_section();
+                        layer.set_text_cursor(Mm(lapso_x), Mm(current_y - 2.9));
+                        layer.write_text(&formatear_calificacion(nota), font_bold);
+                        layer.end_text_section();
+                    }
+                    
+                    // Nota ajustada (abajo, grande, verde)
+                    if let Some(nota_ajustada) = lapsos_ajustados[i] {
+                        layer.set_font(font_bold, 10.0); // Fuente más grande para ajuste
+                        layer.set_fill_color(Color::Rgb(green_color())); // Verde para ajustadas
+                        layer.begin_text_section();
+                        layer.set_text_cursor(Mm(lapso_x), Mm(current_y - 5.9));
+                        layer.write_text(&formatear_calificacion(nota_ajustada), font_bold);
+                        layer.end_text_section();
+                    }
+                } else if tiene_principal {
+                    // Si solo hay nota principal, centrarla verticalmente
+                    if let Some(nota) = lapsos[i] {
+                        layer.set_font(font_bold, 10.0);
+                        if nota >= 10 {
+                            layer.set_fill_color(Color::Rgb(primary_color())); // Azul
+                        } else {
+                            layer.set_fill_color(Color::Rgb(red_color())); // Rojo
+                        }
+                        layer.begin_text_section();
+                        layer.set_text_cursor(Mm(lapso_x), Mm(current_y - 4.4)); // Centrada verticalmente
+                        layer.write_text(&formatear_calificacion(nota), font_bold);
+                        layer.end_text_section();
+                    }
                 }
             }
             
@@ -551,12 +680,17 @@ fn dibujar_tabla_acta_completa(
                 let definitiva = (suma_definitiva as f32 / cont_definitiva as f32).round() as i32;
                 let def_x = x_pos + (3.0 * col_lapso_width) + (col_lapso_width / 2.0) - 2.0;
                 
-                layer.set_font(font_bold, 8.0); // Fuente más grande
-                layer.set_fill_color(Color::Rgb(secondary_color()));
+                layer.set_font(font_bold, 10.5); // Fuente más grande para definitiva
+                // Color según la calificación definitiva: azul ≥10, rojo <10
+                if definitiva >= 10 {
+                    layer.set_fill_color(Color::Rgb(primary_color())); // Azul
+                } else {
+                    layer.set_fill_color(Color::Rgb(red_color())); // Rojo
+                }
                 
                 layer.begin_text_section();
-                layer.set_text_cursor(Mm(def_x), Mm(current_y - 4.0));
-                layer.write_text(&definitiva.to_string(), font_bold);
+                layer.set_text_cursor(Mm(def_x), Mm(current_y - 4.4)); // Siempre centrada (no hay ajustes en definitiva)
+                layer.write_text(&formatear_calificacion(definitiva), font_bold);
                 layer.end_text_section();
             }
             
@@ -601,13 +735,33 @@ pub async fn generar_acta_resumen(
         Mm(PAGE_HEIGHT), 
         "Layer 1",
     );
-    let mut current_layer = doc.get_page(page1).get_layer(layer1);
-
     let font_bold = doc.add_builtin_font(BuiltinFont::HelveticaBold).map_err(|e| e.to_string())?;
     let font_regular = doc.add_builtin_font(BuiltinFont::Helvetica).map_err(|e| e.to_string())?;
 
-    dibujar_encabezado_compacto(&mut current_layer, &info_encabezado, &font_bold, &font_regular);
-    dibujar_tabla_acta_completa(&mut current_layer, &font_bold, &font_regular, &asignaturas, &estudiantes_con_calificaciones);
+    // Procesar estudiantes en páginas de 22
+    let estudiantes_por_pagina = 22;
+    let total_estudiantes = estudiantes_con_calificaciones.len();
+    let total_paginas = (total_estudiantes + estudiantes_por_pagina - 1) / estudiantes_por_pagina;
+
+    for pagina in 0..total_paginas {
+        let inicio_estudiante = pagina * estudiantes_por_pagina;
+        let fin_estudiante = std::cmp::min(inicio_estudiante + estudiantes_por_pagina, total_estudiantes);
+        let estudiantes_pagina = &estudiantes_con_calificaciones[inicio_estudiante..fin_estudiante];
+
+        // Crear la página correspondiente
+        let mut layer_actual = if pagina == 0 {
+            doc.get_page(page1).get_layer(layer1)
+        } else {
+            let (nueva_pagina, nuevo_layer) = doc.add_page(Mm(PAGE_WIDTH), Mm(PAGE_HEIGHT), "Layer");
+            doc.get_page(nueva_pagina).get_layer(nuevo_layer)
+        };
+
+        // Dibujar encabezado en cada página
+        dibujar_encabezado_con_logo(&mut layer_actual, &info_encabezado, &font_bold, &font_regular, &state.logo_der);
+        
+        // Dibujar tabla con numeración continua
+        dibujar_tabla_acta_pagina(&mut layer_actual, &font_bold, &font_regular, &asignaturas, estudiantes_pagina, inicio_estudiante);
+    }
 
     // --- Finalización del PDF ---
     let mut buf = BufWriter::new(Vec::new());

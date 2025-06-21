@@ -11,7 +11,8 @@ import {
   UserPlus,
   X,
   Loader2,
-  List
+  List,
+  Activity
 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/tauri';
 import { Paginacion } from '../../../componentes/Paginacion';
@@ -20,6 +21,8 @@ import { useMensajeGlobal } from '../../../componentes/MensajeGlobalContext';
 import { ModalAsignarDocentes } from '../componentes/ModalAsignarDocentes';
 import { useAsignaturas } from '../../calificaciones/hooks/useAsignaturas';
 import { ModalPDF } from '../../../componentes/ModalPDF';
+import { ModalAsignarPgcrp } from '../../../componentes/ModalAsignarPgcrp';
+import ModalAsignarPgcrpEstudiantes from '../../../componentes/ModalAsignarPgcrpEstudiantes';
 
 // Types y constantes
 interface FiltrosGrados {
@@ -289,6 +292,10 @@ const TarjetaCurso = React.memo<TarjetaCursoProps>(({ grado, onDocenteAsignado }
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [loadingPdf, setLoadingPdf] = useState(false);
   const [errorPdf, setErrorPdf] = useState<string | null>(null);
+  const [modalPgcrpAbierto, setModalPgcrpAbierto] = useState(false);
+  const [modalPgcrpEstudiantesAbierto, setModalPgcrpEstudiantesAbierto] = useState(false);
+  const [periodoActivo, setPeriodoActivo] = useState<number>(1); // Por defecto 1, luego se carga
+  const [pgcrpAsignado, setPgcrpAsignado] = useState<string | null>(null);
 
   // Usar el hook useAsignaturas para cargar las asignaturas
   const { asignaturas, loading: cargandoAsignaturas, error: errorAsignaturas } = useAsignaturas(
@@ -296,6 +303,49 @@ const TarjetaCurso = React.memo<TarjetaCursoProps>(({ grado, onDocenteAsignado }
     grado.id_modalidad,
     grado.id_grado_secciones
   );
+
+  // Cargar período activo al montar el componente
+  useEffect(() => {
+    const cargarPeriodoActivo = async () => {
+      try {
+        const periodos = await invoke<any[]>('obtener_periodos_escolares');
+        const activo = periodos.find(p => p.activo);
+        if (activo) {
+          setPeriodoActivo(activo.id_periodo);
+        }
+      } catch (error) {
+        console.error('Error al cargar período activo:', error);
+      }
+    };
+    cargarPeriodoActivo();
+  }, []);
+
+  // Cargar PGCRP asignado cuando cambie el período activo
+  useEffect(() => {
+    const cargarPgcrpAsignado = async () => {
+      if (periodoActivo) {
+        try {
+          console.log('[DEBUG] Cargando PGCRP para:', {
+            idGradoSecciones: grado.id_grado_secciones,
+            idPeriodo: periodoActivo,
+            seccion: `${grado.nombre_grado} ${grado.nombre_seccion}`
+          });
+          
+          const asignacion = await invoke<any>('obtener_pgcrp_seccion', {
+            id_grado_secciones: grado.id_grado_secciones,
+            id_periodo: periodoActivo
+          });
+          
+          console.log('[DEBUG] Respuesta PGCRP:', asignacion);
+          setPgcrpAsignado(asignacion?.nombre_actividad || null);
+        } catch (error) {
+          console.error('Error al cargar PGCRP asignado:', error);
+          setPgcrpAsignado(null);
+        }
+      }
+    };
+    cargarPgcrpAsignado();
+  }, [periodoActivo, grado.id_grado_secciones]);
 
   const abrirModal = useCallback(async () => {
     setModalAbierto(true);
@@ -365,27 +415,55 @@ const TarjetaCurso = React.memo<TarjetaCursoProps>(({ grado, onDocenteAsignado }
         {/* Gradiente superior */}
         <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-400" />
         
-        {/* Botón de asignar docentes (esquina superior izquierda) */}
-        <button
-          type="button"
-          onClick={() => setModalAsignaturasAbierto(true)}
-          className="absolute top-4 left-4 p-2 bg-blue-50 dark:bg-blue-900/30 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors group/btn"
-          title="Asignar docentes a asignaturas"
-          aria-label={`Asignar docentes a asignaturas para ${grado.nombre_grado} Año ${grado.nombre_seccion}`}
-        >
-          <BookOpen className="w-5 h-5 text-blue-600 dark:text-blue-400 group-hover/btn:scale-110 transition-transform" />
-        </button>
+        {/* Columna de botones del lado izquierdo - PGCRP */}
+        <div className="absolute top-4 left-4 flex flex-col space-y-2">
+          {/* Botón de asignar PGCRP por sección */}
+          <button
+            type="button"
+            onClick={() => setModalPgcrpAbierto(true)}
+            className="p-2 bg-orange-50 dark:bg-orange-900/30 rounded-full hover:bg-orange-100 dark:hover:bg-orange-900/50 transition-colors group/btn"
+            title="Asignar actividad PGCRP por sección"
+            aria-label={`Asignar actividad PGCRP por sección para ${grado.nombre_grado} Año ${grado.nombre_seccion}`}
+          >
+            <Activity className="w-5 h-5 text-orange-600 dark:text-orange-400 group-hover/btn:scale-110 transition-transform" />
+          </button>
 
-        {/* Botón de asignar docente guía (esquina superior derecha) */}
-        <button
-          type="button"
-          onClick={abrirModal}
-          className="absolute top-4 right-4 p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-full hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors group/btn"
-          title="Asignar docente guía"
-          aria-label={`Asignar docente guía para ${grado.nombre_grado} Año ${grado.nombre_seccion}`}
-        >
-          <UserPlus className="w-5 h-5 text-emerald-600 dark:text-emerald-400 group-hover/btn:scale-110 transition-transform" />
-        </button>
+          {/* Botón de asignar PGCRP por estudiantes */}
+          <button
+            type="button"
+            onClick={() => setModalPgcrpEstudiantesAbierto(true)}
+            className="p-2 bg-amber-50 dark:bg-amber-900/30 rounded-full hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors group/btn"
+            title="Asignar actividad PGCRP por estudiantes"
+            aria-label={`Asignar actividad PGCRP por estudiantes para ${grado.nombre_grado} Año ${grado.nombre_seccion}`}
+          >
+            <Users className="w-5 h-5 text-amber-600 dark:text-amber-400 group-hover/btn:scale-110 transition-transform" />
+          </button>
+        </div>
+
+        {/* Columna de botones del lado derecho - Docentes */}
+        <div className="absolute top-4 right-4 flex flex-col space-y-2">
+          {/* Botón de asignar docentes a asignaturas */}
+          <button
+            type="button"
+            onClick={() => setModalAsignaturasAbierto(true)}
+            className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors group/btn"
+            title="Asignar docentes a asignaturas"
+            aria-label={`Asignar docentes a asignaturas para ${grado.nombre_grado} Año ${grado.nombre_seccion}`}
+          >
+            <BookOpen className="w-5 h-5 text-blue-600 dark:text-blue-400 group-hover/btn:scale-110 transition-transform" />
+          </button>
+
+          {/* Botón de asignar docente guía */}
+          <button
+            type="button"
+            onClick={abrirModal}
+            className="p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-full hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors group/btn"
+            title="Asignar docente guía"
+            aria-label={`Asignar docente guía para ${grado.nombre_grado} Año ${grado.nombre_seccion}`}
+          >
+            <UserPlus className="w-5 h-5 text-emerald-600 dark:text-emerald-400 group-hover/btn:scale-110 transition-transform" />
+          </button>
+        </div>
 
         {/* Icono del grado */}
         <div className="flex justify-center mb-4">
@@ -406,6 +484,12 @@ const TarjetaCurso = React.memo<TarjetaCursoProps>(({ grado, onDocenteAsignado }
             Docente Guía: 
             <span className="font-semibold text-cyan-600 dark:text-cyan-400 ml-1">
               {grado.docente_guia || 'Sin asignar'}
+            </span>
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            GCRP: 
+            <span className="font-semibold text-orange-600 dark:text-orange-400 ml-1">
+              {pgcrpAsignado || 'Sin asignar'}
             </span>
           </p>
         </div>
@@ -478,6 +562,42 @@ const TarjetaCurso = React.memo<TarjetaCursoProps>(({ grado, onDocenteAsignado }
         isOpen={modalVerDocentesAbierto}
         onClose={() => setModalVerDocentesAbierto(false)}
         id_grado_secciones={grado.id_grado_secciones}
+      />
+
+      {/* Modal de Asignar PGCRP */}
+      <ModalAsignarPgcrp
+        isOpen={modalPgcrpAbierto}
+        onClose={() => setModalPgcrpAbierto(false)}
+        grado={grado}
+        id_periodo={periodoActivo}
+        onAsignacionCompletada={() => {
+          // Recargar PGCRP asignado
+                     if (periodoActivo) {
+             invoke<any>('obtener_pgcrp_seccion', {
+               id_grado_secciones: grado.id_grado_secciones,
+               id_periodo: periodoActivo
+             }).then(asignacion => {
+              setPgcrpAsignado(asignacion?.nombre_actividad || null);
+            }).catch(error => {
+              console.error('Error al recargar PGCRP:', error);
+            });
+          }
+          onDocenteAsignado?.();
+        }}
+      />
+
+      {/* Modal de Asignar PGCRP por Estudiantes */}
+      <ModalAsignarPgcrpEstudiantes
+        isOpen={modalPgcrpEstudiantesAbierto}
+        onClose={() => setModalPgcrpEstudiantesAbierto(false)}
+        idGradoSecciones={grado.id_grado_secciones}
+        idPeriodo={periodoActivo}
+        nombreGrado={grado.nombre_grado}
+        nombreSeccion={grado.nombre_seccion}
+        onSuccess={() => {
+          // Callback cuando se actualiza una asignación
+          onDocenteAsignado?.();
+        }}
       />
 
       <ModalPDF

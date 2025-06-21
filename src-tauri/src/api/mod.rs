@@ -9,5 +9,8 @@ pub mod actas_masivas;
 pub mod acta_resumen;
 pub mod migracion;
 pub mod pdf_estudiantes;
+pub mod pgcrp;
+pub mod pgcrp_simple;
+pub mod estudiante_pgcrp;
 pub use pdf_estudiantes::*;
 pub use pdf_estudiantes::generar_pdf_estudiantes_curso; 

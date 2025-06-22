@@ -6,6 +6,8 @@ export interface EstudiantePgcrp {
   id_extra_catedra?: number;
   actividad_pgcrp?: string;
   id_periodo: number;
+  id_grado_secciones: number;
+  tipo_asignacion: string;
   observaciones?: string;
   fecha_asignacion?: string;
 }
@@ -14,6 +16,7 @@ export interface AsignacionEstudiantePgcrp {
   id_estudiante: number;
   id_extra_catedra?: number;
   id_periodo: number;
+  id_grado_secciones: number;
   observaciones?: string;
 }
 
@@ -27,6 +30,7 @@ export interface EstudiantePgcrpDetalle {
   nombre_modalidad: string;
   id_extra_catedra?: number;
   actividad_pgcrp?: string;
+  tipo_asignacion?: string;
   actividad_seccion?: string;
   observaciones?: string;
   fecha_asignacion?: string;

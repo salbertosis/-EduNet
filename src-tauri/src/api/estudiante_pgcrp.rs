@@ -22,6 +22,7 @@ pub async fn obtener_estudiantes_seccion_pgcrp(
             -- PGCRP individual del estudiante
             ep.id_pgcrp as id_extra_catedra,
             pgcrp_individual.nombre as actividad_pgcrp,
+            ep.tipo_asignacion,
             ep.observaciones,
             ep.fecha_asignacion,
             -- PGCRP por sección
@@ -72,23 +73,33 @@ pub async fn obtener_estudiantes_seccion_pgcrp(
 
     let estudiantes: Vec<EstudiantePgcrpDetalle> = rows
         .iter()
-        .map(|row| EstudiantePgcrpDetalle {
-            id_estudiante: row.get("id_estudiante"),
-            cedula: row.get("cedula"),
-            nombres: row.get("nombres"),
-            apellidos: row.get("apellidos"),
-            nombre_grado: row.get("nombre_grado"),
-            nombre_seccion: row.get("nombre_seccion"),
-            nombre_modalidad: row.get("nombre_modalidad"),
-            id_extra_catedra: row.get::<_, Option<i32>>("id_extra_catedra"),
-            actividad_pgcrp: row.get("actividad_pgcrp"),
-            actividad_seccion: row.get("actividad_seccion"),
-            observaciones: row.get("observaciones"),
-            fecha_asignacion: row.get::<_, Option<chrono::NaiveDateTime>>("fecha_asignacion")
-                .map(|dt| dt.to_string()),
+        .map(|row| {
+            let tipo_asignacion: Option<String> = row.get("tipo_asignacion");
+            println!("[DEBUG] Estudiante: {} - Tipo asignación: {:?}", 
+                row.get::<_, String>("nombres"), 
+                tipo_asignacion
+            );
+            
+            EstudiantePgcrpDetalle {
+                id_estudiante: row.get("id_estudiante"),
+                cedula: row.get("cedula"),
+                nombres: row.get("nombres"),
+                apellidos: row.get("apellidos"),
+                nombre_grado: row.get("nombre_grado"),
+                nombre_seccion: row.get("nombre_seccion"),
+                nombre_modalidad: row.get("nombre_modalidad"),
+                id_extra_catedra: row.get::<_, Option<i32>>("id_extra_catedra"),
+                actividad_pgcrp: row.get("actividad_pgcrp"),
+                tipo_asignacion,
+                actividad_seccion: row.get("actividad_seccion"),
+                observaciones: row.get("observaciones"),
+                fecha_asignacion: row.get::<_, Option<chrono::NaiveDateTime>>("fecha_asignacion")
+                    .map(|dt| dt.to_string()),
+            }
         })
         .collect();
 
+    println!("[DEBUG] Retornando {} estudiantes con tipos de asignación", estudiantes.len());
     Ok(estudiantes)
 }
 
@@ -142,9 +153,11 @@ pub async fn asignar_pgcrp_estudiante_individual(
         let update_query = r#"
             UPDATE estudiantes_pgcrp 
             SET id_pgcrp = $1, 
-                observaciones = $2,
+                id_grado_secciones = $2,
+                tipo_asignacion = 'individual',
+                observaciones = $3,
                 fecha_asignacion = CURRENT_TIMESTAMP
-            WHERE id_estudiante = $3 AND id_periodo = $4
+            WHERE id_estudiante = $4 AND id_periodo = $5
         "#;
 
         client
@@ -152,6 +165,7 @@ pub async fn asignar_pgcrp_estudiante_individual(
                 update_query,
                 &[
                     &asignacion.id_extra_catedra,
+                    &asignacion.id_grado_secciones,
                     &asignacion.observaciones,
                     &asignacion.id_estudiante,
                     &asignacion.id_periodo,
@@ -165,8 +179,8 @@ pub async fn asignar_pgcrp_estudiante_individual(
         // Crear nueva asignación
         let insert_query = r#"
             INSERT INTO estudiantes_pgcrp 
-            (id_estudiante, id_pgcrp, id_periodo, observaciones, fecha_asignacion)
-            VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+            (id_estudiante, id_pgcrp, id_periodo, id_grado_secciones, tipo_asignacion, observaciones, fecha_asignacion)
+            VALUES ($1, $2, $3, $4, 'individual', $5, CURRENT_TIMESTAMP)
         "#;
 
         client
@@ -176,6 +190,7 @@ pub async fn asignar_pgcrp_estudiante_individual(
                     &asignacion.id_estudiante,
                     &asignacion.id_extra_catedra,
                     &asignacion.id_periodo,
+                    &asignacion.id_grado_secciones,
                     &asignacion.observaciones,
                 ],
             )

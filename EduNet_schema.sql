@@ -57,44 +57,7 @@ SET default_tablespace = '';
 
 SET default_table_access_method = heap;
 
---
--- Name: actas; Type: TABLE; Schema: public; Owner: Salbertosis
---
 
-CREATE TABLE public.actas (
-    id integer NOT NULL,
-    nombre_acta character varying(100) NOT NULL,
-    id_asignatura integer NOT NULL,
-    id_grado integer NOT NULL,
-    id_seccion integer NOT NULL,
-    id_modalidad integer NOT NULL,
-    id_lapso integer NOT NULL,
-    fecha_creacion timestamp without time zone DEFAULT now()
-);
-
-
-ALTER TABLE public.actas OWNER TO "Salbertosis";
-
---
--- Name: actas_id_seq; Type: SEQUENCE; Schema: public; Owner: Salbertosis
---
-
-CREATE SEQUENCE public.actas_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER SEQUENCE public.actas_id_seq OWNER TO "Salbertosis";
-
---
--- Name: actas_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: Salbertosis
---
-
-ALTER SEQUENCE public.actas_id_seq OWNED BY public.actas.id;
 
 
 --
@@ -200,20 +163,7 @@ CREATE TABLE public.calificaciones (
 
 ALTER TABLE public.calificaciones OWNER TO "Salbertosis";
 
---
--- Name: calificaciones_extra_catedra; Type: TABLE; Schema: public; Owner: Salbertosis
---
 
-CREATE TABLE public.calificaciones_extra_catedra (
-    cedula_estudiante bigint NOT NULL,
-    id_extra_catedra integer NOT NULL,
-    lapso character varying(50) NOT NULL,
-    calificacion numeric(5,2),
-    id bigint
-);
-
-
-ALTER TABLE public.calificaciones_extra_catedra OWNER TO "Salbertosis";
 
 --
 -- Name: calificaciones_nueva_id_calificacion_seq; Type: SEQUENCE; Schema: public; Owner: Salbertosis
@@ -1534,6 +1484,8 @@ ALTER TABLE ONLY public.historial_grado_estudiantes
 
 ALTER TABLE ONLY public.historial_grado_estudiantes
     ADD CONSTRAINT historial_grado_estudiantes_id_periodo_fkey FOREIGN KEY (id_periodo) REFERENCES public.periodos_escolares(id_periodo);
+
+
 
 
 --

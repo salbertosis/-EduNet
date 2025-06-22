@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page {
+            size: legal landscape; /* Oficio horizontal 14" x 8.5" */
+            margin: 0.5in; /* Márgenes de 0.5 pulgadas como en la imagen */
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            color: #000;
+            font-size: 8pt;
+        }
+        
+        /* ENCABEZADO EXACTO COMO LA IMAGEN */
+        .header-container {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 4mm;
+            border-bottom: 2px solid #000;
+            padding-bottom: 3mm;
+        }
+        
+        .logo-section {
+            width: 25mm;
+            margin-right: 8mm;
+        }
+        
+        .logo {
+            width: 25mm;
+            height: auto;
+            background-color: #e0e0e0;
+            border: 1px solid #ccc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 20mm;
+            font-size: 6pt;
+            color: #666;
+        }
+        
+        .header-text {
+            flex: 1;
+        }
+        
+        .institution-name {
+            font-size: 14pt;
+            font-weight: bold;
+            color: #000;
+            margin: 0 0 2mm 0;
+            text-align: center;
+            text-transform: uppercase;
+        }
+        
+        .document-title {
+            font-size: 12pt;
+            font-weight: bold;
+            color: #000;
+            margin: 0 0 3mm 0;
+            text-align: center;
+            text-transform: uppercase;
+        }
+        
+        .course-info {
+            font-size: 10pt;
+            font-weight: bold;
+            color: #000;
+            text-align: center;
+            margin: 0;
+        }
+        
+        /* TABLA PRINCIPAL - RÉPLICA EXACTA */
+        .main-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 2px solid #000;
+            margin-top: 3mm;
+        }
+        
+        .main-table th,
+        .main-table td {
+            border: 1px solid #000;
+            text-align: center;
+            vertical-align: middle;
+            padding: 1mm;
+        }
+        
+        /* ENCABEZADOS PRINCIPALES */
+        .main-header {
+            background-color: #f0f0f0;
+            font-weight: bold;
+            font-size: 9pt;
+            height: 12mm;
+        }
+        
+        .student-number-header {
+            width: 12mm;
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+        }
+        
+        .student-name-header {
+            width: 50mm;
+        }
+        
+        .subject-header {
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            font-size: 8pt;
+            font-weight: bold;
+            padding: 2mm 1mm;
+            background-color: #f0f0f0;
+        }
+        
+        /* SUB-ENCABEZADOS (1°, 2°, 3°, DF) */
+        .sub-header {
+            background-color: #f8f8f8;
+            font-weight: bold;
+            font-size: 7pt;
+            height: 8mm;
+            width: 8mm;
+        }
+        
+        /* CELDAS DE ESTUDIANTES */
+        .student-number {
+            font-weight: bold;
+            font-size: 8pt;
+            background-color: #f8f8f8;
+            width: 12mm;
+        }
+        
+        .student-name {
+            text-align: left;
+            padding-left: 2mm;
+            font-weight: bold;
+            font-size: 8pt;
+            width: 50mm;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        /* CELDAS DE CALIFICACIONES */
+        .grade-cell {
+            font-weight: bold;
+            font-size: 10pt;
+            width: 8mm;
+            height: 7mm;
+            position: relative;
+        }
+        
+        /* COLORES PARA CALIFICACIONES */
+        .grade-excellent {
+            color: #27ae60; /* Verde para ≥14 */
+        }
+        
+        .grade-pass {
+            color: #2980b9; /* Azul para 10-13 */
+        }
+        
+        .grade-fail {
+            color: #e74c3c; /* Rojo para <10 */
+        }
+        
+        .grade-adjusted {
+            color: #27ae60; /* Verde para ajustadas */
+            font-size: 8pt;
+        }
+        
+        /* FILAS ALTERNADAS PARA MEJOR LECTURA */
+        .student-row:nth-child(even) {
+            background-color: #fafafa;
+        }
+        
+        /* FORMATO PARA CALIFICACIONES DOBLES (original/ajustada) */
+        .grade-stack {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+        }
+        
+        .grade-original {
+            font-size: 8pt;
+            line-height: 1;
+        }
+        
+        .grade-adjustment {
+            font-size: 10pt;
+            font-weight: bold;
+            color: #27ae60;
+            line-height: 1;
+        }
+        
+        /* ASEGURAR QUE LA TABLA QUEPA EN 22 ESTUDIANTES */
+        .student-row {
+            height: 7mm;
+        }
+        
+        /* TRUNCAR NOMBRES LARGOS */
+        .truncate {
+            max-width: 45mm;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+    <!-- ENCABEZADO OFICIAL -->
+    <div class="header-container">
+        <div class="logo-section">
+            <div class="logo">LOGO</div>
+        </div>
+        <div class="header-text">
+            <h1 class="institution-name">COMPLEJO EDUCATIVO PROFESOR JESÚS LÓPEZ CASTRO</h1>
+            <h2 class="document-title">Acta de Resumen de Calificaciones</h2>
+            <p class="course-info">
+                Grado: 5to Año &nbsp;&nbsp;&nbsp; Sección: A &nbsp;&nbsp;&nbsp;
+                Docente Guía: PROF. MARÍA GONZÁLEZ &nbsp;&nbsp;&nbsp;
+                Año Escolar: 2023-2024 &nbsp;&nbsp;&nbsp;
+                GCRP: ROBÓTICA Y PROGRAMACIÓN
+            </p>
+        </div>
+    </div>
+    
+    <!-- TABLA PRINCIPAL -->
+    <table class="main-table">
+        <thead>
+            <!-- ENCABEZADOS PRINCIPALES -->
+            <tr>
+                <th rowspan="2" class="main-header student-number-header">N°</th>
+                <th rowspan="2" class="main-header student-name-header">APELLIDOS Y NOMBRES</th>
+                <th colspan="4" class="subject-header">MAT</th>
+                <th colspan="4" class="subject-header">CAST</th>
+                <th colspan="4" class="subject-header">ING</th>
+                <th colspan="4" class="subject-header">HIST</th>
+                <th colspan="4" class="subject-header">GEO</th>
+                <th colspan="4" class="subject-header">BIO</th>
+                <th colspan="4" class="subject-header">FIS</th>
+                <th colspan="4" class="subject-header">QUIM</th>
+                <th colspan="4" class="subject-header">ED.FIS</th>
+                <th colspan="4" class="subject-header">ART Y PAT</th>
+            </tr>
+            <!-- SUB-ENCABEZADOS (1°, 2°, 3°, DF) -->
+            <tr>
+                <th class="sub-header">1°</th>
+                <th class="sub-header">2°</th>
+                <th class="sub-header">3°</th>
+                <th class="sub-header">DF</th>
+                <th class="sub-header">1°</th>
+                <th class="sub-header">2°</th>
+                <th class="sub-header">3°</th>
+                <th class="sub-header">DF</th>
+                <th class="sub-header">1°</th>
+                <th class="sub-header">2°</th>
+                <th class="sub-header">3°</th>
+                <th class="sub-header">DF</th>
+                <th class="sub-header">1°</th>
+                <th class="sub-header">2°</th>
+                <th class="sub-header">3°</th>
+                <th class="sub-header">DF</th>
+                <th class="sub-header">1°</th>
+                <th class="sub-header">2°</th>
+                <th class="sub-header">3°</th>
+                <th class="sub-header">DF</th>
+                <th class="sub-header">1°</th>
+                <th class="sub-header">2°</th>
+                <th class="sub-header">3°</th>
+                <th class="sub-header">DF</th>
+                <th class="sub-header">1°</th>
+                <th class="sub-header">2°</th>
+                <th class="sub-header">3°</th>
+                <th class="sub-header">DF</th>
+                <th class="sub-header">1°</th>
+                <th class="sub-header">2°</th>
+                <th class="sub-header">3°</th>
+                <th class="sub-header">DF</th>
+                <th class="sub-header">1°</th>
+                <th class="sub-header">2°</th>
+                <th class="sub-header">3°</th>
+                <th class="sub-header">DF</th>
+                <th class="sub-header">1°</th>
+                <th class="sub-header">2°</th>
+                <th class="sub-header">3°</th>
+                <th class="sub-header">DF</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr class="student-row">
+                <td class="student-number">1</td>
+                <td class="student-name truncate">GARCÍA RODRÍGUEZ, MARÍA JOSÉ</td>
+                <td class="grade-cell">
+                    <div class="grade-stack">
+                        <div class="grade-original">18</div>
+                        <div class="grade-adjustment">19</div>
+                    </div>
+                </td>
+                <td class="grade-cell">16</td>
+                <td class="grade-cell">19</td>
+                <td class="grade-cell"><span class="grade-excellent">18</span></td>
+                <td class="grade-cell">15</td>
+                <td class="grade-cell">17</td>
+                <td class="grade-cell">18</td>
+                <td class="grade-cell"><span class="grade-excellent">17</span></td>
+                <td class="grade-cell">14</td>
+                <td class="grade-cell">16</td>
+                <td class="grade-cell">15</td>
+                <td class="grade-cell"><span class="grade-excellent">15</span></td>
+                <td class="grade-cell">13</td>
+                <td class="grade-cell">12</td>
+                <td class="grade-cell">14</td>
+                <td class="grade-cell"><span class="grade-pass">13</span></td>
+                <td class="grade-cell">16</td>
+                <td class="grade-cell">15</td>
+                <td class="grade-cell">17</td>
+                <td class="grade-cell"><span class="grade-excellent">16</span></td>
+                <td class="grade-cell">12</td>
+                <td class="grade-cell">13</td>
+                <td class="grade-cell">14</td>
+                <td class="grade-cell"><span class="grade-pass">13</span></td>
+                <td class="grade-cell">11</td>
+                <td class="grade-cell">10</td>
+                <td class="grade-cell">12</td>
+                <td class="grade-cell"><span class="grade-pass">11</span></td>
+                <td class="grade-cell">15</td>
+                <td class="grade-cell">14</td>
+                <td class="grade-cell">16</td>
+                <td class="grade-cell"><span class="grade-excellent">15</span></td>
+                <td class="grade-cell">20</td>
+                <td class="grade-cell">19</td>
+                <td class="grade-cell">20</td>
+                <td class="grade-cell"><span class="grade-excellent">20</span></td>
+                <td class="grade-cell">18</td>
+                <td class="grade-cell">17</td>
+                <td class="grade-cell">19</td>
+                <td class="grade-cell"><span class="grade-excellent">18</span></td>
+            </tr>
+            <tr class="student-row">
+                <td class="student-number">2</td>
+                <td class="student-name truncate">PÉREZ GONZÁLEZ, CARLOS ANDRÉS</td>
+                <td class="grade-cell">12</td>
+                <td class="grade-cell">
+                    <div class="grade-stack">
+                        <div class="grade-original">08</div>
+                        <div class="grade-adjustment">10</div>
+                    </div>
+                </td>
+                <td class="grade-cell">14</td>
+                <td class="grade-cell"><span class="grade-pass">12</span></td>
+                <td class="grade-cell">11</td>
+                <td class="grade-cell">13</td>
+                <td class="grade-cell">12</td>
+                <td class="grade-cell"><span class="grade-pass">12</span></td>
+                <td class="grade-cell">10</td>
+                <td class="grade-cell">11</td>
+                <td class="grade-cell">12</td>
+                <td class="grade-cell"><span class="grade-pass">11</span></td>
+                <td class="grade-cell">09</td>
+                <td class="grade-cell">
+                    <div class="grade-stack">
+                        <div class="grade-original">07</div>
+                        <div class="grade-adjustment">10</div>
+                    </div>
+                </td>
+                <td class="grade-cell">11</td>
+                <td class="grade-cell"><span class="grade-pass">10</span></td>
+                <td class="grade-cell">13</td>
+                <td class="grade-cell">12</td>
+                <td class="grade-cell">14</td>
+                <td class="grade-cell"><span class="grade-pass">13</span></td>
+                <td class="grade-cell">10</td>
+                <td class="grade-cell">09</td>
+                <td class="grade-cell">11</td>
+                <td class="grade-cell"><span class="grade-pass">10</span></td>
+                <td class="grade-cell">08</td>
+                <td class="grade-cell">
+                    <div class="grade-stack">
+                        <div class="grade-original">06</div>
+                        <div class="grade-adjustment">10</div>
+                    </div>
+                </td>
+                <td class="grade-cell">09</td>
+                <td class="grade-cell"><span class="grade-fail">09</span></td>
+                <td class="grade-cell">16</td>
+                <td class="grade-cell">15</td>
+                <td class="grade-cell">17</td>
+                <td class="grade-cell"><span class="grade-excellent">16</span></td>
+                <td class="grade-cell">19</td>
+                <td class="grade-cell">18</td>
+                <td class="grade-cell">20</td>
+                <td class="grade-cell"><span class="grade-excellent">19</span></td>
+                <td class="grade-cell">15</td>
+                <td class="grade-cell">16</td>
+                <td class="grade-cell">17</td>
+                <td class="grade-cell"><span class="grade-excellent">16</span></td>
+            </tr>
+            <tr class="student-row">
+                <td class="student-number">3</td>
+                <td class="student-name truncate">MARTÍNEZ SILVA, ANA CAROLINA</td>
+                <td class="grade-cell">17</td>
+                <td class="grade-cell">18</td>
+                <td class="grade-cell">16</td>
+                <td class="grade-cell"><span class="grade-excellent">17</span></td>
+                <td class="grade-cell">16</td>
+                <td class="grade-cell">15</td>
+                <td class="grade-cell">17</td>
+                <td class="grade-cell"><span class="grade-excellent">16</span></td>
+                <td class="grade-cell">13</td>
+                <td class="grade-cell">14</td>
+                <td class="grade-cell">15</td>
+                <td class="grade-cell"><span class="grade-excellent">14</span></td>
+                <td class="grade-cell">12</td>
+                <td class="grade-cell">11</td>
+                <td class="grade-cell">13</td>
+                <td class="grade-cell"><span class="grade-pass">12</span></td>
+                <td class="grade-cell">14</td>
+                <td class="grade-cell">15</td>
+                <td class="grade-cell">16</td>
+                <td class="grade-cell"><span class="grade-excellent">15</span></td>
+                <td class="grade-cell">11</td>
+                <td class="grade-cell">12</td>
+                <td class="grade-cell">13</td>
+                <td class="grade-cell"><span class="grade-pass">12</span></td>
+                <td class="grade-cell">10</td>
+                <td class="grade-cell">11</td>
+                <td class="grade-cell">12</td>
+                <td class="grade-cell"><span class="grade-pass">11</span></td>
+                <td class="grade-cell">17</td>
+                <td class="grade-cell">16</td>
+                <td class="grade-cell">18</td>
+                <td class="grade-cell"><span class="grade-excellent">17</span></td>
+                <td class="grade-cell">20</td>
+                <td class="grade-cell">19</td>
+                <td class="grade-cell">20</td>
+                <td class="grade-cell"><span class="grade-excellent">20</span></td>
+                <td class="grade-cell">18</td>
+                <td class="grade-cell">19</td>
+                <td class="grade-cell">17</td>
+                <td class="grade-cell"><span class="grade-excellent">18</span></td>
+            </tr>
+            <!-- Más estudiantes se mostrarían aquí -->
+            <tr class="student-row">
+                <td class="student-number">4</td>
+                <td class="student-name truncate">LÓPEZ HERNÁNDEZ, JOSÉ MIGUEL</td>
+                <td class="grade-cell">05</td>
+                <td class="grade-cell">
+                    <div class="grade-stack">
+                        <div class="grade-original">04</div>
+                        <div class="grade-adjustment">10</div>
+                    </div>
+                </td>
+                <td class="grade-cell">06</td>
+                <td class="grade-cell"><span class="grade-fail">07</span></td>
+                <td class="grade-cell">08</td>
+                <td class="grade-cell">09</td>
+                <td class="grade-cell">10</td>
+                <td class="grade-cell"><span class="grade-fail">09</span></td>
+                <td class="grade-cell">07</td>
+                <td class="grade-cell">08</td>
+                <td class="grade-cell">09</td>
+                <td class="grade-cell"><span class="grade-fail">08</span></td>
+                <td class="grade-cell">06</td>
+                <td class="grade-cell">05</td>
+                <td class="grade-cell">
+                    <div class="grade-stack">
+                        <div class="grade-original">07</div>
+                        <div class="grade-adjustment">10</div>
+                    </div>
+                </td>
+                <td class="grade-cell"><span class="grade-fail">07</span></td>
+                <td class="grade-cell">09</td>
+                <td class="grade-cell">10</td>
+                <td class="grade-cell">11</td>
+                <td class="grade-cell"><span class="grade-pass">10</span></td>
+                <td class="grade-cell">08</td>
+                <td class="grade-cell">07</td>
+                <td class="grade-cell">09</td>
+                <td class="grade-cell"><span class="grade-fail">08</span></td>
+                <td class="grade-cell">06</td>
+                <td class="grade-cell">05</td>
+                <td class="grade-cell">07</td>
+                <td class="grade-cell"><span class="grade-fail">06</span></td>
+                <td class="grade-cell">14</td>
+                <td class="grade-cell">15</td>
+                <td class="grade-cell">16</td>
+                <td class="grade-cell"><span class="grade-excellent">15</span></td>
+                <td class="grade-cell">18</td>
+                <td class="grade-cell">17</td>
+                <td class="grade-cell">19</td>
+                <td class="grade-cell"><span class="grade-excellent">18</span></td>
+                <td class="grade-cell">16</td>
+                <td class="grade-cell">15</td>
+                <td class="grade-cell">17</td>
+                <td class="grade-cell"><span class="grade-excellent">16</span></td>
+            </tr>
+        </tbody>
+    </table>
+</body>
+</html> 

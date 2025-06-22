@@ -32,4 +32,5 @@ pub struct AsignacionPgcrpInput {
     pub id_grado_secciones: i32,
     pub id_pgcrp: i32,
     pub id_periodo: i32,
+    pub observaciones: Option<String>,
 } 

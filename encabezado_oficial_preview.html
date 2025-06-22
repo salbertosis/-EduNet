@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Encabezado Oficial - Ministerio del Poder Popular para la Educación</title>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 10mm;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            color: #000;
+            font-size: 8pt;
+            line-height: 1.2;
+        }
+        
+        /* ENCABEZADO OFICIAL DEL MINISTERIO - RÉPLICA EXACTA */
+        .header-oficial {
+            width: 100%;
+            border: 2px solid #000;
+            margin-bottom: 3mm;
+        }
+        
+        /* PRIMERA FILA - LOGO Y TÍTULOS PRINCIPALES */
+        .fila-principal {
+            display: flex;
+            border-bottom: 1px solid #000;
+            min-height: 35mm;
+        }
+        
+        .logo-venezuela {
+            width: 35mm;
+            border-right: 1px solid #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f8f8f8;
+            padding: 2mm;
+        }
+        
+        .logo-ministerio {
+            width: 30mm;
+            height: auto;
+            max-height: 30mm;
+            object-fit: contain;
+        }
+        
+        .logo-placeholder {
+            width: 20mm;
+            height: 20mm;
+            background-color: #e0e0e0;
+            border: 1px solid #999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 6pt;
+            color: #666;
+            text-align: center;
+            line-height: 1.1;
+        }
+        
+        .titulos-ministerio {
+            flex: 1;
+            padding: 2mm;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .gobierno-bolivariano {
+            font-size: 9pt;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 1mm;
+            text-transform: uppercase;
+        }
+        
+        .ministerio-educacion {
+            font-size: 8pt;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 2mm;
+            text-transform: uppercase;
+        }
+        
+        .codigo-formato {
+            width: 40mm;
+            border-left: 1px solid #000;
+            padding: 2mm;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            background-color: #f0f0f0;
+        }
+        
+        .titulo-resumen {
+            font-size: 7pt;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 2mm;
+            text-transform: uppercase;
+            line-height: 1.1;
+        }
+        
+        .codigo-emg {
+            font-size: 8pt;
+            font-weight: bold;
+            text-align: center;
+            border: 1px solid #000;
+            padding: 1mm;
+            background-color: white;
+        }
+        
+        /* SEGUNDA FILA - INFORMACIÓN INSTITUCIONAL */
+        .fila-info-institucional {
+            display: flex;
+            border-bottom: 1px solid #000;
+            min-height: 20mm;
+        }
+        
+        .datos-institucion {
+            flex: 2;
+            padding: 2mm;
+            border-right: 1px solid #000;
+        }
+        
+        .info-evaluacion {
+            flex: 1;
+            padding: 2mm;
+        }
+        
+        .campo-institucional {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1.5mm;
+            font-size: 7pt;
+            flex-wrap: wrap;
+        }
+        
+        .label-campo {
+            font-weight: bold;
+            margin-right: 2mm;
+            white-space: nowrap;
+        }
+        
+        .valor-campo {
+            border-bottom: 1px solid #000;
+            min-height: 3mm;
+            padding-left: 1mm;
+            min-width: 15mm;
+            margin-right: 3mm;
+        }
+        
+        /* Campos específicos con anchos ajustados */
+        .campo-codigo {
+            width: 25mm;
+        }
+        
+        .campo-denominacion {
+            flex: 1;
+            min-width: 40mm;
+        }
+        
+        .campo-telefono {
+            width: 25mm;
+        }
+        
+        .campo-municipio {
+            width: 30mm;
+        }
+        
+        .campo-entidad {
+            width: 30mm;
+        }
+        
+        .campo-cdcee {
+            width: 15mm;
+        }
+        
+        .campo-director {
+            flex: 1;
+            min-width: 35mm;
+        }
+        
+        .campo-cedula {
+            width: 25mm;
+        }
+        
+        /* TERCERA FILA - DATOS ESPECÍFICOS */
+        .fila-datos-especificos {
+            display: flex;
+            min-height: 12mm;
+        }
+        
+        .seccion-izq {
+            flex: 1;
+            padding: 2mm;
+            border-right: 1px solid #000;
+        }
+        
+        .seccion-der {
+            flex: 1;
+            padding: 2mm;
+        }
+        
+        /* ESTILOS PARA CAMPOS CON DIVISIONES */
+        .campo-dividido {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1.5mm;
+            font-size: 7pt;
+        }
+        
+        .subcampo {
+            display: flex;
+            align-items: center;
+            margin-right: 5mm;
+        }
+        
+        .subcampo .label-campo {
+            margin-right: 1mm;
+        }
+        
+        .subcampo .valor-campo {
+            width: 20mm;
+            min-height: 3mm;
+        }
+        
+        /* Título de sección */
+        .titulo-seccion {
+            font-weight: bold;
+            font-size: 7pt;
+            margin-bottom: 2mm;
+        }
+        
+        /* Nota explicativa */
+        .nota-preview {
+            margin-top: 10mm;
+            text-align: center;
+            font-size: 7pt;
+            color: #666;
+            border-top: 1px solid #ccc;
+            padding-top: 5mm;
+        }
+    </style>
+</head>
+<body>
+    <!-- ENCABEZADO OFICIAL DEL MINISTERIO - RÉPLICA EXACTA -->
+    <div class="header-oficial">
+        <!-- PRIMERA FILA: LOGO Y TÍTULOS PRINCIPALES -->
+        <div class="fila-principal">
+            <div class="logo-venezuela">
+                <img src="src-tauri/imagenes/ministerio_resumen.png" alt="Logo Ministerio" class="logo-ministerio">
+            </div>
+            
+            <div class="titulos-ministerio">
+                <div class="gobierno-bolivariano">
+                    Gobierno Bolivariano de Venezuela
+                </div>
+                <div class="ministerio-educacion">
+                    Ministerio del Poder Popular para la Educación
+                </div>
+            </div>
+            
+            <div class="codigo-formato">
+                <div class="titulo-resumen">
+                    Resumen Final del<br/>Rendimiento Estudiantil
+                </div>
+                <div class="codigo-emg">
+                    Código del Formato: EMG
+                </div>
+            </div>
+        </div>
+        
+        <!-- SEGUNDA FILA: INFORMACIÓN INSTITUCIONAL -->
+        <div class="fila-info-institucional">
+            <div class="datos-institucion">
+                <div class="titulo-seccion">
+                    II. Datos de la Institución Educativa:
+                </div>
+                
+                <div class="campo-institucional">
+                    <span class="label-campo">Código de la Institución Educativa:</span>
+                    <div class="valor-campo campo-codigo">12345678</div>
+                    <span class="label-campo">Denominación y Epónimo:</span>
+                    <div class="valor-campo campo-denominacion">COMPLEJO EDUCATIVO PROFESOR JESÚS LÓPEZ CASTRO</div>
+                </div>
+                
+                <div class="campo-institucional">
+                    <span class="label-campo">Dirección:</span>
+                    <div class="valor-campo" style="flex: 1; min-width: 60mm;">CALLE PRINCIPAL, SECTOR CENTRO, CIUDAD EJEMPLO</div>
+                    <span class="label-campo">Teléfono:</span>
+                    <div class="valor-campo campo-telefono">0424-1234567</div>
+                </div>
+                
+                <div class="campo-institucional">
+                    <span class="label-campo">Municipio:</span>
+                    <div class="valor-campo campo-municipio">MUNICIPIO EJEMPLO</div>
+                    <span class="label-campo">Entidad Federal:</span>
+                    <div class="valor-campo campo-entidad">ESTADO EJEMPLO</div>
+                    <span class="label-campo">CDCEE:</span>
+                    <div class="valor-campo campo-cdcee">001</div>
+                </div>
+                
+                <div class="campo-institucional">
+                    <span class="label-campo">Director(a):</span>
+                    <div class="valor-campo campo-director">PROF. MARÍA GONZÁLEZ RODRÍGUEZ</div>
+                    <span class="label-campo">Cédula de Identidad:</span>
+                    <div class="valor-campo campo-cedula">V-12.345.678</div>
+                </div>
+            </div>
+            
+            <div class="info-evaluacion">
+                <div class="campo-institucional">
+                    <span class="label-campo">I. Año Escolar:</span>
+                    <div class="valor-campo" style="width: 25mm;">2023-2024</div>
+                </div>
+                
+                <div class="campo-dividido">
+                    <div class="subcampo">
+                        <span class="label-campo">Tipo de Evaluación:</span>
+                        <div class="valor-campo">FINAL</div>
+                    </div>
+                </div>
+                
+                <div class="campo-dividido">
+                    <div class="subcampo">
+                        <span class="label-campo">Mes y Año:</span>
+                        <div class="valor-campo">JULIO 2024</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- TERCERA FILA: DATOS ESPECÍFICOS DEL ESTUDIANTE/CURSO -->
+        <div class="fila-datos-especificos">
+            <div class="seccion-izq">
+                <div class="titulo-seccion">
+                    III. Datos del Estudiante:
+                </div>
+                <div class="campo-institucional">
+                    <span class="label-campo">Grado/Año:</span>
+                    <div class="valor-campo" style="width: 20mm;">5TO AÑO</div>
+                    <span class="label-campo">Sección:</span>
+                    <div class="valor-campo" style="width: 15mm;">A</div>
+                </div>
+            </div>
+            
+            <div class="seccion-der">
+                <div class="titulo-seccion">
+                    IV. Datos Académicos:
+                </div>
+                <div class="campo-institucional">
+                    <span class="label-campo">Docente Guía:</span>
+                    <div class="valor-campo" style="flex: 1;">PROF. CARLOS PÉREZ MARTÍNEZ</div>
+                </div>
+                <div class="campo-institucional">
+                    <span class="label-campo">GCRP:</span>
+                    <div class="valor-campo" style="flex: 1;">ROBÓTICA Y PROGRAMACIÓN</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- NOTA EXPLICATIVA -->
+    <div class="nota-preview">
+        <p><strong>Vista Previa del Encabezado Oficial - Formato EMG</strong></p>
+        <p>Este diseño replica exactamente el formato oficial del Ministerio del Poder Popular para la Educación</p>
+        <p>Estructura: Logo de Venezuela + Títulos del Ministerio + Código EMG + Datos Institucionales + Información Académica</p>
+    </div>
+</body>
+</html> 

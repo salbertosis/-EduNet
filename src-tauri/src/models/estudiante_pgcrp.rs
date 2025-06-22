@@ -9,6 +9,8 @@ pub struct EstudiantePgcrp {
     pub id_extra_catedra: Option<i32>,
     pub actividad_pgcrp: Option<String>,
     pub id_periodo: i32,
+    pub id_grado_secciones: i32,
+    pub tipo_asignacion: String, // 'seccion' o 'individual'
     pub observaciones: Option<String>,
     pub fecha_asignacion: Option<String>,
 }
@@ -18,6 +20,7 @@ pub struct AsignacionEstudiantePgcrp {
     pub id_estudiante: i32,
     pub id_extra_catedra: Option<i32>,
     pub id_periodo: i32,
+    pub id_grado_secciones: i32,
     pub observaciones: Option<String>,
 }
 
@@ -32,6 +35,7 @@ pub struct EstudiantePgcrpDetalle {
     pub nombre_modalidad: String,
     pub id_extra_catedra: Option<i32>, // ID de la actividad PGCRP individual
     pub actividad_pgcrp: Option<String>,
+    pub tipo_asignacion: Option<String>, // 'seccion' o 'individual'
     pub actividad_seccion: Option<String>, // PGCRP asignado por sección
     pub observaciones: Option<String>,
     pub fecha_asignacion: Option<String>,

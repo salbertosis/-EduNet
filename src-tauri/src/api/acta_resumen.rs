@@ -50,6 +50,7 @@ pub struct InfoEncabezado {
     pub seccion: String,
     pub docente_guia: String,
     pub periodo_escolar: String,
+    pub gcrp: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -86,12 +87,16 @@ async fn obtener_info_encabezado(client: &tokio_postgres::Client, id_grado_secci
     let stmt = client.prepare(
         "SELECT g.nombre_grado as grado, s.nombre_seccion as seccion, 
                 p.periodo_escolar,
-                d.nombres || ' ' || d.apellidos as docente_guia
+                d.nombres || ' ' || d.apellidos as docente_guia,
+                pgcrp.nombre as gcrp_nombre
          FROM grado_secciones gs
          INNER JOIN grados g ON gs.id_grado = g.id_grado
          INNER JOIN secciones s ON gs.id_seccion = s.id_seccion
          LEFT JOIN docentes d ON gs.id_docente_guia = d.id_docente
          INNER JOIN periodos_escolares p ON p.activo = true
+         LEFT JOIN grado_secciones_pgcrp gsp ON gsp.id_grado_secciones = gs.id_grado_secciones 
+            AND gsp.id_periodo = p.id_periodo
+         LEFT JOIN \"PGCRP\" pgcrp ON pgcrp.id_pgcrp = gsp.id_pgcrp
          WHERE gs.id_grado_secciones = $1
          LIMIT 1"
     ).await.map_err(|e| format!("Error preparando consulta de encabezado: {}", e))?;
@@ -103,6 +108,7 @@ async fn obtener_info_encabezado(client: &tokio_postgres::Client, id_grado_secci
         seccion: row.get("seccion"),
         docente_guia: row.try_get("docente_guia").unwrap_or_else(|_| "N/A".to_string()),
         periodo_escolar: row.get("periodo_escolar"),
+        gcrp: row.try_get("gcrp_nombre").ok(),
     })
 }
 
@@ -316,12 +322,28 @@ fn dibujar_encabezado_con_logo(
     layer.write_text("ACTA DE RESUMEN DE CALIFICACIONES", font_bold);
     layer.end_text_section();
 
+    // Función para formatear el grado con "Año"
+    fn formatear_grado(grado: &str) -> String {
+        match grado {
+            "1" => "1er Año".to_string(),
+            "2" => "2do Año".to_string(),
+            "3" => "3er Año".to_string(),
+            "4" => "4to Año".to_string(),
+            "5" => "5to Año".to_string(),
+            _ => format!("{}° Año", grado),
+        }
+    }
+
     // Información del curso en una línea compacta
     layer.set_font(font_bold, 8.0);
     layer.set_fill_color(Color::Rgb(secondary_color()));
     let info_text = format!(
-        "GRADO: {}   SECCIÓN: {}   DOCENTE GUÍA: {}   AÑO ESCOLAR: {}",
-        doc_info.grado, doc_info.seccion, doc_info.docente_guia, doc_info.periodo_escolar
+        "GRADO: {}   SECCIÓN: {}   DOCENTE GUÍA: {}   AÑO ESCOLAR: {}   GCRP: {}",
+        formatear_grado(&doc_info.grado), 
+        doc_info.seccion, 
+        doc_info.docente_guia, 
+        doc_info.periodo_escolar,
+        doc_info.gcrp.as_deref().unwrap_or("N/A")
     );
     layer.begin_text_section();
     layer.set_text_cursor(Mm(text_start_x), Mm(y_start - 10.5)); // Ajustar posición

@@ -89,30 +89,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             api::catalogo::obtener_id_grado_secciones,
             api::pdf_estudiantes::generar_pdf_estudiantes_curso,
             api::acta_resumen::generar_acta_resumen,
-                    // Comandos PGCRP
-        api::pgcrp::obtener_actividades_pgcrp,
-        api::pgcrp::crear_actividad_pgcrp,
-        api::pgcrp::actualizar_actividad_pgcrp,
-        api::pgcrp::eliminar_actividad_pgcrp,
-        api::pgcrp::obtener_asignaciones_seccion,
-        api::pgcrp::asignar_pgcrp_seccion,
-        api::pgcrp::eliminar_asignacion_seccion,
-        // Comandos PGCRP Simple
-        api::pgcrp_simple::obtener_actividades_pgcrp_simple,
-        api::pgcrp_simple::asignar_pgcrp_seccion_simple,
-        api::pgcrp_simple::obtener_pgcrp_seccion,
-        api::pgcrp_simple::eliminar_pgcrp_seccion,
-        // Comandos PGCRP por estudiante
-        api::estudiante_pgcrp::obtener_estudiantes_seccion_pgcrp,
-        api::estudiante_pgcrp::obtener_actividades_pgcrp_estudiante,
-        api::estudiante_pgcrp::asignar_pgcrp_estudiante_individual,
-        api::estudiante_pgcrp::eliminar_pgcrp_estudiante_individual,
-            api::pgcrp::obtener_asignaciones_estudiante,
-            api::pgcrp::asignar_pgcrp_estudiante,
-            api::pgcrp::eliminar_asignacion_estudiante,
-            api::pgcrp::obtener_estudiantes_con_pgcrp,
-            api::pgcrp::obtener_estadisticas_pgcrp,
-            api::pgcrp::generar_reporte_pgcrp,
+            api::pdf_simple::generar_acta_pdf_simple,
+            // Comandos PGCRP Simple
+            api::pgcrp_simple::obtener_actividades_pgcrp_simple,
+            api::pgcrp_simple::asignar_pgcrp_seccion_simple,
+            api::pgcrp_simple::obtener_pgcrp_seccion,
+            api::pgcrp_simple::eliminar_pgcrp_seccion,
+            api::pgcrp_simple::obtener_estudiantes_pgcrp_periodo,
+            // Comandos PGCRP por estudiante
+            api::estudiante_pgcrp::obtener_estudiantes_seccion_pgcrp,
+            api::estudiante_pgcrp::obtener_actividades_pgcrp_estudiante,
+            api::estudiante_pgcrp::asignar_pgcrp_estudiante_individual,
+            api::estudiante_pgcrp::eliminar_pgcrp_estudiante_individual,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

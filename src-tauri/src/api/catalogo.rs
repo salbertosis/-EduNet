@@ -201,7 +201,7 @@ pub async fn listar_ciudades_por_municipio(state: tauri::State<'_, crate::AppSta
     Ok(ciudades)
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn obtener_id_grado_secciones(state: tauri::State<'_, crate::AppState>, grado_id: i32, seccion_id: i32, modalidad_id: i32) -> Result<i32, String> {
     println!("[DEBUG] Buscando id_grado_secciones para grado={}, seccion={}, modalidad={}", grado_id, seccion_id, modalidad_id);
     let db = state.db.lock().await;
@@ -215,7 +215,7 @@ pub async fn obtener_id_grado_secciones(state: tauri::State<'_, crate::AppState>
     Ok(row.get(0))
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn listar_secciones_por_grado_modalidad(state: tauri::State<'_, crate::AppState>, grado_id: i32, modalidad_id: i32) -> Result<Vec<Seccion>, String> {
     println!("[LOG] listar_secciones_por_grado_modalidad: grado_id={}, modalidad_id={}", grado_id, modalidad_id);
     let db = state.db.lock().await;

@@ -40,6 +40,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             api::estudiantes::contar_estudiantes,
             api::estudiantes::contar_estudiantes_femeninos,
             api::estudiantes::contar_estudiantes_masculinos,
+            api::estudiantes::insertar_estudiantes_masivo,
             api::historial::obtener_historial_academico_estudiante,
             api::historial::upsert_historial_academico,
             api::historial::guardar_historial_masivo,
@@ -101,6 +102,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             api::estudiante_pgcrp::obtener_actividades_pgcrp_estudiante,
             api::estudiante_pgcrp::asignar_pgcrp_estudiante_individual,
             api::estudiante_pgcrp::eliminar_pgcrp_estudiante_individual,
+            // Comandos Excel
+            api::resumen_excel::generar_resumen_excel_masivo,
+            api::resumen_excel::generar_resumen_estudiantes_basico,
+            api::crear_plantilla_excel::crear_plantilla_base,
+            api::analizar_plantilla::analizar_plantilla_comando,
+            api::agregar_marcadores::agregar_marcadores_comando,
+
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -33,5 +33,10 @@ export const RUTAS = {
     NUEVO: '/calificaciones/nuevo',
     DETALLE: (id: string) => `/calificaciones/${id}`,
     EDITAR: (id: string) => `/calificaciones/${id}/editar`
+  },
+  REPORTES: {
+    ANALIZADOR_EXCEL: '/reportes/analizador-excel',
+    RESUMEN_FINAL: '/reportes/resumen-final',
+    ACTAS: '/reportes/actas'
   }
 } as const; 

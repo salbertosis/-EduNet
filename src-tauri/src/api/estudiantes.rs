@@ -312,4 +312,139 @@ pub async fn contar_estudiantes_masculinos(state: State<'_, AppState>) -> Result
         .map_err(|e| e.to_string())?;
     let total: i64 = row.get(0);
     Ok(total)
+}
+
+#[tauri::command]
+pub async fn insertar_estudiantes_masivo(
+    estudiantes: Vec<serde_json::Value>,
+    state: State<'_, AppState>,
+) -> Result<serde_json::Value, String> {
+    let db = state.db.lock().await;
+    let mut insertados = 0;
+    let mut duplicados = 0;
+    let mut errores = vec![];
+    
+    println!("[DEBUG] Recibidos {} estudiantes para inserción masiva", estudiantes.len());
+    
+    for (i, estudiante_json) in estudiantes.iter().enumerate() {
+        println!("[DEBUG] Procesando estudiante {}: {:?}", i + 1, estudiante_json);
+        
+        // Extraer y validar campos requeridos
+        let cedula = match estudiante_json.get("cedula") {
+            Some(serde_json::Value::Number(n)) => n.as_i64().unwrap_or(0),
+            Some(serde_json::Value::String(s)) => s.parse::<i64>().unwrap_or(0),
+            _ => {
+                errores.push(format!("Estudiante {}: cédula inválida o faltante", i + 1));
+                continue;
+            }
+        };
+        
+        let nombres = match estudiante_json.get("nombres") {
+            Some(serde_json::Value::String(s)) => s.clone(),
+            _ => {
+                errores.push(format!("Estudiante {}: nombres faltantes", i + 1));
+                continue;
+            }
+        };
+        
+        let apellidos = match estudiante_json.get("apellidos") {
+            Some(serde_json::Value::String(s)) => s.clone(),
+            _ => {
+                errores.push(format!("Estudiante {}: apellidos faltantes", i + 1));
+                continue;
+            }
+        };
+        
+        let genero = estudiante_json.get("genero")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+        
+        let fecha_nacimiento = match estudiante_json.get("fecha_nacimiento") {
+            Some(serde_json::Value::String(s)) => {
+                match chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d") {
+                    Ok(date) => date,
+                    Err(_) => {
+                        errores.push(format!("Estudiante {}: fecha de nacimiento inválida: {}", i + 1, s));
+                        continue;
+                    }
+                }
+            },
+            _ => {
+                errores.push(format!("Estudiante {}: fecha de nacimiento faltante", i + 1));
+                continue;
+            }
+        };
+        
+        let id_grado_secciones = estudiante_json.get("id_grado_secciones")
+            .and_then(|v| v.as_i64())
+            .map(|n| n as i32);
+        
+        let fecha_ingreso = estudiante_json.get("fecha_ingreso")
+            .and_then(|v| v.as_str())
+            .and_then(|s| chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d").ok());
+        
+        let paisnac_id = estudiante_json.get("paisnac_id")
+            .and_then(|v| v.as_i64())
+            .map(|n| n as i32);
+        
+        let estado_nac_id = estudiante_json.get("estado_nac_id")
+            .and_then(|v| v.as_i64())
+            .map(|n| n as i32);
+        
+        let municipio_nac_id = estudiante_json.get("municipio_nac_id")
+            .and_then(|v| v.as_i64())
+            .map(|n| n as i32);
+        
+        let ciudad_nac_id = estudiante_json.get("ciudad_nac_id")
+            .and_then(|v| v.as_i64())
+            .map(|n| n as i32);
+        
+        let id_periodoactual = estudiante_json.get("id_periodoactual")
+            .and_then(|v| v.as_i64())
+            .map(|n| n as i32);
+        
+        let estado = match estudiante_json.get("estado").and_then(|v| v.as_str()) {
+            Some("Activo") | Some("activo") => crate::models::estudiante::EstadoEstudiante::Activo,
+            Some("Retirado") | Some("retirado") => crate::models::estudiante::EstadoEstudiante::Retirado,
+            _ => crate::models::estudiante::EstadoEstudiante::Activo, // Por defecto
+        };
+        
+        let fecha_retiro = estudiante_json.get("fecha_retiro")
+            .and_then(|v| v.as_str())
+            .and_then(|s| chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d").ok());
+        
+        // Insertar en la base de datos
+        let res = db.execute(
+            "INSERT INTO estudiantes (cedula, nombres, apellidos, genero, fecha_nacimiento, id_grado_secciones, fecha_ingreso, paisnac_id, estado_nac_id, municipio_nac_id, ciudad_nac_id, id_periodoactual, estado, fecha_retiro) 
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) 
+             ON CONFLICT (cedula) DO NOTHING",
+            &[&cedula, &nombres, &apellidos, &genero, &fecha_nacimiento, &id_grado_secciones, &fecha_ingreso, &paisnac_id, &estado_nac_id, &municipio_nac_id, &ciudad_nac_id, &id_periodoactual, &estado, &fecha_retiro]
+        ).await;
+        
+        match res {
+            Ok(n) if n == 1 => {
+                insertados += 1;
+                println!("[DEBUG] Estudiante {} insertado exitosamente", cedula);
+            },
+            Ok(_) => {
+                duplicados += 1;
+                println!("[DEBUG] Estudiante {} ya existe (duplicado)", cedula);
+            },
+            Err(err) => {
+                let error_msg = format!("{} {}: {}", cedula, nombres, err);
+                errores.push(error_msg.clone());
+                println!("[ERROR] {}", error_msg);
+            }
+        }
+    }
+    
+    println!("[DEBUG] Resumen: Total: {}, Insertados: {}, Duplicados: {}, Errores: {}", 
+             insertados + duplicados + errores.len(), insertados, duplicados, errores.len());
+    
+    Ok(serde_json::json!({
+        "total_registros": insertados + duplicados + errores.len(),
+        "insertados": insertados,
+        "duplicados": duplicados,
+        "errores": errores,
+    }))
 } 

@@ -14,9 +14,7 @@ pub mod pdf_simple;
 pub mod pgcrp_simple;
 pub mod estudiante_pgcrp;
 pub mod resumen_excel;
-pub mod crear_plantilla_excel;
-pub mod analizar_plantilla;
-pub mod agregar_marcadores;
+pub mod generador_mppe_final;
 
 pub use pdf_estudiantes::*;
 pub use pdf_estudiantes::generar_pdf_estudiantes_curso; 

@@ -105,10 +105,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Comandos Excel
             api::resumen_excel::generar_resumen_excel_masivo,
             api::resumen_excel::generar_resumen_estudiantes_basico,
-            api::crear_plantilla_excel::crear_plantilla_base,
-            api::analizar_plantilla::analizar_plantilla_comando,
-            api::agregar_marcadores::agregar_marcadores_comando,
-
+            // Generador MPPE Final
+            api::generador_mppe_final::generar_plantilla_mppe_completa,
+            api::generador_mppe_final::convertir_plantilla_mppe_a_pdf,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

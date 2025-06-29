@@ -165,6 +165,57 @@ export default function ResumenExcel() {
     }
   };
 
+  const generarPlantillaMPPECompleta = async () => {
+    try {
+      setCargando(true);
+      mostrarMensaje('Selecciona dónde guardar la plantilla MPPE...', 'info');
+
+      // Solicitar al usuario dónde guardar el archivo
+      const rutaGuardado = await save({
+        title: 'Guardar Plantilla MPPE Vacía',
+        defaultPath: `Plantilla_MPPE_Vacia_${new Date().toISOString().slice(0, 10)}.xlsx`,
+        filters: [{
+          name: 'Excel',
+          extensions: ['xlsx']
+        }]
+      });
+
+      if (!rutaGuardado) {
+        mostrarMensaje('Operación cancelada por el usuario.', 'info');
+        return;
+      }
+
+      mostrarMensaje('Generando plantilla MPPE con dimensiones reales...', 'info');
+
+      const resultado = await invoke<string>('generar_plantilla_mppe_completa', {
+        rutaSalida: rutaGuardado
+      });
+
+      mostrarMensaje(resultado, 'exito');
+    } catch (error) {
+      console.error('Error generando plantilla MPPE:', error);
+      mostrarMensaje(`❌ Error: ${error}`, 'error');
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  const generarPlantillaMPPEPDF = async () => {
+    try {
+      setCargando(true);
+      mostrarMensaje('Generando plantilla MPPE en formato PDF...', 'info');
+
+      const resultado = await invoke<string>('convertir_plantilla_mppe_a_pdf');
+      
+      mostrarMensaje('Plantilla MPPE PDF generada exitosamente', 'exito');
+    } catch (error) {
+      console.error('Error generando plantilla MPPE PDF:', error);
+      mostrarMensaje(`❌ Error al generar PDF: ${error}`, 'error');
+    } finally {
+      setCargando(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="bg-white dark:bg-dark-700 p-6 rounded-xl shadow-sm">
@@ -242,7 +293,7 @@ export default function ResumenExcel() {
           </div>
         </div>
 
-        <div className="flex justify-center">
+        <div className="flex justify-center gap-4 flex-wrap">
           <button
             onClick={generarResumenBasico}
             disabled={cargando || !filtros.id_periodo || !filtros.id_modalidad || !filtros.id_grado || !filtros.id_seccion || filtros.id_seccion === 'todas'}
@@ -256,6 +307,40 @@ export default function ResumenExcel() {
             ) : (
               <>
                 📊 Generar Resumen de Estudiantes
+              </>
+            )}
+          </button>
+
+          <button
+            onClick={generarPlantillaMPPECompleta}
+            disabled={cargando}
+            className="px-8 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-lg font-medium"
+          >
+            {cargando ? (
+              <>
+                <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                Generando...
+              </>
+            ) : (
+              <>
+                📊 Generar MPPE Excel
+              </>
+            )}
+          </button>
+
+          <button
+            onClick={generarPlantillaMPPEPDF}
+            disabled={cargando}
+            className="px-8 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-lg font-medium"
+          >
+            {cargando ? (
+              <>
+                <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                Generando...
+              </>
+            ) : (
+              <>
+                📄 Generar MPPE PDF
               </>
             )}
           </button>
@@ -276,6 +361,26 @@ export default function ResumenExcel() {
             </div>
           </div>
         )}
+      </div>
+
+      <div className="bg-green-50 dark:bg-green-900/20 p-6 rounded-lg">
+        <h4 className="font-semibold text-green-800 dark:text-green-300 mb-3">🎯 Plantilla MPPE Vacía</h4>
+        <div className="text-sm text-green-700 dark:text-green-300 space-y-2">
+          <p><strong>✨ Genera una plantilla MPPE vacía con dimensiones 100% exactas:</strong></p>
+          <ul className="list-disc ml-6 space-y-1">
+            <li><strong>68 columnas</strong> (A-BP) con anchos reales extraídos de VBA</li>
+            <li><strong>77 filas</strong> con alturas exactas según plantilla oficial</li>
+            <li><strong>Logo del ministerio</strong> con dimensiones reales (1.40 x 12.05 cm)</li>
+            <li><strong>Tipografía Arial 10pt</strong> según parámetros MPPE</li>
+            <li><strong>Columnas ocultas</strong> (C y N) según plantilla original</li>
+            <li><strong>Área de impresión</strong> limitada exactamente a A1:BP77</li>
+          </ul>
+          <div className="mt-3 p-2 bg-green-100 dark:bg-green-800/30 rounded">
+            <p className="text-xs text-green-800 dark:text-green-300">
+              💡 <strong>Uso recomendado:</strong> Esta plantilla vacía es perfecta para llenar manualmente con datos de estudiantes o para verificar que las dimensiones coincidan 100% con la plantilla oficial del MPPE.
+            </p>
+          </div>
+        </div>
       </div>
 
       <div className="bg-blue-50 dark:bg-blue-900/20 p-6 rounded-lg">

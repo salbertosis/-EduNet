@@ -7,11 +7,13 @@ pub mod db;
 use tokio::sync::Mutex;
 use tokio_postgres::NoTls;
 use std::sync::Arc;
+use tauri::AppHandle;
 
 pub struct AppState {
     pub db: Arc<Mutex<tokio_postgres::Client>>,
     pub logo_izq: String,
     pub logo_der: String,
+    pub app_handle: AppHandle,
 }
 
 pub async fn init_db() -> Result<tokio_postgres::Client, tokio_postgres::Error> {

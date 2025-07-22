@@ -5,6 +5,7 @@
 use base64::{engine::general_purpose, Engine as _};
 use std::fs;
 use app::{AppState, db, api}; // Importar todo lo necesario desde la librería
+use tauri::Manager;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -12,22 +13,48 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Usar la función de inicialización de la librería
     let db_pool = db::connection::init_db().await?;
 
-    // Cargar y codificar logos
-    let logo_izq_bytes = fs::read("imagenes/LogoMppe.jpg")?;
-    let logo_der_bytes = fs::read("imagenes/Logo_liceo.jpg")?;
-    let logo_izq_base64 = general_purpose::STANDARD.encode(&logo_izq_bytes);
-    let logo_der_base64 = general_purpose::STANDARD.encode(&logo_der_bytes);
-    
-    // Crear la instancia de AppState importada
-    let app_state = AppState { 
-        db: db_pool,
-        logo_izq: logo_izq_base64,
-        logo_der: logo_der_base64,
+    // Cargar logos
+    println!("Intentando cargar logo izquierdo: imagenes/Logo_ministerio_resumen.png");
+    let logo_izq_base64 = match fs::read("imagenes/Logo_ministerio_resumen.png") {
+        Ok(data) => {
+            println!("✅ Logo izquierdo cargado exitosamente: {} bytes", data.len());
+            let base64 = general_purpose::STANDARD.encode(&data);
+            println!("✅ Logo izquierdo codificado en base64: {} caracteres", base64.len());
+            base64
+        },
+        Err(e) => {
+            println!("❌ Error cargando logo izquierdo: {}", e);
+            String::new()
+        }
     };
-
+    
+    println!("Intentando cargar logo derecho: imagenes/Logo_liceo.jpg");
+    let logo_der_base64 = match fs::read("imagenes/Logo_liceo.jpg") {
+        Ok(data) => {
+            println!("✅ Logo derecho cargado exitosamente: {} bytes", data.len());
+            let base64 = general_purpose::STANDARD.encode(&data);
+            println!("✅ Logo derecho codificado en base64: {} caracteres", base64.len());
+            base64
+        },
+        Err(e) => {
+            println!("❌ Error cargando logo derecho: {}", e);
+            String::new()
+        }
+    };
+    
     // Configurar Tauri
     tauri::Builder::default()
-        .manage(app_state)
+        .setup(move |app| {
+            // Crear la instancia de AppState con el app_handle
+            let app_state = AppState { 
+                db: db_pool,
+                logo_izq: logo_izq_base64.clone(),
+                logo_der: logo_der_base64.clone(),
+                app_handle: app.handle(),
+            };
+            app.manage(app_state);
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             api::calificaciones::guardar_calificacion,
             api::calificaciones::obtener_calificaciones_estudiante,
@@ -80,6 +107,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             api::plantillas::test_query_minimal,
             api::plantillas::test_column_types,
             api::actas_masivas::generar_actas_masivas,
+            api::acta_resumen::generar_acta_resumen,
             api::plantillas::obtener_tarjetas_cursos,
             api::migracion::migrar_estudiantes,
             api::migracion::migrar_estudiantes_nuevos,
@@ -89,8 +117,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             api::catalogo::listar_secciones_por_grado_modalidad,
             api::catalogo::obtener_id_grado_secciones,
             api::pdf_estudiantes::generar_pdf_estudiantes_curso,
-            api::acta_resumen::generar_acta_resumen,
-            api::pdf_simple::generar_acta_pdf_simple,
             // Comandos PGCRP Simple
             api::pgcrp_simple::obtener_actividades_pgcrp_simple,
             api::pgcrp_simple::asignar_pgcrp_seccion_simple,
@@ -102,12 +128,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             api::estudiante_pgcrp::obtener_actividades_pgcrp_estudiante,
             api::estudiante_pgcrp::asignar_pgcrp_estudiante_individual,
             api::estudiante_pgcrp::eliminar_pgcrp_estudiante_individual,
-            // Comandos Excel
-            api::resumen_excel::generar_resumen_excel_masivo,
-            api::resumen_excel::generar_resumen_estudiantes_basico,
-            // Generador MPPE Final
-            api::generador_mppe_final::generar_plantilla_mppe_completa,
-            api::generador_mppe_final::convertir_plantilla_mppe_a_pdf,
+            // Comandos Resumen Final (nuevo módulo)
+            api::resumen_final::generar_resumen_final_html_directo,
+            api::resumen_final::generar_resumen_final_pdf_directo,
+            // Comandos de Institución
+                    api::institucion::obtener_datos_institucion,
+        api::institucion::guardar_datos_institucion,
+        api::tipos_evaluacion::obtener_tipos_evaluacion,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

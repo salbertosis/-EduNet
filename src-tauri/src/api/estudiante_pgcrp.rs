@@ -148,56 +148,129 @@ pub async fn asignar_pgcrp_estudiante_individual(
 
     let count: i64 = existe_row.get("count");
 
-    if count > 0 {
-        // Actualizar asignación existente
-        let update_query = r#"
-            UPDATE estudiantes_pgcrp 
-            SET id_pgcrp = $1, 
-                id_grado_secciones = $2,
-                tipo_asignacion = 'individual',
-                observaciones = $3,
-                fecha_asignacion = CURRENT_TIMESTAMP
-            WHERE id_estudiante = $4 AND id_periodo = $5
+    // Si id_extra_catedra es null, significa que queremos quitar la asignación individual
+    // y hacer que use la asignación por sección
+    if asignacion.id_extra_catedra.is_none() {
+        // Obtener la actividad PGCRP asignada a la sección
+        let seccion_pgcrp_query = r#"
+            SELECT gsp.id_pgcrp
+            FROM grado_secciones_pgcrp gsp
+            WHERE gsp.id_grado_secciones = $1 AND gsp.id_periodo = $2
         "#;
 
-        client
-            .execute(
-                update_query,
-                &[
-                    &asignacion.id_extra_catedra,
-                    &asignacion.id_grado_secciones,
-                    &asignacion.observaciones,
-                    &asignacion.id_estudiante,
-                    &asignacion.id_periodo,
-                ],
-            )
+        let seccion_pgcrp_result = client
+            .query_opt(seccion_pgcrp_query, &[&asignacion.id_grado_secciones, &asignacion.id_periodo])
             .await
-            .map_err(|e| format!("Error al actualizar asignación: {}", e))?;
+            .map_err(|e| format!("Error al obtener PGCRP de sección: {}", e))?;
 
-        Ok("Asignación PGCRP actualizada exitosamente".to_string())
+        let id_pgcrp_seccion: Option<i32> = if let Some(row) = seccion_pgcrp_result {
+            Some(row.get("id_pgcrp"))
+        } else {
+            None
+        };
+
+        if count > 0 {
+            // Actualizar asignación existente para usar sección
+            let update_query = r#"
+                UPDATE estudiantes_pgcrp 
+                SET id_pgcrp = $1,
+                    tipo_asignacion = 'seccion',
+                    observaciones = $2,
+                    fecha_asignacion = CURRENT_TIMESTAMP
+                WHERE id_estudiante = $3 AND id_periodo = $4
+            "#;
+
+            client
+                .execute(
+                    update_query,
+                    &[
+                        &id_pgcrp_seccion,
+                        &asignacion.observaciones,
+                        &asignacion.id_estudiante,
+                        &asignacion.id_periodo,
+                    ],
+                )
+                .await
+                .map_err(|e| format!("Error al actualizar asignación: {}", e))?;
+
+            Ok("Asignación PGCRP cambiada a sección exitosamente".to_string())
+        } else {
+            // Crear nueva asignación de tipo sección
+            let insert_query = r#"
+                INSERT INTO estudiantes_pgcrp 
+                (id_estudiante, id_pgcrp, id_periodo, id_grado_secciones, tipo_asignacion, observaciones, fecha_asignacion)
+                VALUES ($1, $2, $3, $4, 'seccion', $5, CURRENT_TIMESTAMP)
+            "#;
+
+            client
+                .execute(
+                    insert_query,
+                    &[
+                        &asignacion.id_estudiante,
+                        &id_pgcrp_seccion,
+                        &asignacion.id_periodo,
+                        &asignacion.id_grado_secciones,
+                        &asignacion.observaciones,
+                    ],
+                )
+                .await
+                .map_err(|e| format!("Error al crear asignación: {}", e))?;
+
+            Ok("Asignación PGCRP de sección creada exitosamente".to_string())
+        }
     } else {
-        // Crear nueva asignación
-        let insert_query = r#"
-            INSERT INTO estudiantes_pgcrp 
-            (id_estudiante, id_pgcrp, id_periodo, id_grado_secciones, tipo_asignacion, observaciones, fecha_asignacion)
-            VALUES ($1, $2, $3, $4, 'individual', $5, CURRENT_TIMESTAMP)
-        "#;
+        // Caso normal: asignar actividad individual específica
+        if count > 0 {
+            // Actualizar asignación existente
+            let update_query = r#"
+                UPDATE estudiantes_pgcrp 
+                SET id_pgcrp = $1, 
+                    id_grado_secciones = $2,
+                    tipo_asignacion = 'individual',
+                    observaciones = $3,
+                    fecha_asignacion = CURRENT_TIMESTAMP
+                WHERE id_estudiante = $4 AND id_periodo = $5
+            "#;
 
-        client
-            .execute(
-                insert_query,
-                &[
-                    &asignacion.id_estudiante,
-                    &asignacion.id_extra_catedra,
-                    &asignacion.id_periodo,
-                    &asignacion.id_grado_secciones,
-                    &asignacion.observaciones,
-                ],
-            )
-            .await
-            .map_err(|e| format!("Error al crear asignación: {}", e))?;
+            client
+                .execute(
+                    update_query,
+                    &[
+                        &asignacion.id_extra_catedra,
+                        &asignacion.id_grado_secciones,
+                        &asignacion.observaciones,
+                        &asignacion.id_estudiante,
+                        &asignacion.id_periodo,
+                    ],
+                )
+                .await
+                .map_err(|e| format!("Error al actualizar asignación: {}", e))?;
 
-        Ok("Asignación PGCRP creada exitosamente".to_string())
+            Ok("Asignación PGCRP actualizada exitosamente".to_string())
+        } else {
+            // Crear nueva asignación
+            let insert_query = r#"
+                INSERT INTO estudiantes_pgcrp 
+                (id_estudiante, id_pgcrp, id_periodo, id_grado_secciones, tipo_asignacion, observaciones, fecha_asignacion)
+                VALUES ($1, $2, $3, $4, 'individual', $5, CURRENT_TIMESTAMP)
+            "#;
+
+            client
+                .execute(
+                    insert_query,
+                    &[
+                        &asignacion.id_estudiante,
+                        &asignacion.id_extra_catedra,
+                        &asignacion.id_periodo,
+                        &asignacion.id_grado_secciones,
+                        &asignacion.observaciones,
+                    ],
+                )
+                .await
+                .map_err(|e| format!("Error al crear asignación: {}", e))?;
+
+            Ok("Asignación PGCRP creada exitosamente".to_string())
+        }
     }
 }
 

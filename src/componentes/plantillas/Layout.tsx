@@ -66,6 +66,10 @@ const menuItems = [
       {
         label: 'Guardar Historial',
         path: '/guardar-historial'
+      },
+      {
+        label: 'Configuración de la Institución',
+        path: '/configuracion-institucion'
       }
     ]
   },

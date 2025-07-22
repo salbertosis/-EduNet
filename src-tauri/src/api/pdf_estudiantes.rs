@@ -208,8 +208,15 @@ pub async fn generar_pdf_estudiantes_curso(
     let iniciales_asig = obtener_iniciales_asignaturas(client, id_grado_secciones).await?;
     let n_asig = iniciales_asig.len();
 
-    // 1. PROCESAR LOGO DERECHO (EL OTRO LOGO)
-    let (logo_dyn, ancho_logo, alto_logo) = procesar_logo(&state.logo_der, 20.0)?;
+    // 1. PROCESAR LOGO DERECHO (EL OTRO LOGO) - Temporalmente deshabilitado
+    let (logo_dyn, ancho_logo, alto_logo) = if state.logo_der.is_empty() {
+        // Logo por defecto o crear imagen en blanco
+        let img_blanca = image::RgbImage::new(100, 100);
+        let logo_dinamico = image::DynamicImage::ImageRgb8(img_blanca);
+        (logo_dinamico, 20.0, 20.0)
+    } else {
+        procesar_logo(&state.logo_der, 20.0)?
+    };
     
     let (doc, page1, layer1) = PdfDocument::new("Nómina de Estudiantes", Mm(215.9), Mm(279.4), "Layer 1");
     let mut current_layer = doc.get_page(page1).get_layer(layer1);

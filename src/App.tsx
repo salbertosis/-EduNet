@@ -12,6 +12,7 @@ import { ListaGrados } from './modulos/grados/paginas/ListaGrados';
 import CrearPeriodoEscolar from './componentes/CrearPeriodoEscolar';
 import GuardarHistorialMasivoPage from './paginas/GuardarHistorialMasivoPage';
 import { MigrarEstudiantes } from './paginas/MigrarEstudiantes';
+import { ConfiguracionInstitucion } from './modulos/configuracion/paginas/ConfiguracionInstitucion';
 
 function MensajeGlobalModal() {
   const { mensaje, cerrarMensaje } = useMensajeGlobal();
@@ -38,6 +39,7 @@ export function App() {
           <Route path="nuevo-periodo" element={<CrearPeriodoEscolar />} />
           <Route path="migrar-estudiantes" element={<MigrarEstudiantes />} />
           <Route path="guardar-historial" element={<GuardarHistorialMasivoPage />} />
+          <Route path="configuracion-institucion" element={<ConfiguracionInstitucion />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
       </Routes>

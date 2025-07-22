@@ -190,24 +190,45 @@ pub async fn asignar_docente_asignatura(
     id_grado_secciones: i32,
     id_asignatura: i32,
     id_docente: i32,
+    id_periodo: i32,
     state: tauri::State<'_, crate::AppState>,
 ) -> Result<(), String> {
     let db = state.db.lock().await;
-    db.execute(
-        "UPDATE grado_seccion_asignatura_docente
-         SET id_docente = $1
-         WHERE id_grado_secciones = $2 AND id_asignatura = $3",
-        &[&id_docente, &id_grado_secciones, &id_asignatura]
+    
+    // Verificar si ya existe un registro para esta combinación
+    let existing = db.query_opt(
+        "SELECT id_docente FROM grado_seccion_asignatura_docente 
+         WHERE id_grado_secciones = $1 AND id_asignatura = $2 AND id_periodo = $3",
+        &[&id_grado_secciones, &id_asignatura, &id_periodo]
     ).await.map_err(|e| e.to_string())?;
+    
+    if existing.is_some() {
+        // Actualizar registro existente
+        db.execute(
+            "UPDATE grado_seccion_asignatura_docente
+             SET id_docente = $1
+             WHERE id_grado_secciones = $2 AND id_asignatura = $3 AND id_periodo = $4",
+            &[&id_docente, &id_grado_secciones, &id_asignatura, &id_periodo]
+        ).await.map_err(|e| e.to_string())?;
+    } else {
+        // Insertar nuevo registro
+        db.execute(
+            "INSERT INTO grado_seccion_asignatura_docente (id_grado_secciones, id_asignatura, id_docente, id_periodo)
+             VALUES ($1, $2, $3, $4)",
+            &[&id_grado_secciones, &id_asignatura, &id_docente, &id_periodo]
+        ).await.map_err(|e| e.to_string())?;
+    }
+    
     Ok(())
 }
 
 #[tauri::command(rename_all = "snake_case")]
 pub async fn obtener_docentes_por_asignatura_seccion(
     id_grado_secciones: i32,
+    id_periodo: i32,
     state: tauri::State<'_, crate::AppState>,
 ) -> Result<Vec<AsignaturaConDocente>, String> {
-    println!("[DEBUG] Recibido id_grado_secciones: {}", id_grado_secciones);
+    println!("[DEBUG] Recibido id_grado_secciones: {}, id_periodo: {}", id_grado_secciones, id_periodo);
     let db = state.db.lock().await;
     let query = "
         SELECT
@@ -215,15 +236,16 @@ pub async fn obtener_docentes_por_asignatura_seccion(
             a.nombre AS nombre_asignatura,
             d.id_docente,
             d.nombres AS nombres_docente,
-            d.apellidos AS apellidos_docente
+            d.apellidos AS apellidos_docente,
+            gsad.id_periodo
         FROM grado_seccion_asignatura_docente gsad
         JOIN asignaturas a ON gsad.id_asignatura = a.id_asignatura
         LEFT JOIN docentes d ON gsad.id_docente = d.id_docente
-        WHERE gsad.id_grado_secciones = $1
+        WHERE gsad.id_grado_secciones = $1 AND gsad.id_periodo = $2
         ORDER BY a.nombre
     ";
-    println!("[DEBUG] Ejecutando consulta SQL para id_grado_secciones={}", id_grado_secciones);
-    let rows = match db.query(query, &[&id_grado_secciones]).await {
+    println!("[DEBUG] Ejecutando consulta SQL para id_grado_secciones={}, id_periodo={}", id_grado_secciones, id_periodo);
+    let rows = match db.query(query, &[&id_grado_secciones, &id_periodo]).await {
         Ok(r) => r,
         Err(e) => {
             println!("[ERROR] Error en la consulta SQL: {}", e);

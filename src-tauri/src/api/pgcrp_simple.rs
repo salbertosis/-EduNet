@@ -50,7 +50,17 @@ pub async fn asignar_pgcrp_seccion_simple(
         &[&input.id_grado_secciones, &input.id_pgcrp, &input.id_periodo]
     ).await.map_err(|e| format!("Error al asignar PGCRP por sección: {}", e))?;
     
-    // 3. Insertar todos los estudiantes de la sección específica en estudiantes_pgcrp
+    // 3. Actualizar registros existentes de tipo 'seccion' para esta sección
+    transaction.execute(
+        "UPDATE estudiantes_pgcrp 
+         SET id_pgcrp = $1, fecha_asignacion = CURRENT_TIMESTAMP
+         WHERE id_grado_secciones = $2 
+           AND id_periodo = $3 
+           AND tipo_asignacion = 'seccion'",
+        &[&input.id_pgcrp, &input.id_grado_secciones, &input.id_periodo]
+    ).await.map_err(|e| format!("Error al actualizar asignaciones de sección: {}", e))?;
+    
+    // 4. Insertar nuevos registros para estudiantes sin asignación previa
     transaction.execute(
         "INSERT INTO estudiantes_pgcrp (id_estudiante, id_pgcrp, id_periodo, id_grado_secciones, tipo_asignacion, observaciones, fecha_asignacion)
          SELECT hge.id_estudiante, $2, $3, $1, 'seccion', $4, CURRENT_TIMESTAMP

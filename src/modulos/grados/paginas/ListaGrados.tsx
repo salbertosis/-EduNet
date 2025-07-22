@@ -19,8 +19,9 @@ import { Paginacion } from '../../../componentes/Paginacion';
 import { useGrados, type Grado } from '../hooks/useGrados';
 import { useMensajeGlobal } from '../../../componentes/MensajeGlobalContext';
 import { ModalAsignarDocentes } from '../componentes/ModalAsignarDocentes';
+import { ModalEstudiantesPDF } from '../componentes/ModalEstudiantesPDF';
 import { useAsignaturas } from '../../calificaciones/hooks/useAsignaturas';
-import { ModalPDF } from '../../../componentes/ModalPDF';
+
 import { ModalAsignarPgcrp } from '../../../componentes/ModalAsignarPgcrp';
 import ModalAsignarPgcrpEstudiantes from '../../../componentes/ModalAsignarPgcrpEstudiantes';
 
@@ -203,13 +204,30 @@ const ModalVerDocentesPorAsignatura: React.FC<{
   const [asignaturas, setAsignaturas] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [periodoActivo, setPeriodoActivo] = React.useState<number>(1);
+
+  // Cargar período activo
+  useEffect(() => {
+    const cargarPeriodoActivo = async () => {
+      try {
+        const periodos = await invoke<any[]>('obtener_periodos_escolares');
+        const activo = periodos.find(p => p.activo);
+        if (activo) {
+          setPeriodoActivo(activo.id_periodo);
+        }
+      } catch (error) {
+        console.error('Error al cargar período activo:', error);
+      }
+    };
+    cargarPeriodoActivo();
+  }, []);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !periodoActivo) return;
     setLoading(true);
     setError(null);
-    console.log('[DEBUG][ModalVerDocentesPorAsignatura] Llamando a obtener_docentes_por_asignatura_seccion con id_grado_secciones:', id_grado_secciones);
-    invoke('obtener_docentes_por_asignatura_seccion', { id_grado_secciones })
+    console.log('[DEBUG][ModalVerDocentesPorAsignatura] Llamando a obtener_docentes_por_asignatura_seccion con id_grado_secciones:', id_grado_secciones, 'id_periodo:', periodoActivo);
+    invoke('obtener_docentes_por_asignatura_seccion', { id_grado_secciones, id_periodo: periodoActivo })
       .then((data) => {
         const asignaturas = data as any[];
         console.log('[DEBUG][ModalVerDocentesPorAsignatura] Respuesta recibida:', asignaturas);
@@ -288,10 +306,8 @@ const TarjetaCurso = React.memo<TarjetaCursoProps>(({ grado, onDocenteAsignado }
   const [asignando, setAsignando] = useState(false);
   const [errorCargandoDocentes, setErrorCargandoDocentes] = useState(false);
   const [modalVerDocentesAbierto, setModalVerDocentesAbierto] = useState(false);
-  const [modalPdfOpen, setModalPdfOpen] = useState(false);
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-  const [loadingPdf, setLoadingPdf] = useState(false);
-  const [errorPdf, setErrorPdf] = useState<string | null>(null);
+  const [modalEstudiantesAbierto, setModalEstudiantesAbierto] = useState(false);
+
   const [modalPgcrpAbierto, setModalPgcrpAbierto] = useState(false);
   const [modalPgcrpEstudiantesAbierto, setModalPgcrpEstudiantesAbierto] = useState(false);
   const [periodoActivo, setPeriodoActivo] = useState<number>(1); // Por defecto 1, luego se carga
@@ -393,21 +409,7 @@ const TarjetaCurso = React.memo<TarjetaCursoProps>(({ grado, onDocenteAsignado }
     setErrorCargandoDocentes(false);
   }, []);
 
-  const handleVerEstudiantes = async (idGradoSecciones: number) => {
-    setLoadingPdf(true);
-    setErrorPdf(null);
-    setModalPdfOpen(true);
-    try {
-      const base64 = await invoke<string>('generar_pdf_estudiantes_curso', { idGradoSecciones });
-      const blob = await fetch(`data:application/pdf;base64,${base64}`).then(res => res.blob());
-      setPdfUrl(URL.createObjectURL(blob));
-    } catch (err: any) {
-      console.error("Error al generar PDF:", err);
-      setErrorPdf(err?.message || 'Error al generar PDF');
-    } finally {
-      setLoadingPdf(false);
-    }
-  };
+
 
   return (
     <>
@@ -526,11 +528,12 @@ const TarjetaCurso = React.memo<TarjetaCursoProps>(({ grado, onDocenteAsignado }
           >
             <List className="w-5 h-5" /> Docentes
           </button>
+
           <button
             type="button"
-            onClick={() => handleVerEstudiantes(grado.id_grado_secciones)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors font-medium"
-            aria-label="Ver estudiantes de la sección"
+            onClick={() => setModalEstudiantesAbierto(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-200 border border-blue-200 dark:border-blue-700 hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors font-medium"
+            aria-label="Generar PDF de estudiantes"
           >
             <Users className="w-5 h-5" /> Estudiantes
           </button>
@@ -562,6 +565,15 @@ const TarjetaCurso = React.memo<TarjetaCursoProps>(({ grado, onDocenteAsignado }
         isOpen={modalVerDocentesAbierto}
         onClose={() => setModalVerDocentesAbierto(false)}
         id_grado_secciones={grado.id_grado_secciones}
+      />
+
+      {/* Modal de Estudiantes PDF */}
+      <ModalEstudiantesPDF
+        isOpen={modalEstudiantesAbierto}
+        onClose={() => setModalEstudiantesAbierto(false)}
+        idGradoSecciones={grado.id_grado_secciones}
+        nombreGrado={grado.nombre_grado}
+        nombreSeccion={grado.nombre_seccion}
       />
 
       {/* Modal de Asignar PGCRP */}
@@ -600,13 +612,7 @@ const TarjetaCurso = React.memo<TarjetaCursoProps>(({ grado, onDocenteAsignado }
         }}
       />
 
-      <ModalPDF
-        open={modalPdfOpen}
-        onClose={() => { setModalPdfOpen(false); setPdfUrl(null); }}
-        pdfUrl={pdfUrl}
-        loading={loadingPdf}
-        error={errorPdf}
-      />
+
     </>
   );
 });

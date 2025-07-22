@@ -38,5 +38,8 @@ export const RUTAS = {
     ANALIZADOR_EXCEL: '/reportes/analizador-excel',
     RESUMEN_FINAL: '/reportes/resumen-final',
     ACTAS: '/reportes/actas'
+  },
+  CONFIGURACION: {
+    INSTITUCION: '/configuracion-institucion'
   }
 } as const; 

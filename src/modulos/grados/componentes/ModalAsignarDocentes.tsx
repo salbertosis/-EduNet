@@ -85,6 +85,24 @@ export const ModalAsignarDocentes: React.FC<ModalAsignarDocentesProps> = ({
     ));
   };
 
+  const [periodoActivo, setPeriodoActivo] = useState<number>(1);
+
+  // Cargar período activo
+  useEffect(() => {
+    const cargarPeriodoActivo = async () => {
+      try {
+        const periodos = await invoke<any[]>('obtener_periodos_escolares');
+        const activo = periodos.find(p => p.activo);
+        if (activo) {
+          setPeriodoActivo(activo.id_periodo);
+        }
+      } catch (error) {
+        console.error('Error al cargar período activo:', error);
+      }
+    };
+    cargarPeriodoActivo();
+  }, []);
+
   const handleEnviar = async () => {
     setAsignando(true);
     let exito = true;
@@ -93,7 +111,8 @@ export const ModalAsignarDocentes: React.FC<ModalAsignarDocentesProps> = ({
         await invoke('asignar_docente_asignatura', {
           id_asignatura: Number(id_asignatura),
           id_docente: id_docente,
-          id_grado_secciones: grado.id_grado_secciones
+          id_grado_secciones: grado.id_grado_secciones,
+          id_periodo: periodoActivo
         });
       } catch (error) {
         exito = false;

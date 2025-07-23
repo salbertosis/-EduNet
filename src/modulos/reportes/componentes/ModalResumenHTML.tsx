@@ -42,9 +42,11 @@ const ModalResumenHTML: React.FC<ModalResumenHTMLProps> = ({
             console.log('🔄 Generando resumen final HTML...');
             console.log('📋 Parámetros:', { idGradoSecciones });
 
-            const htmlContent = await invoke<string>('generar_resumen_final_html_directo', {
-                idGradoSecciones,
-                idTipoEvaluacion
+            const htmlContent = await invoke<string>('generar_resumen_final_html_directo_v2', {
+                params: {
+                    idGradoSecciones: idGradoSecciones,
+                    idTipoEvaluacion: idTipoEvaluacion
+                }
             });
 
             console.log('✅ HTML generado exitosamente');
@@ -133,10 +135,12 @@ const ModalResumenHTML: React.FC<ModalResumenHTMLProps> = ({
                 console.log('🔄 Generando PDF...');
                 console.log('📋 Parámetros:', { idGradoSecciones, rutaSalida });
 
-                const respuesta = await invoke<RespuestaResumenFinal>('generar_resumen_final_pdf_directo', {
-                    idGradoSecciones,
-                    idTipoEvaluacion,
-                    rutaSalida
+                const respuesta = await invoke<RespuestaResumenFinal>('generar_resumen_final_pdf_directo_v2', {
+                    params: {
+                        idGradoSecciones: idGradoSecciones,
+                        idTipoEvaluacion: idTipoEvaluacion,
+                        rutaSalida: rutaSalida
+                    }
                 });
 
                 console.log('✅ Respuesta del backend:', respuesta);

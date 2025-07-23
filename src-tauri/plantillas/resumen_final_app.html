@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Resumen Final del Rendimiento Estudiantil - Formato oficial MPPE">
+  <title>Resumen Final del Rendimiento Estudiantil</title>
+  <style>
+    /* === CSS CUSTOM PROPERTIES (VARIABLES) === */
+    :root {
+      /* Colores */
+      --color-primary: #000000;
+      --color-background: #ffffff;
+      --color-border: #000000;
+      --color-shadow: rgba(0, 0, 0, 0.1);
+      
+      /* Tipografía */
+      --font-family-primary: Arial, sans-serif;
+      --font-size-xs: 6px;
+      --font-size-sm: 7px;
+      --font-size-base: 8px;
+      --font-size-md: 9px;
+      --font-size-lg: 10px;
+      --font-size-xl: 12px;
+      --font-size-2xl: 16px;
+      
+      /* Espaciado */
+      --spacing-xs: 1px;
+      --spacing-sm: 2px;
+      --spacing-md: 4px;
+      --spacing-lg: 6px;
+      
+      /* Dimensiones */
+      --table-width: 20.2cm;
+      --header-height: 4cm;
+      --row-height: 0.5cm;
+      --logo-width: 8.5cm;
+      --logo-height: 1.7cm;
+      
+      /* Bordes */
+      --border-width: 1px;
+      --border-style: solid;
+      --border-color: var(--color-border);
+      --border: var(--border-width) var(--border-style) var(--border-color);
+      
+      /* Sombras */
+      --shadow-sm: 0 4px 6px var(--color-shadow);
+    }
+
+    /* === RESET CSS MODERNO === */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* === ESTILOS BASE === */
+    body {
+      font-family: var(--font-family-primary);
+      font-size: var(--font-size-md);
+      background-color: var(--color-background);
+      line-height: 1.2;
+      color: var(--color-primary);
+    }
+
+    /* === LAYOUT PRINCIPAL === */
+    .document-container {
+      max-width: var(--table-width);
+      margin: 0 auto;
+      background: var(--color-background);
+      box-shadow: var(--shadow-sm);
+      border-radius: var(--spacing-sm);
+    }
+
+    main {
+      margin: 0;
+      padding: 0;
+    }
+
+    /* === ENCABEZADO MPPE === */
+    .mppe-header-container {
+      width: var(--table-width);
+      height: var(--header-height);
+      margin: 0 auto;
+      padding: 0;
+      overflow: hidden;
+      font-size: var(--font-size-lg);
+    }
+
+    .header {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 0;
+      padding: 0;
+    }
+
+    .logo-section {
+      display: flex;
+      align-items: flex-start;
+      margin-top: -0.2cm;
+    }
+
+    .logo-img {
+      width: var(--logo-width);
+      height: var(--logo-height);
+      object-fit: contain;
+    }
+
+    .title-section {
+      flex: 1;
+      text-align: center;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      line-height: 1.1;
+      gap: 0;
+    }
+
+    .title-text {
+      font-size: var(--font-size-2xl);
+      font-weight: bold;
+      line-height: 1.1;
+    }
+
+    .code-text {
+      font-size: var(--font-size-xl);
+      font-weight: bold;
+      margin: 0;
+      line-height: 1.1;
+      margin-bottom: var(--spacing-lg);
+    }
+
+    .year-section {
+      margin-top: var(--spacing-sm);
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: var(--spacing-sm);
+      line-height: 1.1;
+    }
+
+    .year-row {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      line-height: 1.1;
+      margin-bottom: 0;
+    }
+
+    .field-label {
+      font-family: var(--font-family-primary);
+      font-size: var(--font-size-lg);
+      color: var(--color-primary);
+      white-space: nowrap;
+      align-self: end;
+      margin-bottom: var(--spacing-sm);
+    }
+
+    .field-line {
+      border-bottom: var(--border);
+      height: 14px;
+    }
+
+    .section-title {
+      font-size: var(--font-size-md);
+      font-weight: bold;
+      margin: var(--spacing-xs) 0;
+      line-height: 1.1;
+      padding: var(--spacing-xs);
+    }
+
+    .institution-data {
+      margin-top: 0;
+      padding: 0;
+    }
+
+    /* === GRID LAYOUTS === */
+    .row,
+    .row-codigo-eponimo,
+    .row-telefono,
+    .row-municipio,
+    .row-director {
+      display: grid;
+      gap: var(--spacing-xs);
+      margin-bottom: 0;
+      line-height: 1.02;
+      padding: var(--spacing-xs);
+      align-items: end;
+    }
+
+    .row { 
+      grid-template-columns: auto 1fr; 
+    }
+    
+    .row-codigo-eponimo { 
+      grid-template-columns: auto 120px auto 1fr; 
+    }
+    
+    .row-telefono { 
+      grid-template-columns: auto 1fr auto 140px; 
+    }
+    
+    .row-municipio { 
+      grid-template-columns: auto 180px auto 120px auto 1fr; 
+    }
+    
+    .row-director { 
+      grid-template-columns: auto 1fr auto 1fr; 
+    }
+
+    /* === FORMULARIOS === */
+    .field-input {
+      border: none;
+      border-bottom: var(--border);
+      background: transparent;
+      padding: 0 var(--spacing-xs) var(--spacing-xs) var(--spacing-xs);
+      height: 14px;
+      font-size: var(--font-size-md);
+      font-family: var(--font-family-primary);
+      vertical-align: bottom;
+      margin-bottom: 0;
+      align-self: end;
+    }
+
+    /* === ESTILOS BASE DE TABLAS === */
+    table {
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-family: var(--font-family-primary);
+      font-size: var(--font-size-base);
+      width: 100%;
+      margin-bottom: 0;
+      border-spacing: 0;
+    }
+
+    table[role="table"] {
+      margin: 0 auto;
+      width: var(--table-width);
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      border: var(--border);
+      color: var(--color-primary);
+      padding: var(--spacing-sm);
+      text-align: left;
+      overflow: hidden;
+      white-space: normal;
+      text-overflow: ellipsis;
+      box-sizing: border-box;
+      line-height: 1.0;
+      margin: 0;
+    }
+
+    th {
+      background: var(--color-background);
+      font-weight: bold;
+      text-align: center;
+      font-size: var(--font-size-md);
+    }
+
+    /* === CLASES ESPECÍFICAS === */
+    .vertical-text {
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      transform: rotate(180deg);
+      font-size: var(--font-size-base);
+      font-weight: bold;
+      text-align: center;
+      vertical-align: middle;
+      padding: 0;
+      margin: 0;
+      line-height: 1;
+    }
+
+    .fecha-celda {
+      padding: 0;
+      margin: 0;
+      box-sizing: border-box;
+    }
+
+    /* === TABLAS PRINCIPALES === */
+    .primera-tabla,
+    .tercera-tabla,
+    .cuarta-tabla {
+      margin: 0 auto;
+      width: var(--table-width);
+      table-layout: fixed;
+      border-spacing: 0;
+      border-collapse: collapse;
+    }
+
+    /* === ESTILOS ESPECÍFICOS DE LA PRIMERA TABLA === */
+    .primera-tabla {
+      margin: 0 auto;
+      width: var(--table-width);
+      table-layout: fixed;
+      border-collapse: collapse;
+    }
+
+    .primera-tabla td,
+    .primera-tabla th {
+      padding: 0;
+      margin: 0;
+      box-sizing: border-box;
+      line-height: 1.0;
+      border: var(--border);
+    }
+
+    .primera-tabla tr {
+      line-height: 1.0;
+    }
+
+    /* === CLASES DE ENCABEZADOS === */
+    .row-number,
+    .cedula-col,
+    .apellidos-col,
+    .nombres-col,
+    .lugar-col {
+      padding: 0;
+      font-size: var(--font-size-lg);
+      text-align: center;
+      font-weight: normal;
+      line-height: 1.2;
+    }
+
+    /* === IMPRESIÓN === */
+    @page {
+      size: 21.59cm 33.02cm;
+      margin: 0.5cm;
+    }
+    
+    @media print {
+      body {
+        background: var(--color-background);
+        margin: 0;
+        padding: 0;
+        -webkit-text-size-adjust: 100%;
+        -ms-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      
+      .document-container {
+        box-shadow: none;
+        border-radius: 0;
+        max-width: none;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+      }
+
+      .mppe-header-container .logo-img {
+        width: 8cm;
+        height: 1.5cm;
+      }
+    }
+
+    /* === RESPONSIVE DESIGN === */
+    @media screen and (max-width: 768px) {
+      .document-container {
+        padding: 0.2cm 0.1cm 0.2cm 0.1cm;
+      }
+      
+      .header {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .logo-section {
+        margin-top: 0;
+        margin-bottom: 0.2cm;
+      }
+    }
+
+    /* === ACCESIBILIDAD === */
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    /* === FOCUS VISIBLE === */
+    .field-input:focus {
+      outline: 2px solid var(--color-primary);
+      outline-offset: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div class="document-container">
+    <main>
+      
+      <!-- Encabezado MPPE -->
+      <div class="mppe-header-container" role="banner" aria-label="Encabezado oficial MPPE">
+        <div class="header">
+          <div class="logo-section">
+            <img src="data:image/png;base64,{{LOGO_BASE64}}" 
+                 alt="Logo del Gobierno de Venezuela" 
+                 class="logo-img"
+                 loading="lazy" />
+          </div>
+          <div class="title-section">
+            <h1 class="title-text">RESUMEN FINAL DEL RENDIMIENTO ESTUDIANTIL</h1>
+            <div class="code-text">Código del Formato: EMG</div>
+            <div style="height: 2px;"></div>
+            <div class="year-section">
+              <div class="year-row">
+                <span class="field-label" style="font-weight: bold;">I. Año Escolar:</span>
+                <div class="field-line" style="width: 120px;">{{ANO_ESCOLAR}}</div>
+              </div>
+              <div class="year-row">
+                <span class="field-label">Tipo de Evaluación:</span>
+                <div class="field-line" style="width: 120px;">{{TIPO_EVALUACION}}</div>
+                <span class="field-label" style="font-weight: bold; margin-left: 20px;">Mes y Año:</span>
+                <div class="field-line" style="width: 120px;">Julio, 2025</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="institution-data">
+          <h2 class="section-title">II. Datos de la Institución Educativa:</h2>
+          <div class="row-codigo-eponimo">
+            <label class="field-label" for="codigo-institucion">Código de la Institución Educativa:</label>
+            <input type="text" 
+                   id="codigo-institucion"
+                   class="field-input" 
+                   maxlength="20" 
+                   value="{{CODIGO_INSTITUCION}}" 
+                   aria-describedby="codigo-institucion-desc" />
+            <label class="field-label" for="denominacion-eponimo">Denominación y Epónimo:</label>
+            <input type="text" 
+                   id="denominacion-eponimo"
+                   class="field-input" 
+                   value="{{DENOMINACION_INSTITUCION}}" />
+          </div>
+          <div class="row-telefono">
+            <label class="field-label" for="direccion">Dirección:</label>
+            <input type="text" 
+                   id="direccion"
+                   class="field-input" 
+                   value="{{DIRECCION_INSTITUCION}}" />
+            <label class="field-label" for="telefono">Teléfono:</label>
+            <input type="text" 
+                   id="telefono"
+                   class="field-input" 
+                   maxlength="20" 
+                   value="{{TELEFONO_INSTITUCION}}" />
+          </div>
+          <div class="row-municipio">
+            <label class="field-label" for="municipio">Municipio:</label>
+            <input type="text" 
+                   id="municipio"
+                   class="field-input" 
+                   maxlength="25" 
+                   value="{{MUNICIPIO_INSTITUCION}}" />
+            <label class="field-label" for="entidad-federal">Entidad Federal:</label>
+            <input type="text" 
+                   id="entidad-federal"
+                   class="field-input" 
+                   maxlength="15" 
+                   value="{{ENTIDAD_FEDERAL_INSTITUCION}}" />
+            <label class="field-label" for="cdcee">CDCEE:</label>
+            <input type="text" 
+                   id="cdcee"
+                   class="field-input" 
+                   value="{{CDCEE_INSTITUCION}}" />
+          </div>
+          <div class="row-director">
+            <label class="field-label" for="director">Director(a):</label>
+            <input type="text" 
+                   id="director"
+                   class="field-input" 
+                   style="width: calc(100% + 120px);" 
+                   value="{{DIRECTOR_INSTITUCION}}" />
+            <label class="field-label" for="cedula-director" style="margin-left: 130px;">Cédula de Identidad:</label>
+            <input type="text" 
+                   id="cedula-director"
+                   class="field-input" 
+                   value="{{CEDULA_DIRECTOR_INSTITUCION}}" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Espaciador entre encabezado y primera tabla -->
+      <div style="height: 3px;" aria-hidden="true"></div>
+
+      <!-- Primera tabla - Identificación del Estudiante -->
+      <table class="primera-tabla" 
+             style="table-layout: fixed; width: 20.2cm;"
+             role="table"
+             aria-label="Tabla de identificación del estudiante y resumen final del rendimiento">
+        <colgroup>
+          <col style="width: 0.4cm;">   <!-- N° -->
+          <col style="width: 1.4cm;">  <!-- Cédula -->
+          <col style="width: 3.1cm;">  <!-- Apellidos -->
+          <col style="width: 3.1cm;">  <!-- Nombres -->
+          <col style="width: 2.2cm;"> <!-- Lugar -->
+          <col style="width: 0.4cm;"> <!-- EF -->
+          <col style="width: 0.3cm;">  <!-- SEXO -->
+          <col style="width: 0.4cm;">  <!-- DÍA -->
+          <col style="width: 0.4cm;">  <!-- MES -->
+          <col style="width: 0.7cm;">  <!-- AÑO -->
+          <col style="width: 0.5cm;"> <!-- CA -->
+          <col style="width: 0.5cm;"> <!-- ILE -->
+          <col style="width: 0.5cm;">  <!-- MA -->
+          <col style="width: 0.5cm;"> <!-- EF -->
+          <col style="width: 0.5cm;"> <!-- FI -->
+          <col style="width: 0.5cm;"> <!-- IN -->
+          <col style="width: 0.5cm;"> <!-- QU -->
+          <col style="width: 0.5cm;">  <!-- BI -->
+          <col style="width: 0.5cm;"> <!-- GH -->
+          <col style="width: 0.5cm;"> <!-- FN -->
+          <col style="width: 0.5cm;"> <!-- OC -->
+          <col style="width: 0.5cm;"> <!-- PG -->
+          <col style="width: 1.8cm;"> <!-- GRUPO -->
+        </colgroup>
+        <thead>
+          <tr style="height: 0.5cm;">
+            <th colspan="10" 
+                style="border: 1px solid #000; font-size: 9px; font-weight: bold; text-align: left; padding: 1px;"
+                scope="colgroup">III. Identificación del Estudiante:</th>
+            <th colspan="13" 
+                style="border: 1px solid #000; font-size: 9px; font-weight: bold; text-align: left; padding: 1px;"
+                scope="colgroup">IV. Resumen Final del Rendimiento:</th>
+          </tr>
+          <tr style="height: 0.5cm;">
+            <th rowspan="4" 
+                class="row-number" 
+                style="padding: 1px 0; font-size: 10px; text-align: center; font-weight: normal; line-height: 1.2;"
+                scope="row">N°</th>
+            <th rowspan="4" 
+                class="cedula-col" 
+                style="font-size: 10px; text-align: center; font-weight: normal; line-height: 1.2; padding: 1px 0;"
+                scope="col">Cédula de<br>Identidad</th>
+            <th rowspan="4" 
+                class="apellidos-col" 
+                style="font-size: 10px; text-align: center; font-weight: normal; line-height: 1.2; padding: 1px 0;"
+                scope="col">Apellidos</th>
+            <th rowspan="4" 
+                class="nombres-col" 
+                style="font-size: 10px; text-align: center; font-weight: normal; line-height: 1.2; padding: 1px 0;"
+                scope="col">Nombres</th>
+            <th rowspan="4" 
+                class="lugar-col" 
+                style="font-size: 10px; text-align: center; font-weight: normal; line-height: 1.2; padding: 1px 0;"
+                scope="col">Lugar de<br>Nacimiento</th>
+            <th rowspan="4" 
+                style="border: 1px solid #000; font-weight: bold; padding: 1px; font-size: 7px;"
+                scope="col">EF</th>
+            <th rowspan="4" 
+                class="vertical-text" 
+                style="border: 1px solid #000; font-weight: bold; padding: 1px; font-size: 8px;"
+                scope="col">SEXO</th>
+            <th colspan="3" 
+                rowspan="2" 
+                style="border: 1px solid #000; padding: 1px; font-size: 7px; text-align: center;"
+                scope="colgroup">FECHA DE<br>NACIMIENTO</th>
+            <th colspan="11" 
+                style="border: 1px solid #000; padding: 1px; font-size: 7px; text-align: center;"
+                scope="colgroup">ÁREAS DE FORMACIÓN</th>
+            <th colspan="2" 
+                rowspan="2" 
+                style="border: 1px solid #000; padding: 1px; font-size: 7px; text-align: center; font-weight: normal;"
+                scope="colgroup">PARTICIPACIÓN EN GRUPOS DE CREACIÓN, RECREACIÓN Y PRODUCCIÓN</th>
+          </tr>
+          <tr style="height: 0.5cm;">
+            <!-- Las primeras 7 columnas ya están definidas con rowspan -->
+            <th colspan="11" 
+                style="border: 1px solid #000; padding: 1px; font-size: 7px; text-align: center;"
+                scope="colgroup">ÁREA COMÚN</th>
+          </tr>
+          <tr style="height: 0.5cm;">
+            <!-- Las primeras 7 columnas ya están definidas con rowspan -->
+            <th rowspan="2" 
+                style="border: 1px solid #000; padding: 1px; margin: 0; box-sizing: border-box;" 
+                class="vertical-text fecha-celda"
+                scope="col">DÍA</th>
+            <th rowspan="2" 
+                style="border: 1px solid #000; padding: 1px; margin: 0; box-sizing: border-box;" 
+                class="vertical-text fecha-celda"
+                scope="col">MES</th>
+            <th rowspan="2" 
+                style="border: 1px solid #000; padding: 1px; margin: 0; box-sizing: border-box;" 
+                class="vertical-text fecha-celda"
+                scope="col">AÑO</th>
+            <th style="border: 1px solid #000; padding: 1px; font-size: 9px; font-weight: bold; text-align: center;"
+                scope="col">1</th>
+            <th style="border: 1px solid #000; padding: 1px; font-size: 9px; font-weight: bold; text-align: center;"
+                scope="col">2</th>
+            <th style="border: 1px solid #000; padding: 1px; font-size: 9px; font-weight: bold; text-align: center;"
+                scope="col">3</th>
+            <th style="border: 1px solid #000; padding: 1px; font-size: 9px; font-weight: bold; text-align: center;"
+                scope="col">4</th>
+            <th style="border: 1px solid #000; padding: 1px; font-size: 9px; font-weight: bold; text-align: center;"
+                scope="col">5</th>
+            <th style="border: 1px solid #000; padding: 1px; font-size: 9px; font-weight: bold; text-align: center;"
+                scope="col">6</th>
+            <th style="border: 1px solid #000; padding: 1px; font-size: 9px; font-weight: bold; text-align: center;"
+                scope="col">7</th>
+            <th style="border: 1px solid #000; padding: 1px; font-size: 9px; font-weight: bold; text-align: center;"
+                scope="col">8</th>
+            <th style="border: 1px solid #000; padding: 1px; font-size: 9px; font-weight: bold; text-align: center;"
+                scope="col">9</th>
+            <th style="border: 1px solid #000; padding: 1px; font-size: 9px; font-weight: bold; text-align: center;"
+                scope="col">10</th>
+            <th style="border: 1px solid #000; padding: 1px; font-size: 9px; font-weight: bold; text-align: center;"
+                scope="col">11</th>
+            <th style="border: 1px solid #000; padding: 1px; font-size: 9px; font-weight: bold; text-align: center;"
+                scope="col">12</th>
+            <th rowspan="2" 
+                style="border: 1px solid #000; padding: 1px; font-size: 10px; font-weight: bold; text-align: center;"
+                scope="col">GRUPO</th>
+          </tr>
+          <tr style="height: 0.5cm;">
+            <!-- Las primeras 10 columnas ya están definidas con rowspan -->
+            <th style="border: 1px solid #000; padding: 1px; font-size: 9px; font-weight: normal; text-align: center;"
+                scope="col">{{ASIGNATURA_1}}</th>
+            <th style="border: 1px solid #000; padding: 1px; font-size: 9px; font-weight: normal; text-align: center;"
+                scope="col">{{ASIGNATURA_2}}</th>
+            <th style="border: 1px solid #000; padding: 1px; font-size: 9px; font-weight: normal; text-align: center;"
+                scope="col">{{ASIGNATURA_3}}</th>
+            <th style="border: 1px solid #000; padding: 1px; font-size: 9px; font-weight: normal; text-align: center;"
+                scope="col">{{ASIGNATURA_4}}</th>
+            <th style="border: 1px solid #000; padding: 1px; font-size: 9px; font-weight: normal; text-align: center;"
+                scope="col">{{ASIGNATURA_5}}</th>
+            <th style="border: 1px solid #000; padding: 1px; font-size: 9px; font-weight: normal; text-align: center;"
+                scope="col">{{ASIGNATURA_6}}</th>
+            <th style="border: 1px solid #000; padding: 1px; font-size: 9px; font-weight: normal; text-align: center;"
+                scope="col">{{ASIGNATURA_7}}</th>
+            <th style="border: 1px solid #000; padding: 1px; font-size: 9px; font-weight: normal; text-align: center;"
+                scope="col">{{ASIGNATURA_8}}</th>
+            <th style="border: 1px solid #000; padding: 1px; font-size: 9px; font-weight: normal; text-align: center;"
+                scope="col">{{ASIGNATURA_9}}</th>
+            <th style="border: 1px solid #000; padding: 1px; font-size: 9px; font-weight: normal; text-align: center;"
+                scope="col">{{ASIGNATURA_10}}</th>
+            <th style="border: 1px solid #000; padding: 1px; font-size: 9px; font-weight: normal; text-align: center;"
+                scope="col">{{ASIGNATURA_11}}</th>
+            <th style="border: 1px solid #000; padding: 1px; font-size: 9px; font-weight: normal; text-align: center;"
+                scope="col">{{ASIGNATURA_12}}</th>
+          </tr>
+        </thead>
+        <tbody id="estudiantes-tbody">
+          <!-- Aquí se insertarán las filas de estudiantes -->
+        </tbody>
+      </table>
+
+      <!-- Espaciador entre primera y segunda tabla -->
+      <div style="height: 2px;" aria-hidden="true"></div>
+
+      <!-- Segunda tabla - Total de Áreas de Formación -->
+      <table style="table-layout: fixed; width: 20.2cm; border-collapse: collapse;"
+             role="table"
+             aria-label="Tabla de total de áreas de formación">
+        <colgroup>
+          <col style="width: 0.4cm;">   <!-- Columna 1 -->
+          <col style="width: 1.3cm;">  <!-- Columna 2 -->
+          <col style="width: 3cm;">    <!-- Columna 3 -->
+          <col style="width: 2cm;">    <!-- Columna 4 -->
+          <col style="width: 3cm;">    <!-- Columna 5 -->
+          <col style="width: 0.4cm;">  <!-- Columna 6 -->
+          <col style="width: 0.6cm;">  <!-- Columna 7 -->
+          <col style="width: 0.6cm;">  <!-- Columna 8 -->
+          <col style="width: 0.4cm;">  <!-- Columna 9 -->
+          <col style="width: 0.7cm;">  <!-- Columna 10 -->
+          <col style="width: 0.5cm;">  <!-- Columna 11 -->
+          <col style="width: 0.5cm;">  <!-- Columna 12 -->
+          <col style="width: 0.5cm;">  <!-- Columna 13 -->
+          <col style="width: 0.5cm;">  <!-- Columna 14 -->
+          <col style="width: 0.5cm;">  <!-- Columna 15 -->
+          <col style="width: 0.5cm;">  <!-- Columna 16 -->
+          <col style="width: 0.5cm;">  <!-- Columna 17 -->
+          <col style="width: 0.5cm;">  <!-- Columna 18 -->
+          <col style="width: 0.5cm;">  <!-- Columna 19 -->
+          <col style="width: 0.5cm;">  <!-- Columna 20 -->
+          <col style="width: 0.5cm;">  <!-- Columna 21 -->
+          <col style="width: 0.5cm;">  <!-- Columna 22 -->
+          <col style="width: 1.8cm;">  <!-- Columna 23 -->
+        </colgroup>
+                 <tbody>
+           <tr style="height: 0.36cm;">
+             <td colspan="4" rowspan="5" style="border: 1px solid #000; padding: 1px; font-size: 12px; font-weight: bold; text-align: center; vertical-align: middle;">Total de Áreas de Formación</td>
+             <td colspan="6" style="border: 1px solid #000; padding: 1px; font-size: 10px; font-weight: bold; text-align: center; vertical-align: middle;">Inscritos</td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+           </tr>
+           <tr style="height: 0.36cm;">
+             <!-- Columnas 1, 2, 3 y 4 combinadas con rowspan en primera fila -->
+             <td colspan="6" style="border: 1px solid #000; padding: 1px; font-size: 10px; font-weight: bold; text-align: center; vertical-align: middle;">Inasistentes</td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+           </tr>
+           <tr style="height: 0.36cm;">
+             <!-- Columnas 1, 2, 3 y 4 combinadas con rowspan en primera fila -->
+             <td colspan="6" style="border: 1px solid #000; padding: 1px; font-size: 10px; font-weight: bold; text-align: center; vertical-align: middle;">Aprobados</td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+           </tr>
+           <tr style="height: 0.36cm;">
+             <!-- Columnas 1, 2, 3 y 4 combinadas con rowspan en primera fila -->
+             <td colspan="6" style="border: 1px solid #000; padding: 1px; font-size: 10px; font-weight: bold; text-align: center; vertical-align: middle;">No Aprobados</td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+           </tr>
+           <tr style="height: 0.36cm;">
+             <!-- Columnas 1, 2, 3 y 4 combinadas con rowspan en primera fila -->
+             <td colspan="6" style="border: 1px solid #000; padding: 1px; font-size: 10px; font-weight: bold; text-align: center; vertical-align: middle;">No Cursantes</td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+             <td style="border: 1px solid #000; padding: 1px; font-size: 8px; text-align: center;"></td>
+           </tr>
+         </tbody>
+      </table>
+
+      <!-- Espaciador entre segunda y tercera tabla -->
+      <div style="height: 2px;" aria-hidden="true"></div>
+
+      <!-- Tercera tabla - Profesores por Áreas -->
+      <table class="tercera-tabla" 
+             style="table-layout: fixed; width: 20.2cm; height: 7.2cm; border-collapse: collapse;"
+             role="table"
+             aria-label="Tabla de profesores por áreas">
+        <colgroup>
+          <col style="width: 0.4cm;">
+          <col style="width: 1.0cm;">
+          <col style="width: 6.8cm;">
+          <col style="width: 3.9cm;">
+          <col style="width: 2.1cm;">
+          <col style="width: 1.8cm;">
+          <col style="width: 2.1cm;">
+          <col style="width: 2.1cm;">
+        </colgroup>
+        <tbody>
+          <!-- Fila 1: Las primeras 3 columnas combinadas -->
+          <tr>
+            <td colspan="3" style="border: 1px solid #000; font-size: 9px; text-align: left; padding: 2px; font-weight: bold;">V. Profesores por Áreas:</td>
+            <td rowspan="2" style="border: 1px solid #000; font-size: 9px; text-align: center; padding: 2px; vertical-align: middle; font-weight: bold;">Apellidos y Nombres</td>
+            <td rowspan="2" style="border: 1px solid #000; font-size: 9px; text-align: center; padding: 2px; vertical-align: middle; font-weight: bold; line-height: 1.2;">Cédula de<br>Identidad</td>
+            <td rowspan="2" style="border: 1px solid #000; font-size: 9px; text-align: center; padding: 2px; vertical-align: middle; font-weight: bold;">Firma:</td>
+            <td colspan="2" style="border: 1px solid #000; font-size: 9px; text-align: left; padding: 2px; font-weight: bold;">VI. Identificación del Curso:</td>
+          </tr>
+          <!-- Fila 2: Primera columna normal, 2da y 3era combinadas -->
+          <tr>
+            <td style="border: 1px solid #000; font-size: 9px; text-align: center; padding: 0; font-weight: bold;">N°</td>
+            <td colspan="2" style="border: 1px solid #000; font-size: 9px; text-align: center; padding: 0; font-weight: bold;">Áreas de Formación</td>
+            <!-- Las columnas 4, 5 y 6 están combinadas con rowspan="2" desde la fila anterior -->
+            <td colspan="2" style="border: 1px solid #000; font-size: 9px; text-align: center; padding: 2px; font-weight: bold;">PLAN DE ESTUDIO</td>
+          </tr>
+          <!-- Filas dinámicas de asignaturas -->
+          {{TERCERA_TABLA_CONTENIDO}}
+          
+
+          <!-- Filas 15, 16 y 17: Todas las columnas combinadas -->
+          <tr style="height: 0.3cm;">
+            <td colspan="8" style="border-top: 1px solid #000; border-bottom: 1px solid #000; border-left: none; border-right: none; font-size: 9px; text-align: left; padding: 0; font-weight: bold;">VII. Observaciones:</td>
+          </tr>
+          <tr style="height: 0.3cm;">
+            <td colspan="8" style="border-top: 1px solid #000; border-bottom: 1px solid #000; border-left: none; border-right: none; font-size: 8px; text-align: left; padding: 0;"></td>
+          </tr>
+          <tr style="height: 0.3cm;">
+            <td colspan="8" style="border-top: 1px solid #000; border-bottom: 1px solid #000; border-left: none; border-right: none; font-size: 8px; text-align: left; padding: 0;"></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Espaciador entre tercera y cuarta tabla -->
+      <div style="height: 2px;" aria-hidden="true"></div>
+
+      <!-- Cuarta tabla - Firma y Sellos -->
+      <table class="cuarta-tabla" 
+             style="table-layout: fixed; width: 20.2cm; height: 4.3cm; border-collapse: collapse;"
+             role="table"
+             aria-label="Tabla de firma y sellos">
+        <colgroup>
+          <col style="width: 5.0cm;">
+          <col style="width: 4.9cm;">
+          <col style="width: 0.4cm;">
+          <col style="width: 5.0cm;">
+          <col style="width: 4.9cm;">
+        </colgroup>
+        <tbody>
+          <!-- Fila 1 -->
+          <tr style="height: 0.57cm;">
+            <td colspan="2" style="border: 1px solid #000; font-family: Arial; font-size: 9px; text-align: left; padding: 2px; font-weight: bold;">VIII. Fecha de Remisión: ___/___/______</td>
+            <td rowspan="7" style="border: none; background: transparent; width: 0.4cm; border-top: none !important;"></td>
+            <td colspan="2" style="border: 1px solid #000; font-family: Arial; font-size: 9px; text-align: left; padding: 2px; font-weight: bold;">IX. Fecha de Recepción: ___/___/______</td>
+          </tr>
+          <!-- Fila 2 -->
+          <tr style="height: 0.57cm;">
+            <td style="border: 1px solid #000; font-family: Arial; font-size: 9px; text-align: center; padding: 2px; font-weight: bold;">Director(a)</td>
+            <td rowspan="6" style="border: 1px solid #000; font-family: Arial; font-size: 10px; text-align: center; padding: 2px; font-weight: normal; vertical-align: middle;">SELLO DE LA INSTITUCIÓN EDUCATIVA</td>
+            <td style="border: 1px solid #000; font-family: Arial; font-size: 9px; text-align: center; padding: 2px; font-weight: bold;">Funcionario Receptor</td>
+            <td rowspan="6" style="border: 1px solid #000; font-family: Arial; font-size: 10px; text-align: center; padding: 2px; font-weight: normal; vertical-align: middle;">SELLO DEL CENTRO DE DESARROLLO DE LA CALIDAD EDUCATIVA ESTADAL</td>
+          </tr>
+          <!-- Fila 3 -->
+          <tr style="height: 0.57cm;">
+            <td style="border: 1px solid #000; font-family: Arial; font-size: 9px; text-align: left; padding: 2px; font-weight: bold;">Apellidos y Nombres:</td>
+            <!-- Columna 3 combinada con rowspan="7" desde la fila 1 -->
+            <td style="border: 1px solid #000; font-family: Arial; font-size: 9px; text-align: left; padding: 2px; font-weight: bold;">Apellidos y Nombres:</td>
+            <!-- Columna 5 combinada con rowspan en fila 2 -->
+          </tr>
+          <!-- Fila 4 -->
+          <tr style="height: 0.57cm;">
+            <td style="border: 1px solid #000; font-family: Arial; font-size: 9px; text-align: left; padding: 2px;"></td>
+            <!-- Columna 3 combinada con rowspan="7" desde la fila 1 -->
+            <td style="border: 1px solid #000; font-family: Arial; font-size: 9px; text-align: left; padding: 2px;"></td>
+            <!-- Columna 5 combinada con rowspan en fila 2 -->
+          </tr>
+          <!-- Fila 5 -->
+          <tr style="height: 0.57cm;">
+            <td style="border: 1px solid #000; font-family: Arial; font-size: 9px; text-align: left; padding: 2px; font-weight: bold; line-height: 1.0;">Cédula de Identidad:</td>
+            <!-- Columna 3 combinada con rowspan="7" desde la fila 1 -->
+            <td style="border: 1px solid #000; font-family: Arial; font-size: 9px; text-align: left; padding: 2px; font-weight: bold; line-height: 1.0;">Cédula de Identidad:</td>
+            <!-- Columna 5 combinada con rowspan en fila 2 -->
+          </tr>
+          <!-- Fila 6 -->
+          <tr style="height: 0.57cm;">
+            <td style="border: 1px solid #000; font-family: Arial; font-size: 9px; text-align: left; padding: 2px;"></td>
+            <!-- Columna 3 combinada con rowspan="7" desde la fila 1 -->
+            <td style="border: 1px solid #000; font-family: Arial; font-size: 9px; text-align: left; padding: 2px;"></td>
+            <!-- Columna 5 combinada con rowspan en fila 2 -->
+          </tr>
+          <!-- Fila 7 -->
+          <tr style="height: 0.57cm;">
+            <td style="border: 1px solid #000; font-family: Arial; font-size: 9px; text-align: left; padding: 2px; font-weight: bold;">Firma:</td>
+            <!-- Columna 3 combinada con rowspan="7" desde la fila 1 -->
+            <td style="border: 1px solid #000; font-family: Arial; font-size: 9px; text-align: center; padding: 2px; font-weight: bold;">Firma:</td>
+            <!-- Columna 5 combinada con rowspan en fila 2 -->
+          </tr>
+        </tbody>
+      </table>
+
+    </main>
+  </div>
+</body>
+</html> 

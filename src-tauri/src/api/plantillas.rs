@@ -41,6 +41,8 @@ pub struct Grado {
 pub struct Asignatura {
     pub id_asignatura: i32,
     pub nombre_asignatura: String,
+    pub abreviatura: String,  // ✅ Agregado para abreviaciones
+    pub nombre_largo: Option<String>,  // ✅ Agregado para nombres largos
     pub id_grado: i32,
     pub id_modalidad: i32,
     pub id_docente: Option<i32>,

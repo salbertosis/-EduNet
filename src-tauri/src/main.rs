@@ -128,9 +128,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             api::estudiante_pgcrp::obtener_actividades_pgcrp_estudiante,
             api::estudiante_pgcrp::asignar_pgcrp_estudiante_individual,
             api::estudiante_pgcrp::eliminar_pgcrp_estudiante_individual,
-            // Comandos Resumen Final (nuevo módulo)
-            api::resumen_final::generar_resumen_final_html_directo,
-            api::resumen_final::generar_resumen_final_pdf_directo,
+            // Comandos Resumen Final (sistema refactorizado)
+            api::resumen_final_bridge::generar_resumen_final_html_directo_v2,
+            api::resumen_final_bridge::generar_resumen_final_pdf_directo_v2,
             // Comandos de Institución
                     api::institucion::obtener_datos_institucion,
         api::institucion::guardar_datos_institucion,

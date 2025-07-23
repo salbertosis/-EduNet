@@ -159,10 +159,12 @@ export default function ResumenFinal() {
       console.log('[ResumenFinal] 📤 id_grado_secciones:', idGS, typeof idGS);
       console.log('[ResumenFinal] 📤 ruta_salida:', rutaGuardado, typeof rutaGuardado);
 
-      const respuesta = await invoke<RespuestaResumenBasico>('generar_resumen_final_pdf', {
-        idGradoSecciones: idGS,
-        idTipoEvaluacion: filtros.id_tipo_evaluacion,
-        rutaSalida: rutaGuardado
+      const respuesta = await invoke<RespuestaResumenBasico>('generar_resumen_final_pdf_directo_v2', {
+        params: {
+          idGradoSecciones: idGS,
+          idTipoEvaluacion: filtros.id_tipo_evaluacion,
+          rutaSalida: rutaGuardado
+        }
       });
 
       console.log('[ResumenFinal] 📥 Respuesta del backend:', respuesta);

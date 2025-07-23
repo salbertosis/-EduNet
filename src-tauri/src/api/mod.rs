@@ -14,6 +14,7 @@ pub mod pdf_estudiantes;
 pub mod pgcrp_simple;
 pub mod estudiante_pgcrp;
 pub mod resumen_final;
+pub mod resumen_final_bridge;
 pub mod tipos_evaluacion;
 
 pub use pdf_estudiantes::generar_pdf_estudiantes_curso; 

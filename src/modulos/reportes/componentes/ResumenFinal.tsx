@@ -87,19 +87,6 @@ export default function ResumenFinal() {
     }
   }, [filtros.id_grado, filtros.id_modalidad, filtros.id_periodo]);
 
-  const obtenerIdGradoSecciones = () => {
-    if (!filtros.id_periodo || !filtros.id_modalidad || !filtros.id_grado || !filtros.id_seccion || filtros.id_seccion === 'todas') {
-      return null;
-    }
-
-    const seccionSeleccionada = secciones.find(s => s.id_seccion === filtros.id_seccion);
-    if (!seccionSeleccionada) {
-      return null;
-    }
-
-    return seccionSeleccionada.id_grado_secciones ?? (seccionSeleccionada as any).idGradoSecciones;
-  };
-
   const generarResumenFinal = async () => {
     console.log('[ResumenFinal] === INICIANDO FUNCIÓN ===');
     console.log('[ResumenFinal] Filtros actuales:', filtros);
@@ -188,12 +175,23 @@ export default function ResumenFinal() {
   };
 
   const abrirModalHTML = () => {
-    const idGS = obtenerIdGradoSecciones();
-    if (!idGS || !filtros.id_tipo_evaluacion) {
+    if (!filtros.id_periodo || !filtros.id_modalidad || !filtros.id_grado || !filtros.id_seccion || filtros.id_seccion === 'todas' || !filtros.id_tipo_evaluacion) {
       mostrarMensaje('Para generar el resumen HTML, debe seleccionar todos los campos obligatorios.', 'error');
       return;
     }
-    
+
+    const seccionSeleccionada = secciones.find(s => s.id_seccion === filtros.id_seccion);
+    if (!seccionSeleccionada) {
+      mostrarMensaje('No se encontró la sección seleccionada.', 'error');
+      return;
+    }
+
+    const idGS = seccionSeleccionada.id_grado_secciones ?? (seccionSeleccionada as any).idGradoSecciones;
+    if (!idGS) {
+      mostrarMensaje('No se pudo obtener el ID de grado-secciones.', 'error');
+      return;
+    }
+
     setIdGradoSeccionesParaModal(idGS);
     setModalHTMLAbierto(true);
   };
@@ -264,7 +262,7 @@ export default function ResumenFinal() {
               }
               onChange={valor => setFiltros(f => ({
                 ...f,
-                id_seccion: valor === 'todas' ? 'todas' : (valor ? Number(valor) : null)
+                id_seccion: valor === 'todas' ? 'todas' : valor ? Number(valor) : null
               }))}
               className="w-full"
               secciones={secciones}

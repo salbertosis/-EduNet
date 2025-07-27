@@ -124,14 +124,26 @@ pub async fn obtener_estudiantes(
             nombre_grado: row.get(11),
             nombre_seccion: row.get(12),
             nombre_modalidad: row.get(13),
+            // Campos legacy para compatibilidad
             municipionac: None,
             paisnac: None,
             entidadfed: None,
             ciudadnac: None,
             estadonac: None,
+            // Datos académicos
             id_grado: None,
             id_seccion: None,
             id_modalidad: None,
+            // Datos de nacimiento con IDs
+            paisnac_id: None,
+            estado_nac_id: None,
+            municipio_nac_id: None,
+            ciudad_nac_id: None,
+            // Datos de nacimiento con nombres
+            pais_nombre: None,
+            estado_nombre: None,
+            municipio_nombre: None,
+            ciudad_nombre: None,
         })
         .collect::<Vec<_>>();
     let paginacion_info = PaginacionInfo {
@@ -245,28 +257,46 @@ pub async fn obtener_estudiante_por_id(
     id: i32,
     state: State<'_, AppState>,
 ) -> Result<Estudiante, String> {
+    println!("[DEBUG] Obteniendo estudiante con ID: {}", id);
     let db = state.db.lock().await;
     let row_opt = db
         .query_opt(
             "SELECT e.id, e.cedula, e.nombres, e.apellidos, e.genero, e.fecha_nacimiento, \
             e.id_grado_secciones, e.fecha_ingreso, e.id_periodoactual, e.estado, e.fecha_retiro, \
             gs.id_grado, g.nombre_grado, gs.id_seccion, s.nombre_seccion, \
-            gs.id_modalidad, m.nombre_modalidad \
+            gs.id_modalidad, m.nombre_modalidad, \
+            e.paisnac_id, e.estado_nac_id, e.municipio_nac_id, e.ciudad_nac_id, \
+            p.nombre as pais_nombre, est.nombre as estado_nombre, \
+            mun.nombre as municipio_nombre, c.nombre as ciudad_nombre \
             FROM estudiantes e \
             LEFT JOIN grado_secciones gs ON e.id_grado_secciones = gs.id_grado_secciones \
             LEFT JOIN grados g ON gs.id_grado = g.id_grado \
             LEFT JOIN secciones s ON gs.id_seccion = s.id_seccion \
             LEFT JOIN modalidades m ON gs.id_modalidad = m.id_modalidad \
+            LEFT JOIN paises p ON e.paisnac_id = p.id \
+            LEFT JOIN estados est ON e.estado_nac_id = est.id \
+            LEFT JOIN municipios mun ON e.municipio_nac_id = mun.id \
+            LEFT JOIN ciudades c ON e.ciudad_nac_id = c.id \
             WHERE e.id = $1",
             &[&id],
         )
         .await
         .map_err(|e| e.to_string())?;
     let row = match row_opt {
-        Some(r) => r,
+        Some(r) => {
+            println!("[DEBUG] Estudiante encontrado: cedula={}, nombres={}, apellidos={}", 
+                r.get::<_, i64>(1), r.get::<_, String>(2), r.get::<_, String>(3));
+            println!("[DEBUG] Datos de nacimiento: paisnac_id={:?}, estado_nac_id={:?}, municipio_nac_id={:?}, ciudad_nac_id={:?}", 
+                r.get::<_, Option<i32>>(17), r.get::<_, Option<i32>>(18), 
+                r.get::<_, Option<i32>>(19), r.get::<_, Option<i32>>(20));
+            println!("[DEBUG] Nombres de nacimiento: pais={:?}, estado={:?}, municipio={:?}, ciudad={:?}", 
+                r.get::<_, Option<String>>(21), r.get::<_, Option<String>>(22), 
+                r.get::<_, Option<String>>(23), r.get::<_, Option<String>>(24));
+            r
+        },
         None => return Err(format!("No se encontró el estudiante con id {}", id)),
     };
-    Ok(Estudiante {
+    let estudiante = Estudiante {
         id: row.get(0),
         cedula: row.get(1),
         nombres: row.get(2),
@@ -275,21 +305,49 @@ pub async fn obtener_estudiante_por_id(
         fecha_nacimiento: row.get(5),
         id_grado_secciones: row.get(6),
         fecha_ingreso: row.get(7),
-        municipionac: None,
-        paisnac: None,
-        entidadfed: None,
-        ciudadnac: None,
-        estadonac: None,
+        id_periodoactual: row.get(8),
+        estado: row.get(9),
+        fecha_retiro: row.get(10),
         id_grado: row.get(11),
         nombre_grado: row.get(12),
         id_seccion: row.get(13),
         nombre_seccion: row.get(14),
         id_modalidad: row.get(15),
         nombre_modalidad: row.get(16),
-        id_periodoactual: row.get(8),
-        estado: row.get(9),
-        fecha_retiro: row.get(10),
-    })
+        // Datos de nacimiento con IDs
+        paisnac_id: row.get(17),
+        estado_nac_id: row.get(18),
+        municipio_nac_id: row.get(19),
+        ciudad_nac_id: row.get(20),
+        // Datos de nacimiento con nombres
+        pais_nombre: row.get(21),
+        estado_nombre: row.get(22),
+        municipio_nombre: row.get(23),
+        ciudad_nombre: row.get(24),
+        // Campos legacy para compatibilidad
+        municipionac: row.get(23), // municipio_nombre
+        paisnac: row.get(21),      // pais_nombre
+        entidadfed: row.get(22),   // estado_nombre
+        ciudadnac: row.get(24),    // ciudad_nombre
+        estadonac: row.get(22),    // estado_nombre
+    };
+    
+    // Verificar que los datos se asignaron correctamente
+    println!("[DEBUG] ===== ESTUDIANTE CONSTRUIDO EN BACKEND =====");
+    println!("[DEBUG] ID: {}", estudiante.id);
+    println!("[DEBUG] Datos de nacimiento - IDs:");
+    println!("[DEBUG]   paisnac_id: {:?}", estudiante.paisnac_id);
+    println!("[DEBUG]   estado_nac_id: {:?}", estudiante.estado_nac_id);
+    println!("[DEBUG]   municipio_nac_id: {:?}", estudiante.municipio_nac_id);
+    println!("[DEBUG]   ciudad_nac_id: {:?}", estudiante.ciudad_nac_id);
+    println!("[DEBUG] Datos de nacimiento - Nombres:");
+    println!("[DEBUG]   pais_nombre: {:?}", estudiante.pais_nombre);
+    println!("[DEBUG]   estado_nombre: {:?}", estudiante.estado_nombre);
+    println!("[DEBUG]   municipio_nombre: {:?}", estudiante.municipio_nombre);
+    println!("[DEBUG]   ciudad_nombre: {:?}", estudiante.ciudad_nombre);
+    println!("[DEBUG] ============================================");
+    println!("[DEBUG] Estudiante construido: {:?}", estudiante);
+    Ok(estudiante)
 }
 
 #[tauri::command]

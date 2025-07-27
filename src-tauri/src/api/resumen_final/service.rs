@@ -5,6 +5,10 @@ use super::generators::{TablasGenerator, EstudiantesGenerator, PaginasGenerator}
 use super::processors::{HtmlProcessor, PdfProcessor, DataProcessor};
 use super::models::{ResumenConfig, EstadisticasResumen};
 use super::utils::constants::*;
+use tokio_postgres;
+
+// Re-exportar el trait EstudianteData del generador para mantener consistencia
+pub use super::generators::estudiantes_generator::EstudianteData;
 
 // Importaciones del archivo original que se mantendrán temporalmente
 // TODO: Mover estos tipos al módulo de modelos en una futura iteración
@@ -70,6 +74,9 @@ impl ResumenFinalService {
         _grado: &str,
         _seccion: &str,
         id_grado: i32,
+        id_modalidad: i32,
+        db: &tokio_postgres::Client,
+        id_grado_secciones: i32,
     ) -> Result<String, String>
     where
         T: EstudianteData + std::fmt::Debug,
@@ -92,13 +99,18 @@ impl ResumenFinalService {
             self.config.estudiantes_por_pagina
         );
         
+        // TODO: Necesitamos pasar la conexión a la BD y id_grado_secciones
+        // Por ahora usar valores temporales
         self.tablas_generator.generar_tercera_tabla_dinamica(
             &mut html_content,
             asignaturas,
             id_grado,
             estadisticas.total_estudiantes,
             estadisticas.estudiantes_por_pagina,
-        );
+            id_modalidad,
+            &db, // Necesitamos la conexión a la BD
+            id_grado_secciones, // Necesitamos el id_grado_secciones
+        ).await?;
         
         // 7. Generar páginas de estudiantes
         let paginas_html = self.generar_paginas_con_estudiantes(
@@ -124,6 +136,9 @@ impl ResumenFinalService {
         grado: &str,
         seccion: &str,
         id_grado: i32,
+        id_modalidad: i32,
+        db: &tokio_postgres::Client,
+        id_grado_secciones: i32,
         ruta_salida: &str,
     ) -> Result<(), String>
     where
@@ -138,6 +153,9 @@ impl ResumenFinalService {
             grado,
             seccion,
             id_grado,
+            id_modalidad,
+            db,
+            id_grado_secciones,
         ).await?;
         
         // 2. Preparar HTML para PDF
@@ -229,6 +247,5 @@ impl Default for ResumenFinalService {
     }
 }
 
-/// Trait para abstraer el acceso a datos de estudiante
-/// Re-export del trait definido en estudiantes_generator
-pub use super::generators::estudiantes_generator::EstudianteData; 
+// Trait para abstraer el acceso a datos de estudiante
+// Se mantiene la definición local para evitar conflictos 

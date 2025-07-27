@@ -820,3 +820,45 @@ pub struct GradoSeccion {
     pub nombre_grado: String,
     pub nombre_seccion: String,
 } 
+
+#[tauri::command]
+pub async fn obtener_estadisticas_estudiantes_seccion(
+    state: State<'_, AppState>,
+    id_grado_secciones: i32,
+) -> Result<EstadisticasSeccion, String> {
+    let db = state.db.lock().await;
+    let query = "
+        SELECT 
+            COUNT(DISTINCT hge.id_estudiante) as total_estudiantes,
+            SUM(CASE WHEN e.genero = 'F' THEN 1 ELSE 0 END) as estudiantes_femeninos,
+            SUM(CASE WHEN e.genero = 'M' THEN 1 ELSE 0 END) as estudiantes_masculinos,
+            COUNT(CASE WHEN e.estado = 'activo' THEN 1 END) as estudiantes_activos,
+            COUNT(CASE WHEN e.estado = 'retirado' THEN 1 END) as estudiantes_retirados
+        FROM historial_grado_estudiantes hge
+        JOIN estudiantes e ON hge.id_estudiante = e.id
+        WHERE hge.id_grado_secciones = $1 
+            AND hge.es_actual = true 
+            AND hge.estado = 'activo'
+    ";
+    
+    let row = db.query_one(query, &[&id_grado_secciones])
+        .await
+        .map_err(|e| format!("Error obteniendo estadísticas de estudiantes: {}", e))?;
+    
+    Ok(EstadisticasSeccion {
+        total_estudiantes: row.get("total_estudiantes"),
+        estudiantes_femeninos: row.get("estudiantes_femeninos"),
+        estudiantes_masculinos: row.get("estudiantes_masculinos"),
+        estudiantes_activos: row.get("estudiantes_activos"),
+        estudiantes_retirados: row.get("estudiantes_retirados"),
+    })
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct EstadisticasSeccion {
+    pub total_estudiantes: i64,
+    pub estudiantes_femeninos: i64,
+    pub estudiantes_masculinos: i64,
+    pub estudiantes_activos: i64,
+    pub estudiantes_retirados: i64,
+} 

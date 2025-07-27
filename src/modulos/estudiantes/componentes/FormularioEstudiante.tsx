@@ -10,11 +10,13 @@ interface Estudiante {
   genero?: string;
   fecha_nacimiento?: string;
   fecha_ingreso?: string;
+  // Campos legacy para compatibilidad
   municipionac?: string;
   paisnac?: string;
   entidadfed?: string;
   ciudadnac?: string;
   estadonac?: string;
+  // Datos académicos
   id_grado?: number;
   nombre_grado?: string;
   id_seccion?: number;
@@ -24,6 +26,16 @@ interface Estudiante {
   id_periodoactual?: number;
   estado?: string;
   fecha_retiro?: string;
+  // Datos de nacimiento con IDs
+  paisnac_id?: number;
+  estado_nac_id?: number;
+  municipio_nac_id?: number;
+  ciudad_nac_id?: number;
+  // Datos de nacimiento con nombres
+  pais_nombre?: string;
+  estado_nombre?: string;
+  municipio_nombre?: string;
+  ciudad_nombre?: string;
 }
 
 interface Seccion {
@@ -56,6 +68,16 @@ export function FormularioEstudiante({ estudiante, onGuardar, onCancelar }: Form
     id_periodoactual: undefined,
     estado: 'Activo',
     fecha_retiro: '',
+    // Datos de nacimiento con IDs
+    paisnac_id: undefined,
+    estado_nac_id: undefined,
+    municipio_nac_id: undefined,
+    ciudad_nac_id: undefined,
+    // Datos de nacimiento con nombres
+    pais_nombre: '',
+    estado_nombre: '',
+    municipio_nombre: '',
+    ciudad_nombre: '',
   });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -70,12 +92,172 @@ export function FormularioEstudiante({ estudiante, onGuardar, onCancelar }: Form
   const [ciudades, setCiudades] = useState<any[]>([]);
   const [municipios, setMunicipios] = useState<any[]>([]);
   const [idSecciones, setIdSecciones] = useState<number | null>(null);
+  const [cargandoEstudiante, setCargandoEstudiante] = useState(false);
+  const [debugPaises, setDebugPaises] = useState<any[]>([]);
 
   useEffect(() => {
-    if (estudiante) {
-      setFormData(estudiante);
-    }
+    const cargarDatosNacimiento = async () => {
+      if (estudiante) {
+        setCargandoEstudiante(true);
+        try {
+          // 1. Cargar países (siempre)
+          const paisesData = await invoke('listar_paises') as any[];
+          setPaises(paisesData);
+          // 2. Cargar estados si hay país
+          let estadosData: any[] = [];
+          if (estudiante.paisnac_id) {
+            estadosData = await invoke('listar_estados_por_pais', { id_pais: Number(estudiante.paisnac_id) }) as any[];
+            setEstados(estadosData);
+          } else {
+            setEstados([]);
+          }
+        } catch (error) {
+          console.error('[ERROR] Error al cargar datos de nacimiento:', error);
+          setEstados([]);
+        } finally {
+          // Forzar una actualización completa del formData
+          setFormData({
+            ...estudiante,
+            // Asegurar que todos los campos de nacimiento estén incluidos
+            paisnac_id: estudiante?.paisnac_id,
+            estado_nac_id: estudiante?.estado_nac_id,
+            municipio_nac_id: estudiante?.municipio_nac_id,
+            ciudad_nac_id: estudiante?.ciudad_nac_id,
+            pais_nombre: estudiante?.pais_nombre,
+            estado_nombre: estudiante?.estado_nombre,
+            municipio_nombre: estudiante?.municipio_nombre,
+            ciudad_nombre: estudiante?.ciudad_nombre,
+          });
+          console.log('[DEBUG] formData establecido:', estudiante);
+          console.log('[DEBUG] Valores de nacimiento en formData:', {
+            paisnac_id: estudiante?.paisnac_id,
+            estado_nac_id: estudiante?.estado_nac_id,
+            municipio_nac_id: estudiante?.municipio_nac_id,
+            ciudad_nac_id: estudiante?.ciudad_nac_id
+          });
+          console.log('[DEBUG] Verificando que los datos se asignen correctamente...');
+          console.log('[DEBUG] estudiante.paisnac_id:', estudiante?.paisnac_id, 'tipo:', typeof estudiante?.paisnac_id);
+          console.log('[DEBUG] estudiante.estado_nac_id:', estudiante?.estado_nac_id, 'tipo:', typeof estudiante?.estado_nac_id);
+          console.log('[DEBUG] estudiante.municipio_nac_id:', estudiante?.municipio_nac_id, 'tipo:', typeof estudiante?.municipio_nac_id);
+          console.log('[DEBUG] estudiante.ciudad_nac_id:', estudiante?.ciudad_nac_id, 'tipo:', typeof estudiante?.ciudad_nac_id);
+          
+          // Verificar si el estudiante tiene datos de nacimiento
+          console.log('[DEBUG] ===== VERIFICACIÓN DE DATOS DE NACIMIENTO =====');
+          console.log('[DEBUG] ¿Tiene país?:', estudiante?.paisnac_id !== null && estudiante?.paisnac_id !== undefined);
+          console.log('[DEBUG] ¿Tiene estado?:', estudiante?.estado_nac_id !== null && estudiante?.estado_nac_id !== undefined);
+          console.log('[DEBUG] ¿Tiene municipio?:', estudiante?.municipio_nac_id !== null && estudiante?.municipio_nac_id !== undefined);
+          console.log('[DEBUG] ¿Tiene ciudad?:', estudiante?.ciudad_nac_id !== null && estudiante?.ciudad_nac_id !== undefined);
+          console.log('[DEBUG] ==============================================');
+          console.log('[DEBUG] Nombres de nacimiento:', {
+            pais_nombre: estudiante?.pais_nombre,
+            estado_nombre: estudiante?.estado_nombre,
+            municipio_nombre: estudiante?.municipio_nombre,
+            ciudad_nombre: estudiante?.ciudad_nombre
+          });
+          
+          // Mostrar los datos de nacimiento que ya vienen del backend
+          console.log('[DEBUG] ===== DATOS COMPLETOS DEL ESTUDIANTE =====');
+          console.log('[DEBUG] Datos académicos:', {
+            id_grado: estudiante?.id_grado,
+            nombre_grado: estudiante?.nombre_grado,
+            id_seccion: estudiante?.id_seccion,
+            nombre_seccion: estudiante?.nombre_seccion,
+            id_modalidad: estudiante?.id_modalidad,
+            nombre_modalidad: estudiante?.nombre_modalidad
+          });
+          console.log('[DEBUG] Datos de nacimiento:', {
+            paisnac_id: estudiante?.paisnac_id,
+            estado_nac_id: estudiante?.estado_nac_id,
+            municipio_nac_id: estudiante?.municipio_nac_id,
+            ciudad_nac_id: estudiante?.ciudad_nac_id,
+            pais_nombre: estudiante?.pais_nombre,
+            estado_nombre: estudiante?.estado_nombre,
+            municipio_nombre: estudiante?.municipio_nombre,
+            ciudad_nombre: estudiante?.ciudad_nombre
+          });
+          console.log('[DEBUG] ===========================================');
+          
+          // Verificar si los datos se están asignando correctamente al formData
+          console.log('[DEBUG] ===== VERIFICACIÓN DE FORMDATA =====');
+          console.log('[DEBUG] formData después de asignar estudiante:', {
+            paisnac_id: formData.paisnac_id,
+            estado_nac_id: formData.estado_nac_id,
+            municipio_nac_id: formData.municipio_nac_id,
+            ciudad_nac_id: formData.ciudad_nac_id
+          });
+          console.log('[DEBUG] ===========================================');
+          
+          // Verificar si el estudiante tiene los datos correctos
+          console.log('[DEBUG] ===== VERIFICACIÓN DEL ESTUDIANTE =====');
+          console.log('[DEBUG] Estudiante recibido:', {
+            id: estudiante?.id,
+            paisnac_id: estudiante?.paisnac_id,
+            estado_nac_id: estudiante?.estado_nac_id,
+            municipio_nac_id: estudiante?.municipio_nac_id,
+            ciudad_nac_id: estudiante?.ciudad_nac_id
+          });
+          console.log('[DEBUG] ===========================================');
+          
+          // Cargar datos dependientes después de asignar el estudiante
+          if (estudiante?.paisnac_id) {
+            console.log('[DEBUG] Cargando estados para país:', estudiante.paisnac_id);
+            invoke('listar_estados_por_pais', { id_pais: Number(estudiante.paisnac_id) })
+              .then((data: any) => {
+                console.log('[DEBUG] Estados cargados para edición:', data);
+                setEstados(data);
+              })
+              .catch((err) => {
+                console.error('[ERROR] Error al cargar estados:', err);
+                setEstados([]);
+              });
+          }
+          
+          if (estudiante?.estado_nac_id) {
+            console.log('[DEBUG] Cargando municipios para estado:', estudiante.estado_nac_id);
+            invoke('listar_municipios_por_estado', { id_estado: Number(estudiante.estado_nac_id) })
+              .then((data: any) => {
+                console.log('[DEBUG] Municipios cargados para edición:', data);
+                setMunicipios(data);
+              })
+              .catch((err) => {
+                console.error('[ERROR] Error al cargar municipios:', err);
+                setMunicipios([]);
+              });
+          }
+          
+          if (estudiante?.municipio_nac_id) {
+            console.log('[DEBUG] Cargando ciudades para municipio:', estudiante.municipio_nac_id);
+            invoke('listar_ciudades_por_municipio', { id_municipio: Number(estudiante.municipio_nac_id) })
+              .then((data: any) => {
+                console.log('[DEBUG] Ciudades cargadas para edición:', data);
+                setCiudades(data);
+              })
+              .catch((err) => {
+                console.error('[ERROR] Error al cargar ciudades:', err);
+                setCiudades([]);
+              });
+          }
+          
+          // Marcar como terminado después de cargar los datos dependientes
+          setCargandoEstudiante(false);
+        }
+      }
+    };
+
+    cargarDatosNacimiento();
   }, [estudiante]);
+
+  // Verificar cuando formData cambia
+  useEffect(() => {
+    console.log('[DEBUG] ===== FORMDATA CAMBIÓ =====');
+    console.log('[DEBUG] Nuevo formData:', {
+      paisnac_id: formData.paisnac_id,
+      estado_nac_id: formData.estado_nac_id,
+      municipio_nac_id: formData.municipio_nac_id,
+      ciudad_nac_id: formData.ciudad_nac_id
+    });
+    console.log('[DEBUG] ===========================');
+  }, [formData]);
 
   useEffect(() => {
     if (success) {
@@ -85,7 +267,7 @@ export function FormularioEstudiante({ estudiante, onGuardar, onCancelar }: Form
       }, 2500);
       return () => clearTimeout(timer);
     }
-  }, [success]);
+  }, [success, onGuardar]);
 
   useEffect(() => {
     // Obtener periodos escolares al montar el componente
@@ -121,14 +303,28 @@ export function FormularioEstudiante({ estudiante, onGuardar, onCancelar }: Form
 
   // Cargar países al montar
   useEffect(() => {
-    invoke('listar_paises').then((data: any) => setPaises(data)).catch(() => setPaises([]));
+    console.log('[DEBUG] Cargando países...');
+    invoke('listar_paises')
+      .then((data: any) => {
+        console.log('[DEBUG] Países cargados:', data);
+        console.log('[DEBUG] Tipo de datos de países:', typeof data, Array.isArray(data));
+        console.log('[DEBUG] Detalle de países:', data.map((p: any) => ({ id: p.id, nombre: p.nombre })));
+        setPaises(data);
+        setDebugPaises(data); // Estado de debug
+      })
+      .catch((err) => {
+        console.error('[ERROR] Error al cargar países:', err);
+        setPaises([]);
+      });
   }, []);
 
   // Cargar estados cuando cambia el país
   useEffect(() => {
-    if (formData.paisnac) {
-      console.log('[DEBUG] Solicitando estados para país:', formData.paisnac);
-      invoke('listar_estados_por_pais', { idPais: Number(formData.paisnac), id_pais: Number(formData.paisnac) })
+    if (cargandoEstudiante) return; // No ejecutar si se está cargando un estudiante
+    
+    if (formData.paisnac_id) {
+      console.log('[DEBUG] Solicitando estados para país:', formData.paisnac_id);
+      invoke('listar_estados_por_pais', { id_pais: Number(formData.paisnac_id) })
         .then((data: any) => {
           console.log('[DEBUG] Estados recibidos:', data);
           setEstados(data);
@@ -139,17 +335,22 @@ export function FormularioEstudiante({ estudiante, onGuardar, onCancelar }: Form
         });
     } else {
       setEstados([]);
+      // Solo resetear si no se está cargando un estudiante
+      if (!cargandoEstudiante) {
+        setMunicipios([]);
+        setCiudades([]);
+        setFormData((prev) => ({ ...prev, estado_nac_id: undefined, municipio_nac_id: undefined, ciudad_nac_id: undefined }));
+      }
     }
-    setMunicipios([]);
-    setCiudades([]);
-    setFormData((prev) => ({ ...prev, estadonac: '', municipionac: '', ciudadnac: '' }));
-  }, [formData.paisnac]);
+  }, [formData.paisnac_id, cargandoEstudiante]);
 
   // Cargar municipios cuando cambia el estado
   useEffect(() => {
-    if (formData.estadonac) {
-      console.log('[DEBUG] Solicitando municipios para estado:', formData.estadonac);
-      invoke('listar_municipios_por_estado', { idEstado: Number(formData.estadonac), id_estado: Number(formData.estadonac) })
+    if (cargandoEstudiante) return; // No ejecutar si se está cargando un estudiante
+    
+    if (formData.estado_nac_id) {
+      console.log('[DEBUG] Solicitando municipios para estado:', formData.estado_nac_id);
+      invoke('listar_municipios_por_estado', { id_estado: Number(formData.estado_nac_id) })
         .then((data: any) => {
           console.log('[DEBUG] Municipios recibidos:', data);
           setMunicipios(data);
@@ -160,16 +361,21 @@ export function FormularioEstudiante({ estudiante, onGuardar, onCancelar }: Form
         });
     } else {
       setMunicipios([]);
+      // Solo resetear si no se está cargando un estudiante
+      if (!cargandoEstudiante) {
+        setCiudades([]);
+        setFormData((prev) => ({ ...prev, municipio_nac_id: undefined, ciudad_nac_id: undefined }));
+      }
     }
-    setCiudades([]);
-    setFormData((prev) => ({ ...prev, municipionac: '', ciudadnac: '' }));
-  }, [formData.estadonac]);
+  }, [formData.estado_nac_id, cargandoEstudiante]);
 
   // Cargar ciudades cuando cambia el municipio
   useEffect(() => {
-    if (formData.municipionac) {
-      console.log('[DEBUG] Solicitando ciudades para municipio:', formData.municipionac);
-      invoke('listar_ciudades_por_municipio', { idMunicipio: Number(formData.municipionac), id_municipio: Number(formData.municipionac) })
+    if (cargandoEstudiante) return; // No ejecutar si se está cargando un estudiante
+    
+    if (formData.municipio_nac_id) {
+      console.log('[DEBUG] Solicitando ciudades para municipio:', formData.municipio_nac_id);
+      invoke('listar_ciudades_por_municipio', { id_municipio: Number(formData.municipio_nac_id) })
         .then((data: any) => {
           console.log('[DEBUG] Ciudades recibidas:', data);
           setCiudades(data);
@@ -180,16 +386,29 @@ export function FormularioEstudiante({ estudiante, onGuardar, onCancelar }: Form
         });
     } else {
       setCiudades([]);
+      // Solo resetear si no se está cargando un estudiante
+      if (!cargandoEstudiante) {
+        setFormData((prev) => ({ ...prev, ciudad_nac_id: undefined }));
+      }
     }
-    setFormData((prev) => ({ ...prev, ciudadnac: '' }));
-  }, [formData.municipionac]);
+  }, [formData.municipio_nac_id, cargandoEstudiante]);
+
+  // Debug: Log cuando cambia formData
+  useEffect(() => {
+    console.log('[DEBUG] formData actualizado:', {
+      paisnac_id: formData.paisnac_id,
+      estado_nac_id: formData.estado_nac_id,
+      municipio_nac_id: formData.municipio_nac_id,
+      ciudad_nac_id: formData.ciudad_nac_id
+    });
+  }, [formData.paisnac_id, formData.estado_nac_id, formData.municipio_nac_id, formData.ciudad_nac_id]);
 
   useEffect(() => {
     if (formData.id_grado && formData.id_modalidad) {
-      invoke('obtener_id_seccion', {
-        gradoId: Number(formData.id_grado),
-        seccionId: Number(formData.id_seccion),
-        modalidadId: Number(formData.id_modalidad)
+      invoke('obtener_id_grado_secciones', {
+        grado_id: Number(formData.id_grado),
+        seccion_id: Number(formData.id_seccion),
+        modalidad_id: Number(formData.id_modalidad)
       })
         .then((id) => {
           setIdSecciones(Number(id));
@@ -229,14 +448,14 @@ export function FormularioEstudiante({ estudiante, onGuardar, onCancelar }: Form
     try {
       // 1. Obtener el id_grado_secciones
       console.log('[DEBUG] Enviando a obtener_id_grado_secciones:', {
-        gradoId: Number(formData.id_grado),
-        seccionId: Number(formData.id_seccion),
-        modalidadId: Number(formData.id_modalidad)
+        grado_id: Number(formData.id_grado),
+        seccion_id: Number(formData.id_seccion),
+        modalidad_id: Number(formData.id_modalidad)
       });
       const id_grado_secciones = await invoke('obtener_id_grado_secciones', {
-        gradoId: Number(formData.id_grado),
-        seccionId: Number(formData.id_seccion),
-        modalidadId: Number(formData.id_modalidad)
+        grado_id: Number(formData.id_grado),
+        seccion_id: Number(formData.id_seccion),
+        modalidad_id: Number(formData.id_modalidad)
       }).catch((err) => {
         console.error('[ERROR] invoke obtener_id_grado_secciones:', err);
         throw err;
@@ -262,28 +481,44 @@ export function FormularioEstudiante({ estudiante, onGuardar, onCancelar }: Form
         fecha_nacimiento: formData.fecha_nacimiento ? formData.fecha_nacimiento : null,
         id_grado_secciones: id_grado_secciones_num,
         fecha_ingreso: formData.fecha_ingreso ? formData.fecha_ingreso : null,
-        paisnac_id: formData.paisnac ? Number(formData.paisnac) : null,
-        estado_nac_id: formData.estadonac ? Number(formData.estadonac) : null,
-        municipio_nac_id: formData.municipionac ? Number(formData.municipionac) : null,
-        ciudad_nac_id: formData.ciudadnac ? Number(formData.ciudadnac) : null,
+        paisnac_id: formData.paisnac_id ? Number(formData.paisnac_id) : null,
+        estado_nac_id: formData.estado_nac_id ? Number(formData.estado_nac_id) : null,
+        municipio_nac_id: formData.municipio_nac_id ? Number(formData.municipio_nac_id) : null,
+        ciudad_nac_id: formData.ciudad_nac_id ? Number(formData.ciudad_nac_id) : null,
         id_grado: formData.id_grado ? Number(formData.id_grado) : null,
         id_seccion: formData.id_seccion ? Number(formData.id_seccion) : null,
         id_modalidad: formData.id_modalidad ? Number(formData.id_modalidad) : null,
         id_periodoactual: formData.id_periodoactual ? Number(formData.id_periodoactual) : null,
-        estado: 'Activo',
+        estado: formData.estado || 'Activo',
         fecha_retiro: formData.fecha_retiro ? formData.fecha_retiro : null,
       };
 
-      // 3. Enviar el estudiante
+      // 3. Enviar el estudiante (crear o actualizar según el caso)
       console.log('[DEBUG] Enviando estudiante al backend:', cleanData);
-      await invoke('crear_estudiante', { estudiante: cleanData });
-      console.log('[DEBUG] Estudiante creado correctamente');
-      mostrarMensaje('Estudiante creado correctamente', 'exito');
-      setSuccess('Estudiante creado correctamente');
+      
+      if (estudiante && estudiante.id) {
+        // Modo edición
+        await invoke('actualizar_estudiante', { 
+          id: estudiante.id, 
+          estudiante: cleanData 
+        });
+        console.log('[DEBUG] Estudiante actualizado correctamente');
+        mostrarMensaje('Estudiante actualizado correctamente', 'exito');
+        setSuccess('Estudiante actualizado correctamente');
+      } else {
+        // Modo creación
+        await invoke('crear_estudiante', { estudiante: cleanData });
+        console.log('[DEBUG] Estudiante creado correctamente');
+        mostrarMensaje('Estudiante creado correctamente', 'exito');
+        setSuccess('Estudiante creado correctamente');
+      }
     } catch (err) {
-      console.error('[ERROR] Error al crear estudiante:', err);
-      mostrarMensaje('Error al guardar el estudiante. Por favor, intente nuevamente.', 'error');
-      setError('Error al guardar el estudiante. Por favor, intente nuevamente.');
+      console.error('[ERROR] Error al guardar estudiante:', err);
+      const mensaje = estudiante && estudiante.id ? 
+        'Error al actualizar el estudiante. Por favor, intente nuevamente.' :
+        'Error al crear el estudiante. Por favor, intente nuevamente.';
+      mostrarMensaje(mensaje, 'error');
+      setError(mensaje);
     } finally {
       setIsSubmitting(false);
     }
@@ -485,17 +720,30 @@ export function FormularioEstudiante({ estudiante, onGuardar, onCancelar }: Form
 
           {/* DATOS DE NACIMIENTO */}
           <section className="bg-gray-50 dark:bg-dark-700 p-6 rounded-xl">
-            <h3 className="text-2xl font-semibold text-primary-600 mb-6">Datos de Nacimiento</h3>
+            <h3 className="text-2xl font-semibold text-primary-600 mb-6">
+              Datos de Nacimiento
+              {cargandoEstudiante && (
+                <span className="ml-2 text-sm text-blue-600">(Cargando datos...)</span>
+              )}
+            </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">País</label>
                 <select
-                  name="paisnac"
-                  value={formData.paisnac || ''}
+                  name="paisnac_id"
+                  value={formData.paisnac_id?.toString() || ''}
                   onChange={handleChange}
                   required
                   className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-dark-600 bg-white dark:bg-dark-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
                 >
+                  {/* Debug: Estado actual */}
+                  {(() => {
+                    console.log('[DEBUG] Renderizando dropdown países. formData.paisnac_id:', formData.paisnac_id, 'paises.length:', paises.length, 'paises:', paises);
+                    console.log('[DEBUG] debugPaises.length:', debugPaises.length, 'debugPaises:', debugPaises);
+                    console.log('[DEBUG] Valor del select:', formData.paisnac_id?.toString(), 'Tipo:', typeof formData.paisnac_id);
+                    return null;
+                  })()}
+
                   <option value="">Seleccione un país</option>
                   {paises.map((pais) => (
                     <option key={pais.id} value={pais.id}>{pais.nombre}</option>
@@ -505,12 +753,17 @@ export function FormularioEstudiante({ estudiante, onGuardar, onCancelar }: Form
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Estado</label>
                 <select
-                  name="estadonac"
-                  value={formData.estadonac || ''}
+                  name="estado_nac_id"
+                  value={formData.estado_nac_id?.toString() || ''}
                   onChange={handleChange}
                   required
                   className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-dark-600 bg-white dark:bg-dark-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
                 >
+                  {/* Debug: Estado actual */}
+                  {(() => {
+                    console.log('[DEBUG] Renderizando dropdown estados. formData.estado_nac_id:', formData.estado_nac_id, 'estados.length:', estados.length, 'estados:', estados);
+                    return null;
+                  })()}
                   <option value="">Seleccione un estado</option>
                   {estados.map((estado) => (
                     <option key={estado.id} value={estado.id}>{estado.nombre}</option>
@@ -520,8 +773,8 @@ export function FormularioEstudiante({ estudiante, onGuardar, onCancelar }: Form
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Municipio</label>
                 <select
-                  name="municipionac"
-                  value={formData.municipionac || ''}
+                  name="municipio_nac_id"
+                  value={formData.municipio_nac_id?.toString() || ''}
                   onChange={handleChange}
                   required
                   className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-dark-600 bg-white dark:bg-dark-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
@@ -535,8 +788,8 @@ export function FormularioEstudiante({ estudiante, onGuardar, onCancelar }: Form
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Ciudad</label>
                 <select
-                  name="ciudadnac"
-                  value={formData.ciudadnac || ''}
+                  name="ciudad_nac_id"
+                  value={formData.ciudad_nac_id?.toString() || ''}
                   onChange={handleChange}
                   required
                   className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-dark-600 bg-white dark:bg-dark-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"

@@ -400,12 +400,7 @@ impl GeneradorResumenFinal {
         
         // Mapeo optimizado usando match
         match () {
-            _ if nombre_upper.contains("BIOLOGÍA") || nombre_upper.contains("BIOLOGIA") => {
-                match id_grado {
-                    Some(grado) if grado <= 2 => "CN",
-                    _ => "BI"
-                }
-            },
+            _ if nombre_upper.contains("BIOLOGÍA") || nombre_upper.contains("BIOLOGIA") => "BI",
             _ if nombre_upper.contains("CASTELLANO") || nombre_upper.contains("LENGUA") => "CA",
             _ if nombre_upper.contains("INGLÉS") || nombre_upper.contains("INGLES") || nombre_upper.contains("LENGUA EXTRANJERA") => "ILE",
             _ if nombre_upper.contains("MATEMÁTICA") || nombre_upper.contains("MATEMATICA") => "MA",
@@ -427,33 +422,11 @@ impl GeneradorResumenFinal {
         }
     }
 
-    /// Obtiene el código de asignatura considerando abreviatura y lógica especial
+    /// Obtiene el código de asignatura usando la abreviatura de la BD
     fn obtener_codigo_asignatura_completo(asignatura: &Asignatura, id_grado: i32) -> String {
-        // Caso especial para BAT (Biología)
-        if asignatura.nombre.to_uppercase() == "BAT" || 
-           asignatura.abreviatura.to_uppercase() == "BI" {
-            // Para 1ero y 2do año usar CN, para 3ero en adelante usar BI
-            if id_grado <= 2 {
-                "CN".to_string() // 1er y 2do año: Ciencias Naturales
-            } else {
-                "BI".to_string() // 3er año en adelante: Biología
-            }
-        } else if !asignatura.abreviatura.is_empty() {
-            // Para otras asignaturas, usar la abreviatura de la BD
-            match asignatura.abreviatura.to_uppercase().as_str() {
-                "CA" => "CA".to_string(),
-                "ILE" => "ILE".to_string(), 
-                "MA" => "MA".to_string(),
-                "EF" => "EF".to_string(),
-                "FI" => "FI".to_string(),
-                "QU" => "QU".to_string(),
-                "BI" => "BI".to_string(),
-                "GH" => "GH".to_string(),
-                "FN" => "FN".to_string(),
-                "OC" => "OC".to_string(),
-                "PG" => "PG".to_string(),
-                _ => asignatura.abreviatura.clone() // Usar la abreviatura tal como está
-            }
+        if !asignatura.abreviatura.is_empty() {
+            // Usar directamente la abreviatura de la BD
+            asignatura.abreviatura.clone()
         } else {
             // Si no hay abreviatura, generar una basada en el nombre
             Self::obtener_codigo_asignatura(&asignatura.nombre, Some(id_grado)).to_string()
@@ -632,8 +605,8 @@ impl GeneradorResumenFinal {
     
     /// Genera la cuarta tabla dinámicamente con los datos del director
     fn generar_cuarta_tabla_dinamica(&self, html_content: &mut String, datos_institucion: &DatosInstitucion) {
-        // Reemplazar los placeholders del director
-        *html_content = html_content.replace("{{DIRECTOR_NOMBRE}}", &datos_institucion.director);
+        // Reemplazar los placeholders del director en la 4ta tabla
+        *html_content = html_content.replace("{{DIRECTOR_NOMBRE_APELLIDO}}", &datos_institucion.director);
         *html_content = html_content.replace("{{DIRECTOR_CEDULA}}", &datos_institucion.cedula_director);
     }
     

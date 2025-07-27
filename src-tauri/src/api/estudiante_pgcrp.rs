@@ -302,7 +302,7 @@ pub async fn eliminar_pgcrp_estudiante_individual(
 #[command]
 pub async fn diagnosticar_pgcrp_estudiantes(
     id_grado_secciones: i32,
-    id_periodo: i32,
+    _id_periodo: i32,
     app_state: State<'_, AppState>,
 ) -> Result<String, String> {
     let client = app_state.db.lock().await;

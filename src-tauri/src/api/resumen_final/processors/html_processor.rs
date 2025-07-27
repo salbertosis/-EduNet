@@ -63,6 +63,8 @@ impl HtmlProcessor {
             ("{{CDCEE_INSTITUCION}}", &datos_institucion.cdcee),
             ("{{DIRECTOR_INSTITUCION}}", &datos_institucion.director),
             ("{{CEDULA_DIRECTOR_INSTITUCION}}", &datos_institucion.cedula_director),
+            ("{{DIRECTOR_NOMBRE_APELLIDO}}", &datos_institucion.director),
+            ("{{DIRECTOR_CEDULA}}", &datos_institucion.cedula_director),
             ("{{TIPO_EVALUACION}}", tipo_evaluacion),
             ("{{ANO_ESCOLAR}}", ano_escolar),
         ];
@@ -96,33 +98,11 @@ impl HtmlProcessor {
         }
     }
 
-    /// Obtiene el código de asignatura completo (copiado exacto del original)
+    /// Obtiene el código de asignatura completo usando la abreviatura de la BD
     fn obtener_codigo_asignatura_completo(asignatura: &Asignatura, id_grado: i32) -> String {
-        // Caso especial para BAT (Biología)
-        if asignatura.nombre_asignatura.to_uppercase() == "BAT" || 
-           asignatura.abreviatura.to_uppercase() == "BI" {
-            // Para 1ero y 2do año usar CN, para 3ero en adelante usar BI
-            if id_grado <= 2 {
-                "CN".to_string() // 1er y 2do año: Ciencias Naturales
-            } else {
-                "BI".to_string() // 3er año en adelante: Biología
-            }
-        } else if !asignatura.abreviatura.is_empty() {
-            // Para otras asignaturas, usar la abreviatura de la BD
-            match asignatura.abreviatura.to_uppercase().as_str() {
-                "CA" => "CA".to_string(),
-                "ILE" => "ILE".to_string(), 
-                "MA" => "MA".to_string(),
-                "EF" => "EF".to_string(),
-                "FI" => "FI".to_string(),
-                "QU" => "QU".to_string(),
-                "BI" => "BI".to_string(),
-                "GH" => "GH".to_string(),
-                "FN" => "FN".to_string(),
-                "OC" => "OC".to_string(),
-                "PG" => "PG".to_string(),
-                _ => asignatura.abreviatura.clone() // Usar la abreviatura tal como está
-            }
+        if !asignatura.abreviatura.is_empty() {
+            // Usar directamente la abreviatura de la BD
+            asignatura.abreviatura.clone()
         } else {
             // Si no hay abreviatura, generar una basada en el nombre
             Self::obtener_codigo_asignatura_fallback(&asignatura.nombre_asignatura, id_grado)

@@ -86,7 +86,10 @@ impl ResumenFinalAdapter {
             &logo_base64
         );
         
-        // 4. Usar el nuevo servicio refactorizado para generar contenido
+        // 4. Obtener modalidad desde la base de datos
+        let id_modalidad = self.obtener_modalidad_bd(db, id_grado_secciones).await?;
+        
+        // 5. Usar el nuevo servicio refactorizado para generar contenido
         let html_resultado = self.service.generar_resumen_final_html(
             &plantilla_html,
             &estudiantes,
@@ -94,6 +97,9 @@ impl ResumenFinalAdapter {
             &datos_institucionales.modalidad,
             &datos_institucionales.grado,
             &datos_institucionales.seccion,
+            id_grado_secciones,
+            id_modalidad,
+            db,
             id_grado_secciones,
         ).await?;
 
@@ -361,6 +367,24 @@ impl ResumenFinalAdapter {
         
         // Si no encuentra logo, retornar string vacío
         Ok(String::new())
+    }
+
+    async fn obtener_modalidad_bd(
+        &self,
+        db: &tokio_postgres::Client,
+        id_grado_secciones: i32,
+    ) -> Result<i32, String> {
+        const QUERY: &str = "
+            SELECT id_modalidad
+            FROM grado_secciones 
+            WHERE id_grado_secciones = $1
+        ";
+        
+        let row = db.query_one(QUERY, &[&id_grado_secciones])
+            .await
+            .map_err(|e| format!("Error consultando modalidad: {}", e))?;
+        
+        Ok(row.get("id_modalidad"))
     }
 }
 

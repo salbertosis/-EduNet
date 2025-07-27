@@ -12,7 +12,8 @@ import {
   X,
   Loader2,
   List,
-  Activity
+  Activity,
+  CheckCircle2
 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/tauri';
 import { Paginacion } from '../../../componentes/Paginacion';
@@ -104,26 +105,65 @@ const ModalAsignarDocente = React.memo<{
   const [docenteSeleccionado, setDocenteSeleccionado] = useState<number | null>(null);
   const [cargandoBusqueda, setCargandoBusqueda] = useState(false);
   const [errorBusqueda, setErrorBusqueda] = useState(false);
+  const [cargandoInicial, setCargandoInicial] = useState(false);
 
-  // Buscar docentes al escribir
-  useEffect(() => {
-    if (!isOpen || busqueda.length < 2) {
+  // Función para cargar todos los docentes
+  const cargarTodosLosDocentes = useCallback(async () => {
+    setCargandoInicial(true);
+    setErrorBusqueda(false);
+    try {
+      const resultado = await invoke<any>('obtener_docentes', {
+        filtro: null,
+        paginacion: { pagina: 1, registros_por_pagina: 1000 }
+      });
+      setDocentes(resultado.datos ?? []);
+    } catch (error) {
+      console.error('Error al cargar docentes:', error);
       setDocentes([]);
-      return;
+      setErrorBusqueda(true);
+    } finally {
+      setCargandoInicial(false);
     }
+  }, []);
+
+  // Función para buscar docentes
+  const buscarDocentes = useCallback(async (termino: string) => {
     setCargandoBusqueda(true);
     setErrorBusqueda(false);
-    invoke<any>('obtener_docentes', {
-      filtro: { nombres: busqueda },
-      paginacion: { pagina: 1, registros_por_pagina: 10 }
-    })
-      .then((res) => setDocentes(res.datos ?? []))
-      .catch(() => {
-        setDocentes([]);
-        setErrorBusqueda(true);
-      })
-      .finally(() => setCargandoBusqueda(false));
-  }, [busqueda, isOpen]);
+    try {
+      const resultado = await invoke<any>('obtener_docentes', {
+        filtro: { nombres: termino },
+        paginacion: { pagina: 1, registros_por_pagina: 1000 }
+      });
+      setDocentes(resultado.datos ?? []);
+    } catch (error) {
+      console.error('Error al buscar docentes:', error);
+      setDocentes([]);
+      setErrorBusqueda(true);
+    } finally {
+      setCargandoBusqueda(false);
+    }
+  }, []);
+
+  // Cargar docentes iniciales al abrir el modal
+  useEffect(() => {
+    if (isOpen) {
+      cargarTodosLosDocentes();
+    }
+  }, [isOpen, cargarTodosLosDocentes]);
+
+  // Búsqueda en tiempo real
+  useEffect(() => {
+    if (!isOpen) return;
+
+    if (busqueda.length === 0) {
+      // Si no hay búsqueda, mostrar todos los docentes
+      cargarTodosLosDocentes();
+    } else if (busqueda.length >= 1) {
+      // Realizar búsqueda con al menos 1 letra
+      buscarDocentes(busqueda);
+    }
+  }, [busqueda, isOpen, cargarTodosLosDocentes, buscarDocentes]);
 
   const handleAsignar = useCallback(async () => {
     if (!docenteSeleccionado) return;
@@ -138,6 +178,7 @@ const ModalAsignarDocente = React.memo<{
       setDocenteSeleccionado(null);
       setBusqueda('');
       setDocentes([]);
+      setErrorBusqueda(false);
       onClose();
     }
   }, [asignando, onClose]);
@@ -154,39 +195,85 @@ const ModalAsignarDocente = React.memo<{
           </button>
         </div>
         <div className="p-6 space-y-4">
-          <label htmlFor="busqueda-docente" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Buscar docente (nombre o apellido)</label>
+          <label htmlFor="busqueda-docente" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Buscar docente (opcional)
+          </label>
           <input
             id="busqueda-docente"
             type="text"
             className="w-full p-3 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-            placeholder="Escriba al menos 2 letras..."
+            placeholder="Escriba para filtrar o deje vacío para ver todos..."
             value={busqueda}
             onChange={e => setBusqueda(e.target.value)}
             disabled={asignando}
             autoFocus
           />
-          {cargandoBusqueda ? (
+          
+          {/* Contador de docentes */}
+          <div className="text-sm text-gray-600 dark:text-gray-400">
+            {docentes.length} docente{docentes.length !== 1 ? 's' : ''} encontrado{docentes.length !== 1 ? 's' : ''}
+          </div>
+
+          {/* Estados de carga */}
+          {cargandoInicial ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+              <span className="ml-2 text-gray-600 dark:text-gray-300">Cargando docentes...</span>
+            </div>
+          ) : cargandoBusqueda ? (
             <div className="flex items-center justify-center py-4">
               <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
               <span className="ml-2 text-gray-600 dark:text-gray-300">Buscando docentes...</span>
             </div>
           ) : errorBusqueda ? (
-            <div className="text-center py-4 text-red-600 dark:text-red-400">Error al buscar docentes</div>
+            <div className="text-center py-4 text-red-600 dark:text-red-400">
+              Error al cargar docentes. Intente nuevamente.
+            </div>
+          ) : docentes.length === 0 ? (
+            <div className="text-center py-4 text-gray-500 dark:text-gray-400">
+              {busqueda.length > 0 ? 'No se encontraron docentes con ese criterio' : 'No hay docentes disponibles'}
+            </div>
           ) : (
-            docentes.length > 0 && (
-              <ul className="border border-gray-200 dark:border-slate-700 rounded-lg max-h-48 overflow-auto divide-y divide-gray-100 dark:divide-slate-700">
-                {docentes.map(docente => (
-                  <li key={docente.id_docente} className={`p-2 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 ${docenteSeleccionado === docente.id_docente ? 'bg-blue-100 dark:bg-blue-800' : ''}`} onClick={() => setDocenteSeleccionado(docente.id_docente)}>
-                    <span className="font-medium">{formatearNombreCompleto(docente.nombres, docente.apellidos)}</span>
-                  </li>
-                ))}
-              </ul>
-            )
+            <ul className="border border-gray-200 dark:border-slate-700 rounded-lg max-h-48 overflow-auto divide-y divide-gray-100 dark:divide-slate-700">
+              {docentes.map(docente => (
+                <li 
+                  key={docente.id_docente} 
+                  className={`p-3 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors ${
+                    docenteSeleccionado === docente.id_docente ? 'bg-blue-100 dark:bg-blue-800' : ''
+                  }`} 
+                  onClick={() => setDocenteSeleccionado(docente.id_docente)}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-gray-900 dark:text-white">
+                      {formatearNombreCompleto(docente.nombres, docente.apellidos)}
+                    </span>
+                    {docenteSeleccionado === docente.id_docente && (
+                      <CheckCircle2 className="w-5 h-5 text-blue-600" />
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
           )}
         </div>
         <div className="flex justify-end gap-3 p-6 border-t border-gray-200 dark:border-slate-700">
-          <button type="button" onClick={handleClose} disabled={asignando} className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-slate-700 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors disabled:opacity-50">Cerrar</button>
-          <button type="button" onClick={handleAsignar} disabled={!docenteSeleccionado || asignando} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2">{asignando ? <Loader2 className="w-4 h-4 animate-spin" /> : null}{asignando ? 'Asignando...' : 'Asignar'}</button>
+          <button 
+            type="button" 
+            onClick={handleClose} 
+            disabled={asignando} 
+            className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-slate-700 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors disabled:opacity-50"
+          >
+            Cerrar
+          </button>
+          <button 
+            type="button" 
+            onClick={handleAsignar} 
+            disabled={!docenteSeleccionado || asignando} 
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+          >
+            {asignando ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+            {asignando ? 'Asignando...' : 'Asignar'}
+          </button>
         </div>
       </div>
     </div>
@@ -301,10 +388,7 @@ const TarjetaCurso = React.memo<TarjetaCursoProps>(({ grado, onDocenteAsignado }
   const { mostrarMensaje } = useMensajeGlobal();
   const [modalAbierto, setModalAbierto] = useState(false);
   const [modalAsignaturasAbierto, setModalAsignaturasAbierto] = useState(false);
-  const [docentes, setDocentes] = useState<Docente[]>([]);
-  const [cargandoDocentes, setCargandoDocentes] = useState(false);
   const [asignando, setAsignando] = useState(false);
-  const [errorCargandoDocentes, setErrorCargandoDocentes] = useState(false);
   const [modalVerDocentesAbierto, setModalVerDocentesAbierto] = useState(false);
   const [modalEstudiantesAbierto, setModalEstudiantesAbierto] = useState(false);
 
@@ -363,26 +447,9 @@ const TarjetaCurso = React.memo<TarjetaCursoProps>(({ grado, onDocenteAsignado }
     cargarPgcrpAsignado();
   }, [periodoActivo, grado.id_grado_secciones]);
 
-  const abrirModal = useCallback(async () => {
+  const abrirModal = useCallback(() => {
     setModalAbierto(true);
-    setCargandoDocentes(true);
-    setErrorCargandoDocentes(false);
-
-    try {
-      const listaDocentes = await invoke<any>('obtener_docentes', {
-        filtro: null,
-        paginacion: { pagina: 1, registros_por_pagina: 1000 }
-      });
-      setDocentes(listaDocentes.datos ?? []);
-    } catch (error) {
-      console.error('Error al obtener docentes:', error);
-      setErrorCargandoDocentes(true);
-      mostrarMensaje('Error al cargar la lista de docentes', 'error');
-      setDocentes([]);
-    } finally {
-      setCargandoDocentes(false);
-    }
-  }, [mostrarMensaje]);
+  }, []);
 
   const asignarDocenteGuia = useCallback(async (docenteId: number) => {
     setAsignando(true);
@@ -406,7 +473,6 @@ const TarjetaCurso = React.memo<TarjetaCursoProps>(({ grado, onDocenteAsignado }
 
   const cerrarModal = useCallback(() => {
     setModalAbierto(false);
-    setErrorCargandoDocentes(false);
   }, []);
 
 
@@ -556,9 +622,9 @@ const TarjetaCurso = React.memo<TarjetaCursoProps>(({ grado, onDocenteAsignado }
         isOpen={modalAbierto}
         onClose={cerrarModal}
         onAsignar={asignarDocenteGuia}
-        cargandoDocentes={cargandoDocentes}
+        cargandoDocentes={false}
         asignando={asignando}
-        error={errorCargandoDocentes}
+        error={false}
       />
 
       <ModalVerDocentesPorAsignatura

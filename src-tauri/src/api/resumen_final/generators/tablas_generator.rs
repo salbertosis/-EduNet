@@ -23,15 +23,21 @@ impl TablasGenerator {
     /// - Fila 10: Sin columnas 7-8 (ocupadas por fila 9)
     /// - Fila 11: PGCRP con rowspan=2
     /// - Fila 12: Sin columnas 7-8 (ocupadas por fila 11)
-    pub fn generar_tercera_tabla_dinamica(
+    pub async fn generar_tercera_tabla_dinamica(
         &self, 
         html_content: &mut String, 
         asignaturas: &[Asignatura], 
         id_grado: i32, 
         total_estudiantes: usize, 
-        estudiantes_por_pagina: usize
-    ) {
+        estudiantes_en_pagina_actual: usize,
+        id_modalidad: i32,
+        db: &tokio_postgres::Client,
+        id_grado_secciones: i32
+    ) -> Result<(), String> {
         let mut filas_tercera_tabla = String::new();
+        
+        // Obtener año cursado y sección desde la BD
+        let (ano_cursado, seccion) = Self::obtener_ano_seccion_bd(db, id_grado_secciones).await?;
         
         // Generar exactamente 12 filas como en el original
         for i in 0..12 {
@@ -66,7 +72,7 @@ impl TablasGenerator {
             let columna_estudiantes_2 = if i == 8 { 
                 "N° DE ESTUDIANTES EN ESTA PÁGINA".to_string() 
             } else if i == 9 { 
-                estudiantes_por_pagina.to_string() 
+                estudiantes_en_pagina_actual.to_string() 
             } else { 
                 "".to_string() 
             };
@@ -119,8 +125,26 @@ impl TablasGenerator {
                     numero, codigo_fila, nombre_fila
                 )
             } else if i == 0 || i == 1 || i == 2 || i == 3 || i == 4 || i == 5 {
-                // Para las filas 1-6, combinar las columnas 7 y 8
-                let contenido_columna_7_8 = if i == 1 { "CÓDIGO" } else if i == 3 { "AÑO CURSADO" } else if i == 5 { "SECCIÓN" } else { "" };
+                            // Para las filas 1-6, combinar las columnas 7 y 8
+            let contenido_columna_7_8 = if i == 0 { 
+                let (plan_estudio, _) = Self::obtener_plan_estudio_por_modalidad(id_modalidad);
+                plan_estudio
+            } else if i == 1 { 
+                "CÓDIGO".to_string() 
+            } else if i == 2 { 
+                let (_, codigo_plan) = Self::obtener_plan_estudio_por_modalidad(id_modalidad);
+                codigo_plan
+            } else if i == 3 { 
+                "AÑO CURSADO".to_string()
+            } else if i == 4 { 
+                ano_cursado.clone()
+            } else if i == 5 { 
+                "SECCIÓN".to_string()
+            } else if i == 6 { 
+                seccion.clone()
+            } else { 
+                "".to_string() 
+            };
                 format!(
                     r#"<tr>
         <td style="border: 1px solid #000; font-size: 9px; text-align: center; padding: 0; font-weight: bold;">{}</td>
@@ -129,12 +153,14 @@ impl TablasGenerator {
         <td style="border: 1px solid #000; font-size: 8px; text-align: center; padding: 0;"></td>
         <td style="border: 1px solid #000; font-size: 8px; text-align: center; padding: 0;"></td>
         <td style="border: 1px solid #000; font-size: 8px; text-align: center; padding: 0;"></td>
-        <td style="border: 1px solid #000; font-size: 8px; text-align: center; padding: 2px; font-weight: bold;"{}>{}</td>
+        <td style="border: 1px solid #000; font-size: 9px; text-align: center; padding: 2px;{}"{}>{}</td>
       </tr>"#,
-                    numero, codigo_fila, nombre_fila, colspan_7_8, contenido_columna_7_8
+                    numero, codigo_fila, nombre_fila, 
+                    if i == 0 || i == 2 || i == 4 || i == 6 { "" } else { " font-weight: bold;" },
+                    colspan_7_8, contenido_columna_7_8
                 )
             } else if i == 6 {
-                // Para la fila 7 (índice 6), usar el bloque combinado (rowspan="2" colspan="2")
+                // Para la fila 7 (índice 6), usar el bloque combinado (rowspan="2" colspan="2") con el valor de sección
                 format!(
                     r#"<tr>
         <td style="border: 1px solid #000; font-size: 9px; text-align: center; padding: 0; font-weight: bold;">{}</td>
@@ -143,9 +169,9 @@ impl TablasGenerator {
         <td style="border: 1px solid #000; font-size: 8px; text-align: center; padding: 0;"></td>
         <td style="border: 1px solid #000; font-size: 8px; text-align: center; padding: 0;"></td>
         <td style="border: 1px solid #000; font-size: 8px; text-align: center; padding: 0;"></td>
-        <td style="border: 1px solid #000; font-size: 8px; text-align: center; padding: 2px; font-weight: bold;"{}></td>
+        <td style="border: 1px solid #000; font-size: 10px; text-align: center; padding: 2px;"{}>{}</td>
       </tr>"#,
-                    numero, codigo_fila, nombre_fila, rowspan_colspan_7_8
+                    numero, codigo_fila, nombre_fila, rowspan_colspan_7_8, seccion
                 )
             } else {
                 // Para las demás filas (8, 10), incluir todas las columnas con rowspan cuando corresponda
@@ -169,6 +195,8 @@ impl TablasGenerator {
         
         // Reemplazar el placeholder de la tercera tabla
         *html_content = html_content.replace(PLACEHOLDER_TERCERA_TABLA, &filas_tercera_tabla);
+        
+        Ok(())
     }
 
     /// Genera la primera tabla del resumen (información institucional)
@@ -192,33 +220,11 @@ impl Default for TablasGenerator {
 }
 
 impl TablasGenerator {
-    /// Obtiene el código de asignatura completo (copiado del HtmlProcessor)
+    /// Obtiene el código de asignatura completo usando la abreviatura de la BD
     fn obtener_codigo_asignatura_completo(asignatura: &Asignatura, id_grado: i32) -> String {
-        // Caso especial para BAT (Biología)
-        if asignatura.nombre_asignatura.to_uppercase() == "BAT" || 
-           asignatura.abreviatura.to_uppercase() == "BI" {
-            // Para 1ero y 2do año usar CN, para 3ero en adelante usar BI
-            if id_grado <= 2 {
-                "CN".to_string() // 1er y 2do año: Ciencias Naturales
-            } else {
-                "BI".to_string() // 3er año en adelante: Biología
-            }
-        } else if !asignatura.abreviatura.is_empty() {
-            // Para otras asignaturas, usar la abreviatura de la BD
-            match asignatura.abreviatura.to_uppercase().as_str() {
-                "CA" => "CA".to_string(),
-                "ILE" => "ILE".to_string(), 
-                "MA" => "MA".to_string(),
-                "EF" => "EF".to_string(),
-                "FI" => "FI".to_string(),
-                "QU" => "QU".to_string(),
-                "BI" => "BI".to_string(),
-                "GH" => "GH".to_string(),
-                "FN" => "FN".to_string(),
-                "OC" => "OC".to_string(),
-                "PG" => "PG".to_string(),
-                _ => asignatura.abreviatura.clone() // Usar la abreviatura tal como está
-            }
+        if !asignatura.abreviatura.is_empty() {
+            // Usar directamente la abreviatura de la BD
+            asignatura.abreviatura.clone()
         } else {
             // Si no hay abreviatura, generar una basada en el nombre
             Self::obtener_codigo_asignatura_fallback(&asignatura.nombre_asignatura, id_grado)
@@ -242,5 +248,39 @@ impl TablasGenerator {
         } else {
             nombre.chars().take(5).collect::<String>().to_uppercase()
         }
+    }
+
+    /// Obtiene el plan de estudio y código según la modalidad
+    fn obtener_plan_estudio_por_modalidad(id_modalidad: i32) -> (String, String) {
+        match id_modalidad {
+            1 => ("EDUCACION MEDIA GENERAL".to_string(), "31059".to_string()), // Ciencias
+            2 => ("EDUCACION MEDIA GENERAL Y TECNICA".to_string(), "43298".to_string()), // Telemática
+            _ => ("EDUCACION MEDIA GENERAL".to_string(), "31059".to_string()), // Por defecto
+        }
+    }
+
+    /// Obtiene el año cursado y sección desde la base de datos
+    async fn obtener_ano_seccion_bd(
+        db: &tokio_postgres::Client,
+        id_grado_secciones: i32,
+    ) -> Result<(String, String), String> {
+        const QUERY: &str = "
+            SELECT 
+                g.nombre_grado_letra as ano_cursado,
+                s.nombre_seccion as seccion
+            FROM grado_secciones gs
+            JOIN grados g ON gs.id_grado = g.id_grado
+            JOIN secciones s ON gs.id_seccion = s.id_seccion
+            WHERE gs.id_grado_secciones = $1
+        ";
+        
+        let row = db.query_one(QUERY, &[&id_grado_secciones])
+            .await
+            .map_err(|e| format!("Error consultando año y sección: {}", e))?;
+        
+        let ano_cursado: String = row.get("ano_cursado");
+        let seccion: String = row.get("seccion");
+        
+        Ok((ano_cursado, seccion))
     }
 } 

@@ -399,9 +399,18 @@ export function ListaEstudiantes() {
                   <td className="px-6 py-4 whitespace-nowrap text-base text-gray-900 dark:text-gray-100 font-medium align-middle text-center">{estudiante.nombre_modalidad}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-base font-medium align-middle flex gap-2 justify-end">
                     <button
-                      onClick={() => {
-                        setEstudianteSeleccionado(estudiante);
-                        setMostrarFormulario(true);
+                      onClick={async () => {
+                        try {
+                          // Obtener datos completos del estudiante
+                          const estudianteCompleto = await invoke<any>('obtener_estudiante_por_id', { 
+                            id: estudiante.id 
+                          });
+                          setEstudianteSeleccionado(estudianteCompleto);
+                          setMostrarFormulario(true);
+                        } catch (error) {
+                          console.error('Error al obtener datos del estudiante:', error);
+                          mostrarMensaje('Error al cargar los datos del estudiante', 'error');
+                        }
                       }}
                       className="rounded-full p-2 text-emerald-600 dark:text-emerald-400 hover:text-white hover:bg-emerald-600 dark:hover:bg-emerald-700/40 hover:scale-110 transition-all"
                       title="Editar"

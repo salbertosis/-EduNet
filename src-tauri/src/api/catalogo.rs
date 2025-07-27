@@ -155,49 +155,97 @@ pub async fn establecer_periodo_activo(
 
 #[tauri::command]
 pub async fn listar_paises(state: tauri::State<'_, crate::AppState>) -> Result<Vec<Pais>, String> {
+    println!("[DEBUG] listar_paises llamado");
     let db = state.db.lock().await;
-    let rows = db.query("SELECT id, nombre FROM paises ORDER BY nombre", &[])
-        .await.map_err(|e| e.to_string())?;
-    let paises = rows.iter().map(|row| Pais {
-        id: row.get(0),
-        nombre: row.get(1),
+    let query = "SELECT id, nombre FROM paises ORDER BY nombre";
+    println!("[DEBUG] Ejecutando query: {}", query);
+    let rows = db.query(query, &[])
+        .await.map_err(|e| {
+            println!("[ERROR] Error en query listar_paises: {}", e);
+            e.to_string()
+        })?;
+    println!("[DEBUG] Filas obtenidas: {}", rows.len());
+    let paises = rows.iter().map(|row| {
+        let pais = Pais {
+            id: row.get(0),
+            nombre: row.get(1),
+        };
+        println!("[DEBUG] País encontrado: {:?}", pais);
+        pais
     }).collect();
+    println!("[DEBUG] Países totales: {:?}", paises);
     Ok(paises)
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn listar_estados_por_pais(state: tauri::State<'_, crate::AppState>, id_pais: i32) -> Result<Vec<Estado>, String> {
+    println!("[DEBUG] listar_estados_por_pais llamado con id_pais: {}", id_pais);
     let db = state.db.lock().await;
-    let rows = db.query("SELECT id, nombre FROM estados WHERE pais_id = $1 ORDER BY nombre", &[&id_pais])
-        .await.map_err(|e| e.to_string())?;
-    let estados = rows.iter().map(|row| Estado {
-        id: row.get(0),
-        nombre: row.get(1),
+    let query = "SELECT id, nombre FROM estados WHERE pais_id = $1 ORDER BY nombre";
+    println!("[DEBUG] Ejecutando query: {}", query);
+    let rows = db.query(query, &[&id_pais])
+        .await.map_err(|e| {
+            println!("[ERROR] Error en query listar_estados_por_pais: {}", e);
+            e.to_string()
+        })?;
+    println!("[DEBUG] Filas obtenidas: {}", rows.len());
+    let estados = rows.iter().map(|row| {
+        let estado = Estado {
+            id: row.get(0),
+            nombre: row.get(1),
+        };
+        println!("[DEBUG] Estado encontrado: {:?}", estado);
+        estado
     }).collect();
+    println!("[DEBUG] Estados totales: {:?}", estados);
     Ok(estados)
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn listar_municipios_por_estado(state: tauri::State<'_, crate::AppState>, id_estado: i32) -> Result<Vec<Municipio>, String> {
+    println!("[DEBUG] listar_municipios_por_estado llamado con id_estado: {}", id_estado);
     let db = state.db.lock().await;
-    let rows = db.query("SELECT id, nombre FROM municipios WHERE estado_id = $1 ORDER BY nombre", &[&id_estado])
-        .await.map_err(|e| e.to_string())?;
-    let municipios = rows.iter().map(|row| Municipio {
-        id: row.get(0),
-        nombre: row.get(1),
+    let query = "SELECT id, nombre FROM municipios WHERE estado_id = $1 ORDER BY nombre";
+    println!("[DEBUG] Ejecutando query: {}", query);
+    let rows = db.query(query, &[&id_estado])
+        .await.map_err(|e| {
+            println!("[ERROR] Error en query listar_municipios_por_estado: {}", e);
+            e.to_string()
+        })?;
+    println!("[DEBUG] Filas obtenidas: {}", rows.len());
+    let municipios = rows.iter().map(|row| {
+        let municipio = Municipio {
+            id: row.get(0),
+            nombre: row.get(1),
+        };
+        println!("[DEBUG] Municipio encontrado: {:?}", municipio);
+        municipio
     }).collect();
+    println!("[DEBUG] Municipios totales: {:?}", municipios);
     Ok(municipios)
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn listar_ciudades_por_municipio(state: tauri::State<'_, crate::AppState>, id_municipio: i32) -> Result<Vec<Ciudad>, String> {
+    println!("[DEBUG] listar_ciudades_por_municipio llamado con id_municipio: {}", id_municipio);
     let db = state.db.lock().await;
-    let rows = db.query("SELECT id, nombre FROM ciudades WHERE municipio_id = $1 ORDER BY nombre", &[&id_municipio])
-        .await.map_err(|e| e.to_string())?;
-    let ciudades = rows.iter().map(|row| Ciudad {
-        id: row.get(0),
-        nombre: row.get(1),
+    let query = "SELECT id, nombre FROM ciudades WHERE municipio_id = $1 ORDER BY nombre";
+    println!("[DEBUG] Ejecutando query: {}", query);
+    let rows = db.query(query, &[&id_municipio])
+        .await.map_err(|e| {
+            println!("[ERROR] Error en query listar_ciudades_por_municipio: {}", e);
+            e.to_string()
+        })?;
+    println!("[DEBUG] Filas obtenidas: {}", rows.len());
+    let ciudades = rows.iter().map(|row| {
+        let ciudad = Ciudad {
+            id: row.get(0),
+            nombre: row.get(1),
+        };
+        println!("[DEBUG] Ciudad encontrada: {:?}", ciudad);
+        ciudad
     }).collect();
+    println!("[DEBUG] Ciudades totales: {:?}", ciudades);
     Ok(ciudades)
 }
 

@@ -135,6 +135,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     api::institucion::obtener_datos_institucion,
         api::institucion::guardar_datos_institucion,
         api::tipos_evaluacion::obtener_tipos_evaluacion,
+        // Comandos de Actividad Reciente
+        api::actividad_reciente::obtener_actividad_reciente,
+        api::actividad_reciente::registrar_actividad,
+        api::actividad_reciente::limpiar_actividad_antigua,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

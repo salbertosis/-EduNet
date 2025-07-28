@@ -92,7 +92,12 @@ pub async fn generar_actas_masivas(
                 "SELECT e.id, e.cedula, e.nombres, e.apellidos FROM historial_grado_estudiantes h \
                  JOIN estudiantes e ON h.id_estudiante = e.id \
                  WHERE h.id_grado_secciones = $1 AND h.id_periodo = $2 AND h.estado = 'activo' AND h.es_actual = true \
-                 ORDER BY e.apellidos, e.nombres",
+                 ORDER BY \
+                    CASE \
+                        WHEN e.cedula < 100000000 THEN 0 \
+                        ELSE 1 \
+                    END, \
+                    e.cedula",
                 &[id_grado_secciones, &id_periodo],
             ).await.map_err(|e| e.to_string())?;
             let estudiantes: Vec<(i32, i64, String, String)> = estudiantes_rows

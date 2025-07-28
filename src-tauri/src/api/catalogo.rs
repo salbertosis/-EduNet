@@ -167,8 +167,8 @@ pub async fn listar_paises(state: tauri::State<'_, crate::AppState>) -> Result<V
     println!("[DEBUG] Filas obtenidas: {}", rows.len());
     let paises = rows.iter().map(|row| {
         let pais = Pais {
-            id: row.get(0),
-            nombre: row.get(1),
+        id: row.get(0),
+        nombre: row.get(1),
         };
         println!("[DEBUG] País encontrado: {:?}", pais);
         pais
@@ -191,8 +191,8 @@ pub async fn listar_estados_por_pais(state: tauri::State<'_, crate::AppState>, i
     println!("[DEBUG] Filas obtenidas: {}", rows.len());
     let estados = rows.iter().map(|row| {
         let estado = Estado {
-            id: row.get(0),
-            nombre: row.get(1),
+        id: row.get(0),
+        nombre: row.get(1),
         };
         println!("[DEBUG] Estado encontrado: {:?}", estado);
         estado
@@ -215,8 +215,8 @@ pub async fn listar_municipios_por_estado(state: tauri::State<'_, crate::AppStat
     println!("[DEBUG] Filas obtenidas: {}", rows.len());
     let municipios = rows.iter().map(|row| {
         let municipio = Municipio {
-            id: row.get(0),
-            nombre: row.get(1),
+        id: row.get(0),
+        nombre: row.get(1),
         };
         println!("[DEBUG] Municipio encontrado: {:?}", municipio);
         municipio
@@ -239,8 +239,8 @@ pub async fn listar_ciudades_por_municipio(state: tauri::State<'_, crate::AppSta
     println!("[DEBUG] Filas obtenidas: {}", rows.len());
     let ciudades = rows.iter().map(|row| {
         let ciudad = Ciudad {
-            id: row.get(0),
-            nombre: row.get(1),
+        id: row.get(0),
+        nombre: row.get(1),
         };
         println!("[DEBUG] Ciudad encontrada: {:?}", ciudad);
         ciudad

@@ -2,6 +2,9 @@ import { Users, GraduationCap, BookOpen, Award, Cpu, Beaker, User } from 'lucide
 import { Tarjeta } from '../../../componentes/ui/Tarjeta';
 import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/tauri';
+import { ActividadReciente } from '../componentes/ActividadReciente';
+import { ProximosEventos } from '../componentes/ProximosEventos';
+import { useActividadReciente } from '../../../hooks/useActividadReciente';
 
 export function Dashboard() {
   const [totalEstudiantes, setTotalEstudiantes] = useState<number>(0);
@@ -15,7 +18,41 @@ export function Dashboard() {
   const [cargandoDocentes, setCargandoDocentes] = useState(true);
   const [cargandoCursos, setCargandoCursos] = useState(true);
 
+  // Hook para actividad reciente
+  const { actividades, cargando: cargandoActividades, obtenerActividades } = useActividadReciente();
+
+  // Datos de ejemplo para próximos eventos
+  const proximosEventos = [
+    {
+      id: 1,
+      titulo: 'Examen Final - Matemáticas',
+      descripcion: '3er año, Sección A',
+      tipo: 'examen' as const,
+      fecha_evento: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(), // mañana
+      prioridad: 'alta' as const
+    },
+    {
+      id: 2,
+      titulo: 'Fecha límite calificaciones',
+      descripcion: 'Cierre del 2do lapso',
+      tipo: 'fecha_limite' as const,
+      fecha_evento: new Date(Date.now() + 1000 * 60 * 60 * 24 * 3).toISOString(), // 3 días
+      prioridad: 'media' as const
+    },
+    {
+      id: 3,
+      titulo: 'Reunión de padres',
+      descripcion: 'Entrega de boletines',
+      tipo: 'evento_escolar' as const,
+      fecha_evento: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString(), // 7 días
+      prioridad: 'baja' as const
+    }
+  ];
+
   useEffect(() => {
+    // Cargar actividades recientes
+    obtenerActividades(10);
+    
     setCargandoEstudiantes(true);
     setCargandoDocentes(true);
     setCargandoCursos(true);
@@ -118,35 +155,20 @@ export function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white dark:bg-dark-800 rounded-xl shadow-soft p-6">
-          <h2 className="text-lg font-semibold mb-4">Actividad Reciente</h2>
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center space-x-4">
-                <div className="w-2 h-2 rounded-full bg-primary-500" />
-                <div>
-                  <p className="font-medium">Nueva calificación registrada</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Hace {i} horas</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        {/* Actividad Reciente */}
+        <ActividadReciente 
+          actividades={actividades.map(act => ({
+            ...act,
+            tipo: act.tipo_actividad || act.tipo || 'general'
+          }))}
+          cargando={cargandoActividades}
+        />
 
-        <div className="bg-white dark:bg-dark-800 rounded-xl shadow-soft p-6">
-          <h2 className="text-lg font-semibold mb-4">Próximos Eventos</h2>
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center space-x-4">
-                <div className="w-2 h-2 rounded-full bg-yellow-500" />
-                <div>
-                  <p className="font-medium">Examen Final - Matemáticas</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">En {i} días</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        {/* Próximos Eventos */}
+        <ProximosEventos 
+          eventos={proximosEventos}
+          cargando={false}
+        />
       </div>
     </div>
   );

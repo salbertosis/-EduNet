@@ -1,3 +1,4 @@
+pub mod actividad_reciente;
 pub mod calificacion;
 pub mod catalogo;
 pub mod estudiante;

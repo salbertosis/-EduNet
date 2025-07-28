@@ -208,16 +208,115 @@ pub async fn actualizar_estudiante(
     state: State<'_, AppState>,
 ) -> Result<(), String> {
     let db = state.db.lock().await;
+    
+    // 1. Verificar cédula duplicada
     let cedula_duplicada = verificar_cedula_duplicada(&*db, estudiante.cedula, Some(id)).await?;
     if cedula_duplicada {
         return Err("Ya existe otro estudiante con esta cédula".to_string());
     }
+    
+    // 2. Obtener datos actuales del estudiante para comparar
+    let estudiante_actual = db
+        .query_opt(
+            "SELECT id_grado_secciones, estado FROM estudiantes WHERE id = $1",
+            &[&id],
+        )
+        .await
+        .map_err(|e| e.to_string())?;
+    
+    let (id_grado_secciones_anterior, estado_anterior) = match estudiante_actual {
+        Some(row) => (row.get::<_, Option<i32>>(0), row.get::<_, crate::models::estudiante::EstadoEstudiante>(1)),
+        None => return Err("No se encontró el estudiante".to_string()),
+    };
+    
+    // 3. Actualizar tabla estudiantes
     db.execute(
         "UPDATE estudiantes SET cedula=$1, nombres=$2, apellidos=$3, genero=$4, fecha_nacimiento=$5, id_grado_secciones=$6, fecha_ingreso=$7, paisnac_id=$8, estado_nac_id=$9, municipio_nac_id=$10, ciudad_nac_id=$11, id_periodoactual=$12, estado=$13, fecha_retiro=$14 WHERE id=$15",
         &[&estudiante.cedula, &estudiante.nombres, &estudiante.apellidos, &estudiante.genero, &estudiante.fecha_nacimiento, &estudiante.id_grado_secciones, &estudiante.fecha_ingreso, &estudiante.paisnac_id, &estudiante.estado_nac_id, &estudiante.municipio_nac_id, &estudiante.ciudad_nac_id, &estudiante.id_periodoactual, &estudiante.estado, &estudiante.fecha_retiro, &id]
     )
     .await
     .map_err(|e| e.to_string())?;
+    
+    // 4. Manejar cambios en historial_grado_estudiantes
+    match (estudiante.estado, estado_anterior) {
+        // Caso: Cambio de estado a Retirado
+        (crate::models::estudiante::EstadoEstudiante::Retirado, crate::models::estudiante::EstadoEstudiante::Activo) => {
+            // Marcar como retirado en historial
+            db.execute(
+                "UPDATE historial_grado_estudiantes 
+                 SET estado = 'retirado' 
+                 WHERE id_estudiante = $1 AND es_actual = TRUE",
+                &[&id]
+            )
+            .await
+            .map_err(|e| e.to_string())?;
+        },
+        
+        // Caso: Cambio de estado a Activo (reactivación)
+        (crate::models::estudiante::EstadoEstudiante::Activo, crate::models::estudiante::EstadoEstudiante::Retirado) => {
+            // Buscar registro retirado y reactivarlo
+            let registro_retirado = db
+                .query_opt(
+                    "SELECT id_historial_grado FROM historial_grado_estudiantes 
+                     WHERE id_estudiante = $1 AND estado = 'retirado' 
+                     ORDER BY id_historial_grado DESC LIMIT 1",
+                    &[&id]
+                )
+                .await
+                .map_err(|e| e.to_string())?;
+            
+            match registro_retirado {
+                Some(_) => {
+                    // Reactivar el registro anterior
+                    db.execute(
+                        "UPDATE historial_grado_estudiantes 
+                         SET estado = 'activo', es_actual = TRUE 
+                         WHERE id_estudiante = $1 AND estado = 'retirado'",
+                        &[&id]
+                    )
+                    .await
+                    .map_err(|e| e.to_string())?;
+                },
+                None => {
+                    // Crear nuevo registro si no existe uno anterior
+                    if let Some(id_grado_secciones) = estudiante.id_grado_secciones {
+                        if let Some(id_periodo) = estudiante.id_periodoactual {
+                            db.execute(
+                                "INSERT INTO historial_grado_estudiantes 
+                                 (id_estudiante, id_grado_secciones, id_periodo, fecha_inicio, es_actual, estado) 
+                                 VALUES ($1, $2, $3, CURRENT_DATE, TRUE, 'activo')",
+                                &[&id, &id_grado_secciones, &id_periodo]
+                            )
+                            .await
+                            .map_err(|e| e.to_string())?;
+                        }
+                    }
+                }
+            }
+        },
+        
+        // Caso: Cambio de grado/sección (estado sigue siendo Activo)
+        (crate::models::estudiante::EstadoEstudiante::Activo, crate::models::estudiante::EstadoEstudiante::Activo) => {
+            // Verificar si cambió el id_grado_secciones
+            if id_grado_secciones_anterior != estudiante.id_grado_secciones {
+                if let Some(nuevo_id_grado_secciones) = estudiante.id_grado_secciones {
+                    // Actualizar el registro activo en historial
+                    db.execute(
+                        "UPDATE historial_grado_estudiantes 
+                         SET id_grado_secciones = $1 
+                         WHERE id_estudiante = $2 AND es_actual = TRUE",
+                        &[&nuevo_id_grado_secciones, &id]
+                    )
+                    .await
+                    .map_err(|e| e.to_string())?;
+                }
+            }
+        },
+        
+        // Otros casos: no hacer nada especial
+        _ => {}
+    }
+    
     Ok(())
 }
 

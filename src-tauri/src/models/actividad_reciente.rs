@@ -8,7 +8,7 @@ pub struct ActividadReciente {
     pub tipo_actividad: String,
     pub descripcion: String,
     pub usuario: Option<String>,
-    pub metadata: Option<String>,
+    pub metadata: Option<serde_json::Value>,
     pub timestamp: DateTime<Utc>,
     pub id_estudiante: Option<i32>,
     pub id_docente: Option<i32>,
@@ -20,7 +20,7 @@ pub struct NuevaActividad {
     pub tipo_actividad: String,
     pub descripcion: String,
     pub usuario: Option<String>,
-    pub metadata: Option<String>,
+    pub metadata: Option<serde_json::Value>,
     pub id_estudiante: Option<i32>,
     pub id_docente: Option<i32>,
     pub id_periodo: Option<i32>,
@@ -31,6 +31,8 @@ impl ActividadReciente {
         db: &tokio_postgres::Client,
         nueva_actividad: NuevaActividad,
     ) -> Result<ActividadReciente, tokio_postgres::Error> {
+        println!("[DEBUG] Creando actividad en base de datos: {}", nueva_actividad.descripcion);
+        
         let row = db
             .query_one(
                 r#"
@@ -51,7 +53,9 @@ impl ActividadReciente {
             )
             .await?;
 
-        Ok(ActividadReciente::from_row(&row)?)
+        let actividad = ActividadReciente::from_row(&row)?;
+        println!("[DEBUG] Actividad creada exitosamente con ID: {}", actividad.id);
+        Ok(actividad)
     }
 
     pub async fn obtener_recientes(
@@ -93,13 +97,17 @@ impl ActividadReciente {
     }
 
     fn from_row(row: &Row) -> Result<ActividadReciente, tokio_postgres::Error> {
+        // Convertir el timestamp de PostgreSQL a DateTime<Utc>
+        let timestamp_raw: chrono::NaiveDateTime = row.try_get("timestamp")?;
+        let timestamp = chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(timestamp_raw, chrono::Utc);
+        
         Ok(ActividadReciente {
             id: row.try_get("id")?,
             tipo_actividad: row.try_get("tipo_actividad")?,
             descripcion: row.try_get("descripcion")?,
             usuario: row.try_get("usuario")?,
             metadata: row.try_get("metadata")?,
-            timestamp: row.try_get("timestamp")?,
+            timestamp,
             id_estudiante: row.try_get("id_estudiante")?,
             id_docente: row.try_get("id_docente")?,
             id_periodo: row.try_get("id_periodo")?,

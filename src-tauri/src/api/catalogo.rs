@@ -1,6 +1,7 @@
 use tauri::State;
 use crate::AppState;
 use crate::models::catalogo::{PeriodoEscolar, Grado, Modalidad, Asignatura};
+use crate::utils::actividad_helper;
 use chrono::NaiveDate;
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -130,6 +131,17 @@ pub async fn crear_periodo_escolar(
 
     let id_periodo: i32 = row.get("id_periodo");
 
+    // Registrar actividad de creación de período escolar
+    let detalles = format!("Período: {}, Fecha inicio: {}, Fecha final: {}", 
+        periodo_escolar, fecha_inicio, fecha_final);
+    let _ = actividad_helper::registrar_actividad_periodo(
+        &*db, 
+        "crear", 
+        &detalles, 
+        id_periodo, 
+        "Admin"
+    ).await;
+
     Ok(id_periodo)
 }
 
@@ -149,6 +161,16 @@ pub async fn establecer_periodo_activo(
     db.execute("UPDATE periodos_escolares SET activo = TRUE WHERE id_periodo = $1", &[&id_periodo])
         .await
         .map_err(|e| format!("Error al activar el nuevo periodo: {}", e))?;
+
+    // Registrar actividad de activación de período escolar
+    let detalles = format!("Período ID: {} activado", id_periodo);
+    let _ = actividad_helper::registrar_actividad_periodo(
+        &*db, 
+        "activar", 
+        &detalles, 
+        id_periodo, 
+        "Admin"
+    ).await;
 
     Ok(())
 }

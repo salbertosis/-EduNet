@@ -2,6 +2,7 @@ use tauri::State;
 use crate::AppState;
 use crate::models::calificacion::{CalificacionEstudiante, CalificacionInput};
 use crate::utils::notas::calcular_nota_final;
+use crate::utils::actividad_helper;
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -25,6 +26,8 @@ pub async fn guardar_calificacion(
     state: State<'_, AppState>,
 ) -> Result<(), String> {
     let db = state.db.lock().await;
+    
+    let operacion = if calificacion.id_calificacion.is_some() { "actualizar" } else { "crear" };
     
     if let Some(id_calificacion) = calificacion.id_calificacion {
         // UPDATE
@@ -50,6 +53,18 @@ pub async fn guardar_calificacion(
             &[&calificacion.id_estudiante, &calificacion.id_asignatura, &calificacion.id_periodo, &calificacion.lapso_1, &calificacion.lapso_1_ajustado, &calificacion.lapso_2, &calificacion.lapso_2_ajustado, &calificacion.lapso_3, &calificacion.lapso_3_ajustado, &calificacion.revision, &calificacion.nota_final]
         ).await.map_err(|e| e.to_string())?;
     }
+    
+    // Registrar actividad de calificación individual
+    let detalles = format!("Estudiante ID: {}, Asignatura ID: {}, Período ID: {}", 
+        calificacion.id_estudiante, calificacion.id_asignatura, calificacion.id_periodo);
+    let _ = actividad_helper::registrar_actividad_calificaciones(
+        &*db, 
+        operacion, 
+        1, 
+        &detalles, 
+        "Admin"
+    ).await;
+    
     Ok(())
 }
 
@@ -182,8 +197,22 @@ pub async fn cargar_calificaciones_masivo(
         }
     }
     trans.commit().await.map_err(|e| e.to_string())?;
+    
+    // Registrar actividad de carga masiva
+    let total_procesados = insertados + actualizados;
+    if total_procesados > 0 {
+        let detalles = format!("{} insertados, {} actualizados", insertados, actualizados);
+        let _ = actividad_helper::registrar_actividad_calificaciones(
+            &*db, 
+            "carga_masiva", 
+            total_procesados, 
+            &detalles, 
+            "Admin"
+        ).await;
+    }
+    
     Ok(serde_json::json!({
-        "total_registros": insertados + actualizados + errores.len(),
+        "total_registros": insertados + actualizados + errores.len() as i32,
         "insertados": insertados,
         "actualizados": actualizados,
         "errores": errores,

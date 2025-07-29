@@ -95,7 +95,7 @@ export function ActividadReciente({ actividades, cargando = false }: ActividadRe
             <p>No hay actividad reciente</p>
           </div>
         ) : (
-          actividades.map((actividad) => (
+          actividades.slice(0, 3).map((actividad) => (
             <div 
               key={actividad.id} 
               className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-dark-700 transition-colors group"
@@ -126,10 +126,10 @@ export function ActividadReciente({ actividades, cargando = false }: ActividadRe
         )}
       </div>
       
-      {actividades.length > 0 && (
+      {actividades.length > 3 && (
         <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
           <button className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors">
-            Ver todas las actividades →
+            Ver todas las actividades ({actividades.length - 3} más) →
           </button>
         </div>
       )}

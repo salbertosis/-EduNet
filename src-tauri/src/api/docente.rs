@@ -1,6 +1,7 @@
 use tauri::State;
 use crate::AppState;
 use crate::models::docente::{Docente, FiltroDocentes, NuevoDocente};
+use crate::utils::actividad_helper;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize)]
@@ -98,11 +99,40 @@ pub async fn crear_docente(
     state: State<'_, AppState>,
 ) -> Result<(), String> {
     let db = state.db.lock().await;
-    db.execute(
+    
+    let resultado = db.execute(
         "INSERT INTO docentes (cedula, apellidos, nombres, especialidad, telefono, correoelectronico) VALUES ($1, $2, $3, $4, $5, $6)",
         &[&docente.cedula, &docente.apellidos, &docente.nombres, &docente.especialidad, &docente.telefono, &docente.correoelectronico]
-    ).await.map_err(|e| e.to_string())?;
-    Ok(())
+    ).await;
+
+    match resultado {
+        Ok(_) => {
+            // Obtener el docente insertado para registrar actividad
+            let docente_insertado = db
+                .query_one(
+                    "SELECT id_docente, cedula, apellidos, nombres, especialidad, telefono, correoelectronico FROM docentes WHERE cedula = $1 ORDER BY id_docente DESC LIMIT 1",
+                    &[&docente.cedula]
+                )
+                .await
+                .map_err(|e| e.to_string())?;
+
+            let docente_creado = Docente {
+                id_docente: docente_insertado.get("id_docente"),
+                cedula: docente_insertado.get("cedula"),
+                apellidos: docente_insertado.get("apellidos"),
+                nombres: docente_insertado.get("nombres"),
+                especialidad: docente_insertado.get("especialidad"),
+                telefono: docente_insertado.get("telefono"),
+                correoelectronico: docente_insertado.get("correoelectronico"),
+            };
+
+            // Registrar actividad (no bloqueante)
+            let _ = actividad_helper::registrar_actividad_docente(&*db, "crear", &docente_creado, "Admin").await;
+            
+            Ok(())
+        },
+        Err(e) => Err(e.to_string())
+    }
 }
 
 #[tauri::command]
@@ -112,11 +142,31 @@ pub async fn actualizar_docente(
     state: State<'_, AppState>,
 ) -> Result<(), String> {
     let db = state.db.lock().await;
-    db.execute(
+    
+    let resultado = db.execute(
         "UPDATE docentes SET cedula=$1, apellidos=$2, nombres=$3, especialidad=$4, telefono=$5, correoelectronico=$6 WHERE id_docente=$7",
         &[&docente.cedula, &docente.apellidos, &docente.nombres, &docente.especialidad, &docente.telefono, &docente.correoelectronico, &id_docente]
-    ).await.map_err(|e| e.to_string())?;
-    Ok(())
+    ).await;
+
+    match resultado {
+        Ok(_) => {
+            let docente_actualizado = Docente {
+                id_docente,
+                cedula: docente.cedula,
+                apellidos: docente.apellidos.clone(),
+                nombres: docente.nombres.clone(),
+                especialidad: docente.especialidad.clone(),
+                telefono: docente.telefono.clone(),
+                correoelectronico: docente.correoelectronico.clone(),
+            };
+
+            // Registrar actividad (no bloqueante)
+            let _ = actividad_helper::registrar_actividad_docente(&*db, "actualizar", &docente_actualizado, "Admin").await;
+            
+            Ok(())
+        },
+        Err(e) => Err(e.to_string())
+    }
 }
 
 #[tauri::command]
@@ -125,10 +175,38 @@ pub async fn eliminar_docente(
     state: State<'_, AppState>,
 ) -> Result<(), String> {
     let db = state.db.lock().await;
+    
+    // Obtener datos del docente antes de eliminar
+    let docente_eliminado = db
+        .query_opt(
+            "SELECT id_docente, cedula, apellidos, nombres, especialidad, telefono, correoelectronico FROM docentes WHERE id_docente = $1",
+            &[&id_docente]
+        )
+        .await
+        .map_err(|e| e.to_string())?;
+    
+    // Eliminar el docente
     db.execute(
         "DELETE FROM docentes WHERE id_docente=$1",
         &[&id_docente]
     ).await.map_err(|e| e.to_string())?;
+    
+    // Registrar actividad si se encontró el docente
+    if let Some(row) = docente_eliminado {
+        let docente = Docente {
+            id_docente: row.get("id_docente"),
+            cedula: row.get("cedula"),
+            apellidos: row.get("apellidos"),
+            nombres: row.get("nombres"),
+            especialidad: row.get("especialidad"),
+            telefono: row.get("telefono"),
+            correoelectronico: row.get("correoelectronico"),
+        };
+        
+        // Registrar actividad (no bloqueante)
+        let _ = actividad_helper::registrar_actividad_docente(&*db, "eliminar", &docente, "Admin").await;
+    }
+    
     Ok(())
 }
 
@@ -182,6 +260,35 @@ pub async fn asignar_docente_guia(
         "UPDATE grado_secciones SET id_docente_guia = $1 WHERE id_grado_secciones = $2",
         &[&id_docente_guia, &id_grado_secciones]
     ).await.map_err(|e| e.to_string())?;
+    
+    // Registrar actividad de asignación de docente guía
+    let docente_guia = db.query_one(
+        "SELECT id_docente, cedula, apellidos, nombres, especialidad, telefono, correoelectronico FROM docentes WHERE id_docente = $1",
+        &[&id_docente_guia]
+    ).await.map_err(|e| e.to_string())?;
+    
+    let docente = Docente {
+        id_docente: docente_guia.get("id_docente"),
+        cedula: docente_guia.get("cedula"),
+        apellidos: docente_guia.get("apellidos"),
+        nombres: docente_guia.get("nombres"),
+        especialidad: docente_guia.get("especialidad"),
+        telefono: docente_guia.get("telefono"),
+        correoelectronico: docente_guia.get("correoelectronico"),
+    };
+    
+    let detalles = format!("Grado/Sección ID: {}", id_grado_secciones);
+    let _ = actividad_helper::registrar_actividad_asignacion(
+        &*db, 
+        "asignar_guia", 
+        &docente, 
+        &detalles, 
+        "Admin",
+        Some(id_grado_secciones),
+        None,
+        None
+    ).await;
+    
     Ok(())
 }
 
@@ -202,6 +309,8 @@ pub async fn asignar_docente_asignatura(
         &[&id_grado_secciones, &id_asignatura, &id_periodo]
     ).await.map_err(|e| e.to_string())?;
     
+    let operacion = if existing.is_some() { "actualizar_asignacion" } else { "crear_asignacion" };
+    
     if existing.is_some() {
         // Actualizar registro existente
         db.execute(
@@ -218,6 +327,35 @@ pub async fn asignar_docente_asignatura(
             &[&id_grado_secciones, &id_asignatura, &id_docente, &id_periodo]
         ).await.map_err(|e| e.to_string())?;
     }
+    
+    // Registrar actividad de asignación de docente a asignatura
+    let docente_data = db.query_one(
+        "SELECT id_docente, cedula, apellidos, nombres, especialidad, telefono, correoelectronico FROM docentes WHERE id_docente = $1",
+        &[&id_docente]
+    ).await.map_err(|e| e.to_string())?;
+    
+    let docente = Docente {
+        id_docente: docente_data.get("id_docente"),
+        cedula: docente_data.get("cedula"),
+        apellidos: docente_data.get("apellidos"),
+        nombres: docente_data.get("nombres"),
+        especialidad: docente_data.get("especialidad"),
+        telefono: docente_data.get("telefono"),
+        correoelectronico: docente_data.get("correoelectronico"),
+    };
+    
+    let detalles = format!("Grado/Sección ID: {}, Asignatura ID: {}, Período ID: {}", 
+        id_grado_secciones, id_asignatura, id_periodo);
+    let _ = actividad_helper::registrar_actividad_asignacion(
+        &*db, 
+        operacion, 
+        &docente, 
+        &detalles, 
+        "Admin",
+        Some(id_grado_secciones),
+        Some(id_asignatura),
+        Some(id_periodo)
+    ).await;
     
     Ok(())
 }

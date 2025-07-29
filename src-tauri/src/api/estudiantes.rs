@@ -1,6 +1,7 @@
 use tauri::State;
 use crate::models::estudiante::{Estudiante, FiltroEstudiantes, NuevoEstudiante};
 use crate::AppState;
+use crate::utils::actividad_helper;
 use postgres_types::ToSql;
 use std::collections::HashSet;
 use serde::{Serialize, Deserialize};
@@ -189,11 +190,71 @@ pub async fn crear_estudiante(
     if cedula_duplicada {
         return Err("Ya existe un estudiante con esta cédula".to_string());
     }
-    match db.execute(
+    let resultado = db.execute(
         "INSERT INTO estudiantes (cedula, nombres, apellidos, genero, fecha_nacimiento, id_grado_secciones, fecha_ingreso, paisnac_id, estado_nac_id, municipio_nac_id, ciudad_nac_id, id_periodoactual, estado, fecha_retiro) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)",
         &[&estudiante.cedula, &estudiante.nombres, &estudiante.apellidos, &estudiante.genero, &estudiante.fecha_nacimiento, &estudiante.id_grado_secciones, &estudiante.fecha_ingreso, &estudiante.paisnac_id, &estudiante.estado_nac_id, &estudiante.municipio_nac_id, &estudiante.ciudad_nac_id, &estudiante.id_periodoactual, &estudiante.estado, &estudiante.fecha_retiro]
-    ).await {
-        Ok(_) => Ok(()),
+    ).await;
+
+    match resultado {
+        Ok(_) => {
+            // Obtener el ID del estudiante insertado
+            let estudiante_insertado = db
+                .query_one(
+                    "SELECT id, cedula, nombres, apellidos, genero, fecha_nacimiento, id_grado_secciones, fecha_ingreso, id_periodoactual, estado, fecha_retiro FROM estudiantes WHERE cedula = $1 ORDER BY id DESC LIMIT 1",
+                    &[&estudiante.cedula]
+                )
+                .await
+                .map_err(|e| e.to_string())?;
+
+            let estado_str: String = estudiante_insertado.get("estado");
+            let estado = if estado_str == "Activo" {
+                crate::models::estudiante::EstadoEstudiante::Activo
+            } else {
+                crate::models::estudiante::EstadoEstudiante::Retirado
+            };
+
+            let estudiante_creado = Estudiante {
+                id: estudiante_insertado.get("id"),
+                cedula: estudiante_insertado.get("cedula"),
+                nombres: estudiante_insertado.get("nombres"),
+                apellidos: estudiante_insertado.get("apellidos"),
+                genero: estudiante_insertado.get("genero"),
+                fecha_nacimiento: estudiante_insertado.get("fecha_nacimiento"),
+                id_grado_secciones: estudiante_insertado.get("id_grado_secciones"),
+                fecha_ingreso: estudiante_insertado.get("fecha_ingreso"),
+                id_periodoactual: estudiante_insertado.get("id_periodoactual"),
+                estado,
+                fecha_retiro: estudiante_insertado.get("fecha_retiro"),
+                // Campos legacy
+                municipionac: None,
+                paisnac: None,
+                entidadfed: None,
+                ciudadnac: None,
+                estadonac: None,
+                // Datos académicos
+                id_grado: None,
+                nombre_grado: None,
+                id_seccion: None,
+                nombre_seccion: None,
+                id_modalidad: None,
+                nombre_modalidad: None,
+                // Datos de nacimiento con IDs
+                paisnac_id: None,
+                estado_nac_id: None,
+                municipio_nac_id: None,
+                ciudad_nac_id: None,
+                // Datos de nacimiento con nombres
+                pais_nombre: None,
+                estado_nombre: None,
+                municipio_nombre: None,
+                ciudad_nombre: None,
+            };
+
+            // Registrar actividad (no bloqueante)
+            let _ = actividad_helper::registrar_actividad_estudiante(&*db, "crear", &estudiante_creado, "Admin").await;
+            
+            Ok(())
+        },
         Err(e) => {
             println!("[ERROR] Error al insertar estudiante: {}", e);
             Err(e.to_string())
@@ -238,7 +299,8 @@ pub async fn actualizar_estudiante(
     .map_err(|e| e.to_string())?;
     
     // 4. Manejar cambios en historial_grado_estudiantes
-    match (estudiante.estado, estado_anterior) {
+    let estado_actual = estudiante.estado.clone();
+    match (estado_actual, estado_anterior) {
         // Caso: Cambio de estado a Retirado
         (crate::models::estudiante::EstadoEstudiante::Retirado, crate::models::estudiante::EstadoEstudiante::Activo) => {
             // Marcar como retirado en historial
@@ -313,11 +375,52 @@ pub async fn actualizar_estudiante(
             }
         },
         
-        // Otros casos: no hacer nada especial
-        _ => {}
-    }
-    
-    Ok(())
+            // Otros casos: no hacer nada especial
+    _ => {}
+}
+
+// Registrar actividad de actualización
+let estudiante_actualizado = Estudiante {
+    id,
+    cedula: estudiante.cedula,
+    nombres: estudiante.nombres.clone(),
+    apellidos: estudiante.apellidos.clone(),
+    genero: estudiante.genero.clone(),
+    fecha_nacimiento: estudiante.fecha_nacimiento,
+    id_grado_secciones: estudiante.id_grado_secciones,
+    fecha_ingreso: estudiante.fecha_ingreso,
+    id_periodoactual: estudiante.id_periodoactual,
+    estado: estudiante.estado,
+    fecha_retiro: estudiante.fecha_retiro,
+    // Campos legacy
+    municipionac: None,
+    paisnac: None,
+    entidadfed: None,
+    ciudadnac: None,
+    estadonac: None,
+    // Datos académicos
+    id_grado: None,
+    nombre_grado: None,
+    id_seccion: None,
+    nombre_seccion: None,
+    id_modalidad: None,
+    nombre_modalidad: None,
+    // Datos de nacimiento con IDs
+    paisnac_id: None,
+    estado_nac_id: None,
+    municipio_nac_id: None,
+    ciudad_nac_id: None,
+    // Datos de nacimiento con nombres
+    pais_nombre: None,
+    estado_nombre: None,
+    municipio_nombre: None,
+    ciudad_nombre: None,
+};
+
+// Registrar actividad (no bloqueante)
+let _ = actividad_helper::registrar_actividad_estudiante(&*db, "actualizar", &estudiante_actualizado, "Admin").await;
+
+Ok(())
 }
 
 #[tauri::command]
@@ -326,12 +429,74 @@ pub async fn eliminar_estudiante(
     state: State<'_, AppState>,
 ) -> Result<(), String> {
     let db = state.db.lock().await;
+    
+    // Obtener datos del estudiante antes de eliminar
+    let estudiante_eliminado = db
+        .query_opt(
+            "SELECT id, cedula, nombres, apellidos, genero, fecha_nacimiento, id_grado_secciones, fecha_ingreso, id_periodoactual, estado, fecha_retiro FROM estudiantes WHERE id = $1",
+            &[&id]
+        )
+        .await
+        .map_err(|e| e.to_string())?;
+    
+    // Eliminar el estudiante
     db.execute(
         "DELETE FROM estudiantes WHERE id = $1",
         &[&id],
     )
     .await
     .map_err(|e| e.to_string())?;
+    
+    // Registrar actividad si se encontró el estudiante
+    if let Some(row) = estudiante_eliminado {
+        let estado_str: String = row.get("estado");
+        let estado = if estado_str == "Activo" {
+            crate::models::estudiante::EstadoEstudiante::Activo
+        } else {
+            crate::models::estudiante::EstadoEstudiante::Retirado
+        };
+
+        let estudiante = Estudiante {
+            id: row.get("id"),
+            cedula: row.get("cedula"),
+            nombres: row.get("nombres"),
+            apellidos: row.get("apellidos"),
+            genero: row.get("genero"),
+            fecha_nacimiento: row.get("fecha_nacimiento"),
+            id_grado_secciones: row.get("id_grado_secciones"),
+            fecha_ingreso: row.get("fecha_ingreso"),
+            id_periodoactual: row.get("id_periodoactual"),
+            estado,
+            fecha_retiro: row.get("fecha_retiro"),
+            // Campos legacy
+            municipionac: None,
+            paisnac: None,
+            entidadfed: None,
+            ciudadnac: None,
+            estadonac: None,
+            // Datos académicos
+            id_grado: None,
+            nombre_grado: None,
+            id_seccion: None,
+            nombre_seccion: None,
+            id_modalidad: None,
+            nombre_modalidad: None,
+            // Datos de nacimiento con IDs
+            paisnac_id: None,
+            estado_nac_id: None,
+            municipio_nac_id: None,
+            ciudad_nac_id: None,
+            // Datos de nacimiento con nombres
+            pais_nombre: None,
+            estado_nombre: None,
+            municipio_nombre: None,
+            ciudad_nombre: None,
+        };
+        
+        // Registrar actividad (no bloqueante)
+        let _ = actividad_helper::registrar_actividad_estudiante(&*db, "eliminar", &estudiante, "Admin").await;
+    }
+    
     Ok(())
 }
 

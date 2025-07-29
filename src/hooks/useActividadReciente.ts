@@ -6,7 +6,7 @@ export interface Actividad {
   tipo_actividad: string;
   descripcion: string;
   usuario?: string;
-  metadata?: string;
+  metadata?: any;
   timestamp: string;
   id_estudiante?: number;
   id_docente?: number;
@@ -18,7 +18,7 @@ export interface NuevaActividad {
   tipo_actividad: string;
   descripcion: string;
   usuario?: string;
-  metadata?: string;
+  metadata?: any;
   id_estudiante?: number;
   id_docente?: number;
   id_periodo?: number;
@@ -77,7 +77,7 @@ export function useActividadReciente() {
     tipo: string,
     descripcion: string,
     usuario?: string,
-    metadata?: string
+    metadata?: any
   ) => {
     const nuevaActividad: NuevaActividad = {
       tipo_actividad: tipo,
@@ -95,7 +95,7 @@ export function useActividadReciente() {
     descripcion: string,
     idEstudiante: number,
     usuario?: string,
-    metadata?: string
+    metadata?: any
   ) => {
     const nuevaActividad: NuevaActividad = {
       tipo_actividad: tipo,
@@ -114,7 +114,7 @@ export function useActividadReciente() {
     descripcion: string,
     idDocente: number,
     usuario?: string,
-    metadata?: string
+    metadata?: any
   ) => {
     const nuevaActividad: NuevaActividad = {
       tipo_actividad: tipo,
@@ -133,7 +133,7 @@ export function useActividadReciente() {
     descripcion: string,
     idPeriodo: number,
     usuario?: string,
-    metadata?: string
+    metadata?: any
   ) => {
     const nuevaActividad: NuevaActividad = {
       tipo_actividad: tipo,

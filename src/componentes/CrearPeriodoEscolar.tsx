@@ -43,6 +43,7 @@ const CrearPeriodoEscolar = () => {
           <input
             type="text"
             id="periodoNombre"
+            placeholder="2024-2025"
             className="w-1/2 px-1 py-0.5 rounded-lg border border-gray-300 dark:border-dark-600 bg-white dark:bg-dark-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
             value={periodoNombre}
             onChange={(e) => setPeriodoNombre(e.target.value)}

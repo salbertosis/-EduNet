@@ -770,3 +770,802 @@ pub async fn insertar_estudiantes_masivo(
         "errores": errores,
     }))
 } 
+
+#[derive(Debug, serde::Serialize)]
+pub struct EstadisticasModalidad {
+    pub total_estudiantes: i64,
+    pub estudiantes_femeninos: i64,
+    pub estudiantes_masculinos: i64,
+}
+
+#[tauri::command]
+pub async fn obtener_estadisticas_estudiantes_por_modalidad(state: State<'_, AppState>) -> Result<Vec<EstadisticasModalidad>, String> {
+    let db = state.db.lock().await;
+    
+    // Query para obtener estadísticas por modalidad
+    let query = "
+        SELECT 
+            gs.id_modalidad,
+            COUNT(DISTINCT hge.id_estudiante) as total_estudiantes,
+            SUM(CASE WHEN e.genero = 'F' THEN 1 ELSE 0 END) as estudiantes_femeninos,
+            SUM(CASE WHEN e.genero = 'M' THEN 1 ELSE 0 END) as estudiantes_masculinos
+        FROM historial_grado_estudiantes hge
+        JOIN estudiantes e ON hge.id_estudiante = e.id
+        JOIN grado_secciones gs ON hge.id_grado_secciones = gs.id_grado_secciones
+        WHERE hge.es_actual = true 
+            AND hge.estado = 'activo'
+            AND e.estado = 'Activo'
+        GROUP BY gs.id_modalidad
+        ORDER BY gs.id_modalidad
+    ";
+    
+    let rows = db.query(query, &[])
+        .await
+        .map_err(|e| format!("Error obteniendo estadísticas por modalidad: {}", e))?;
+    
+    let estadisticas = rows.iter().map(|row| EstadisticasModalidad {
+        total_estudiantes: row.get("total_estudiantes"),
+        estudiantes_femeninos: row.get("estudiantes_femeninos"),
+        estudiantes_masculinos: row.get("estudiantes_masculinos"),
+    }).collect();
+    
+    Ok(estadisticas)
+}
+
+#[tauri::command]
+pub async fn obtener_estadisticas_telematica(state: State<'_, AppState>) -> Result<EstadisticasModalidad, String> {
+    let db = state.db.lock().await;
+    
+    // Query corregida para Telemática (id_modalidad = 2) - solo es_actual = true
+    let query = "
+        SELECT 
+            COUNT(DISTINCT hge.id_estudiante) as total_estudiantes,
+            SUM(CASE WHEN e.genero = 'F' THEN 1 ELSE 0 END) as estudiantes_femeninos,
+            SUM(CASE WHEN e.genero = 'M' THEN 1 ELSE 0 END) as estudiantes_masculinos
+        FROM historial_grado_estudiantes hge
+        JOIN estudiantes e ON hge.id_estudiante = e.id
+        JOIN grado_secciones gs ON hge.id_grado_secciones = gs.id_grado_secciones
+        WHERE hge.es_actual = true 
+            AND gs.id_modalidad = 2
+    ";
+    
+    let row = db.query_one(query, &[])
+        .await
+        .map_err(|e| format!("Error obteniendo estadísticas de Telemática: {}", e))?;
+    
+    Ok(EstadisticasModalidad {
+        total_estudiantes: row.get("total_estudiantes"),
+        estudiantes_femeninos: row.get("estudiantes_femeninos"),
+        estudiantes_masculinos: row.get("estudiantes_masculinos"),
+    })
+}
+
+#[tauri::command]
+pub async fn obtener_estadisticas_ciencias(state: State<'_, AppState>) -> Result<EstadisticasModalidad, String> {
+    let db = state.db.lock().await;
+    
+    // Query específica para Ciencias (id_modalidad = 1) - solo es_actual = true
+    let query = "
+        SELECT 
+            COUNT(DISTINCT hge.id_estudiante) as total_estudiantes,
+            SUM(CASE WHEN e.genero = 'F' THEN 1 ELSE 0 END) as estudiantes_femeninos,
+            SUM(CASE WHEN e.genero = 'M' THEN 1 ELSE 0 END) as estudiantes_masculinos
+        FROM historial_grado_estudiantes hge
+        JOIN estudiantes e ON hge.id_estudiante = e.id
+        JOIN grado_secciones gs ON hge.id_grado_secciones = gs.id_grado_secciones
+        WHERE hge.es_actual = true 
+            AND gs.id_modalidad = 1
+    ";
+    
+    let row = db.query_one(query, &[])
+        .await
+        .map_err(|e| format!("Error obteniendo estadísticas de Ciencias: {}", e))?;
+    
+    Ok(EstadisticasModalidad {
+        total_estudiantes: row.get("total_estudiantes"),
+        estudiantes_femeninos: row.get("estudiantes_femeninos"),
+        estudiantes_masculinos: row.get("estudiantes_masculinos"),
+    })
+} 
+
+#[derive(Debug, serde::Serialize)]
+pub struct EstadisticasCursoPorGrado {
+    pub id_grado: i32,
+    pub nombre_grado: String,
+    pub id_modalidad: i32,
+    pub nombre_modalidad: String,
+    pub total_estudiantes: i64,
+    pub secciones: Vec<String>,
+}
+
+#[tauri::command]
+pub async fn obtener_estadisticas_cursos_por_grado_modalidad(state: State<'_, AppState>) -> Result<Vec<EstadisticasCursoPorGrado>, String> {
+    let db = state.db.lock().await;
+    
+    // Query para obtener estadísticas de cursos por grado y modalidad
+    let query = "
+        SELECT 
+            g.id_grado,
+            g.nombre_grado,
+            gs.id_modalidad,
+            m.nombre_modalidad,
+            COUNT(DISTINCT hge.id_estudiante) as total_estudiantes,
+            STRING_AGG(DISTINCT s.nombre_seccion, ',' ORDER BY s.nombre_seccion) as secciones
+        FROM historial_grado_estudiantes hge
+        JOIN estudiantes e ON hge.id_estudiante = e.id
+        JOIN grado_secciones gs ON hge.id_grado_secciones = gs.id_grado_secciones
+        JOIN grados g ON gs.id_grado = g.id_grado
+        JOIN modalidades m ON gs.id_modalidad = m.id_modalidad
+        JOIN secciones s ON gs.id_seccion = s.id_seccion
+        WHERE hge.es_actual = true 
+            AND hge.estado = 'activo'
+            AND e.estado = 'Activo'
+        GROUP BY g.id_grado, g.nombre_grado, gs.id_modalidad, m.nombre_modalidad
+        ORDER BY g.id_grado, gs.id_modalidad
+    ";
+    
+    let rows = db.query(query, &[])
+        .await
+        .map_err(|e| format!("Error obteniendo estadísticas de cursos por grado: {}", e))?;
+    
+    let estadisticas = rows.iter().map(|row| {
+        let secciones_str: String = row.get("secciones");
+        let secciones = secciones_str.split(',').map(|s| s.trim().to_string()).collect();
+        
+        EstadisticasCursoPorGrado {
+            id_grado: row.get("id_grado"),
+            nombre_grado: row.get("nombre_grado"),
+            id_modalidad: row.get("id_modalidad"),
+            nombre_modalidad: row.get("nombre_modalidad"),
+            total_estudiantes: row.get("total_estudiantes"),
+            secciones,
+        }
+    }).collect();
+    
+    Ok(estadisticas)
+}
+
+#[tauri::command]
+pub async fn obtener_estadisticas_cursos_telematica_por_grado(state: State<'_, AppState>) -> Result<Vec<EstadisticasCursoPorGrado>, String> {
+    let db = state.db.lock().await;
+    
+    // Query específica para Telemática (id_modalidad = 2) por grado
+    let query = "
+        SELECT 
+            g.id_grado,
+            g.nombre_grado,
+            gs.id_modalidad,
+            m.nombre_modalidad,
+            COUNT(DISTINCT hge.id_estudiante) as total_estudiantes,
+            STRING_AGG(DISTINCT s.nombre_seccion, ',' ORDER BY s.nombre_seccion) as secciones
+        FROM historial_grado_estudiantes hge
+        JOIN estudiantes e ON hge.id_estudiante = e.id
+        JOIN grado_secciones gs ON hge.id_grado_secciones = gs.id_grado_secciones
+        JOIN grados g ON gs.id_grado = g.id_grado
+        JOIN modalidades m ON gs.id_modalidad = m.id_modalidad
+        JOIN secciones s ON gs.id_seccion = s.id_seccion
+        WHERE hge.es_actual = true 
+            AND hge.estado = 'activo'
+            AND e.estado = 'Activo'
+            AND gs.id_modalidad = 2
+        GROUP BY g.id_grado, g.nombre_grado, gs.id_modalidad, m.nombre_modalidad
+        ORDER BY g.id_grado
+    ";
+    
+    println!("[DEBUG] Ejecutando query Telemática: {}", query);
+    
+    let rows = db.query(query, &[])
+        .await
+        .map_err(|e| format!("Error obteniendo estadísticas de cursos Telemática por grado: {}", e))?;
+    
+    println!("[DEBUG] Filas obtenidas para Telemática: {}", rows.len());
+    
+    let estadisticas = rows.iter().map(|row| {
+        let secciones_str: String = row.get("secciones");
+        let secciones = secciones_str.split(',').map(|s| s.trim().to_string()).collect();
+        
+        let estadistica = EstadisticasCursoPorGrado {
+            id_grado: row.get("id_grado"),
+            nombre_grado: row.get("nombre_grado"),
+            id_modalidad: row.get("id_modalidad"),
+            nombre_modalidad: row.get("nombre_modalidad"),
+            total_estudiantes: row.get("total_estudiantes"),
+            secciones,
+        };
+        
+        println!("[DEBUG] Estadística Telemática: {:?}", estadistica);
+        estadistica
+    }).collect();
+    
+    Ok(estadisticas)
+}
+
+#[tauri::command]
+pub async fn obtener_estadisticas_cursos_ciencias_por_grado(state: State<'_, AppState>) -> Result<Vec<EstadisticasCursoPorGrado>, String> {
+    let db = state.db.lock().await;
+    
+    // Query específica para Ciencias (id_modalidad = 1) por grado
+    let query = "
+        SELECT 
+            g.id_grado,
+            g.nombre_grado,
+            gs.id_modalidad,
+            m.nombre_modalidad,
+            COUNT(DISTINCT hge.id_estudiante) as total_estudiantes,
+            STRING_AGG(DISTINCT s.nombre_seccion, ',' ORDER BY s.nombre_seccion) as secciones
+        FROM historial_grado_estudiantes hge
+        JOIN estudiantes e ON hge.id_estudiante = e.id
+        JOIN grado_secciones gs ON hge.id_grado_secciones = gs.id_grado_secciones
+        JOIN grados g ON gs.id_grado = g.id_grado
+        JOIN modalidades m ON gs.id_modalidad = m.id_modalidad
+        JOIN secciones s ON gs.id_seccion = s.id_seccion
+        WHERE hge.es_actual = true 
+            AND hge.estado = 'activo'
+            AND e.estado = 'Activo'
+            AND gs.id_modalidad = 1
+        GROUP BY g.id_grado, g.nombre_grado, gs.id_modalidad, m.nombre_modalidad
+        ORDER BY g.id_grado
+    ";
+    
+    println!("[DEBUG] Ejecutando query Ciencias: {}", query);
+    
+    let rows = db.query(query, &[])
+        .await
+        .map_err(|e| format!("Error obteniendo estadísticas de cursos Ciencias por grado: {}", e))?;
+    
+    println!("[DEBUG] Filas obtenidas para Ciencias: {}", rows.len());
+    
+    let estadisticas = rows.iter().map(|row| {
+        let secciones_str: String = row.get("secciones");
+        let secciones = secciones_str.split(',').map(|s| s.trim().to_string()).collect();
+        
+        let estadistica = EstadisticasCursoPorGrado {
+            id_grado: row.get("id_grado"),
+            nombre_grado: row.get("nombre_grado"),
+            id_modalidad: row.get("id_modalidad"),
+            nombre_modalidad: row.get("nombre_modalidad"),
+            total_estudiantes: row.get("total_estudiantes"),
+            secciones,
+        };
+        
+        println!("[DEBUG] Estadística Ciencias: {:?}", estadistica);
+        estadistica
+    }).collect();
+    
+    Ok(estadisticas)
+} 
+
+#[tauri::command]
+pub async fn obtener_estadisticas_cursos_sin_filtros(state: State<'_, AppState>) -> Result<Vec<EstadisticasCursoPorGrado>, String> {
+    let db = state.db.lock().await;
+    
+    // Query sin filtros para debug
+    let query = "
+        SELECT 
+            g.id_grado,
+            g.nombre_grado,
+            gs.id_modalidad,
+            m.nombre_modalidad,
+            COUNT(DISTINCT hge.id_estudiante) as total_estudiantes,
+            STRING_AGG(DISTINCT s.nombre_seccion, ',' ORDER BY s.nombre_seccion) as secciones
+        FROM historial_grado_estudiantes hge
+        JOIN estudiantes e ON hge.id_estudiante = e.id
+        JOIN grado_secciones gs ON hge.id_grado_secciones = gs.id_grado_secciones
+        JOIN grados g ON gs.id_grado = g.id_grado
+        JOIN modalidades m ON gs.id_modalidad = m.id_modalidad
+        JOIN secciones s ON gs.id_seccion = s.id_seccion
+        GROUP BY g.id_grado, g.nombre_grado, gs.id_modalidad, m.nombre_modalidad
+        ORDER BY g.id_grado, gs.id_modalidad
+    ";
+    
+    println!("[DEBUG] Ejecutando query sin filtros: {}", query);
+    
+    let rows = db.query(query, &[])
+        .await
+        .map_err(|e| format!("Error obteniendo estadísticas sin filtros: {}", e))?;
+    
+    println!("[DEBUG] Filas obtenidas sin filtros: {}", rows.len());
+    
+    let estadisticas = rows.iter().map(|row| {
+        let secciones_str: String = row.get("secciones");
+        let secciones = secciones_str.split(',').map(|s| s.trim().to_string()).collect();
+        
+        let estadistica = EstadisticasCursoPorGrado {
+            id_grado: row.get("id_grado"),
+            nombre_grado: row.get("nombre_grado"),
+            id_modalidad: row.get("id_modalidad"),
+            nombre_modalidad: row.get("nombre_modalidad"),
+            total_estudiantes: row.get("total_estudiantes"),
+            secciones,
+        };
+        
+        println!("[DEBUG] Estadística sin filtros: {:?}", estadistica);
+        estadistica
+    }).collect();
+    
+    Ok(estadisticas)
+}
+
+#[tauri::command]
+pub async fn probar_datos_estudiantes(state: State<'_, AppState>) -> Result<serde_json::Value, String> {
+    let db = state.db.lock().await;
+    
+    // Consulta para ver qué datos tenemos
+    let query = "
+        SELECT 
+            COUNT(*) as total_historial,
+            COUNT(DISTINCT hge.id_estudiante) as estudiantes_unicos,
+            COUNT(DISTINCT hge.id_grado_secciones) as grado_secciones_unicos,
+            COUNT(CASE WHEN hge.es_actual = true THEN 1 END) as actuales,
+            COUNT(CASE WHEN hge.estado = 'activo' THEN 1 END) as activos
+        FROM historial_grado_estudiantes hge
+    ";
+    
+    let row = db.query_one(query, &[])
+        .await
+        .map_err(|e| format!("Error en consulta de prueba: {}", e))?;
+    
+    let resultado = serde_json::json!({
+        "total_historial": row.get::<_, i64>("total_historial"),
+        "estudiantes_unicos": row.get::<_, i64>("estudiantes_unicos"),
+        "grado_secciones_unicos": row.get::<_, i64>("grado_secciones_unicos"),
+        "actuales": row.get::<_, i64>("actuales"),
+        "activos": row.get::<_, i64>("activos")
+    });
+    
+    Ok(resultado)
+}
+
+#[tauri::command]
+pub async fn probar_grado_secciones(state: State<'_, AppState>) -> Result<Vec<serde_json::Value>, String> {
+    let db = state.db.lock().await;
+    
+    // Consulta para ver los datos de grado_secciones
+    let query = "
+        SELECT 
+            gs.id_grado_secciones,
+            gs.id_grado,
+            gs.id_seccion,
+            gs.id_modalidad,
+            g.nombre_grado,
+            s.nombre_seccion,
+            m.nombre_modalidad
+        FROM grado_secciones gs
+        JOIN grados g ON gs.id_grado = g.id_grado
+        JOIN secciones s ON gs.id_seccion = s.id_seccion
+        JOIN modalidades m ON gs.id_modalidad = m.id_modalidad
+        ORDER BY gs.id_grado_secciones
+        LIMIT 10
+    ";
+    
+    let rows = db.query(query, &[])
+        .await
+        .map_err(|e| format!("Error en consulta grado_secciones: {}", e))?;
+    
+    let resultado = rows.iter().map(|row| {
+        serde_json::json!({
+            "id_grado_secciones": row.get::<_, i32>("id_grado_secciones"),
+            "id_grado": row.get::<_, i32>("id_grado"),
+            "id_seccion": row.get::<_, i32>("id_seccion"),
+            "id_modalidad": row.get::<_, i32>("id_modalidad"),
+            "nombre_grado": row.get::<_, String>("nombre_grado"),
+            "nombre_seccion": row.get::<_, String>("nombre_seccion"),
+            "nombre_modalidad": row.get::<_, String>("nombre_modalidad")
+        })
+    }).collect();
+    
+    Ok(resultado)
+} 
+
+#[derive(Debug, serde::Serialize)]
+pub struct EstadisticasCursosCompacta {
+    pub modalidad: String,
+    pub total_secciones: i64,
+    pub total_estudiantes: i64,
+    pub promedio_por_seccion: f64,
+    pub seccion_mayor_matricula: String,
+    pub estudiantes_seccion_mayor: i64,
+    pub seccion_menor_matricula: String,
+    pub estudiantes_seccion_menor: i64,
+}
+
+#[tauri::command]
+pub async fn obtener_estadisticas_cursos_compacta(state: State<'_, AppState>) -> Result<Vec<EstadisticasCursosCompacta>, String> {
+    let db = state.db.lock().await;
+    
+    // Query para obtener estadísticas compactas por modalidad
+    let query = "
+        WITH estadisticas_secciones AS (
+            SELECT 
+                m.nombre_modalidad,
+                g.nombre_grado,
+                s.nombre_seccion,
+                COUNT(DISTINCT hge.id_estudiante) as estudiantes_seccion,
+                CONCAT(g.nombre_grado, ' ', s.nombre_seccion) as nombre_completo_seccion
+            FROM historial_grado_estudiantes hge
+            JOIN estudiantes e ON hge.id_estudiante = e.id
+            JOIN grado_secciones gs ON hge.id_grado_secciones = gs.id_grado_secciones
+            JOIN grados g ON gs.id_grado = g.id_grado
+            JOIN modalidades m ON gs.id_modalidad = m.id_modalidad
+            JOIN secciones s ON gs.id_seccion = s.id_seccion
+            WHERE hge.es_actual = true 
+                AND hge.estado = 'activo'
+                AND e.estado = 'Activo'
+            GROUP BY m.nombre_modalidad, g.nombre_grado, s.nombre_seccion
+        ),
+        resumen_modalidad AS (
+            SELECT 
+                nombre_modalidad,
+                COUNT(*) as total_secciones,
+                SUM(estudiantes_seccion) as total_estudiantes,
+                ROUND(AVG(estudiantes_seccion), 1) as promedio_por_seccion,
+                MAX(estudiantes_seccion) as max_estudiantes,
+                MIN(estudiantes_seccion) as min_estudiantes
+            FROM estadisticas_secciones
+            GROUP BY nombre_modalidad
+        )
+        SELECT 
+            rm.nombre_modalidad,
+            rm.total_secciones,
+            rm.total_estudiantes,
+            rm.promedio_por_seccion,
+            (SELECT nombre_completo_seccion FROM estadisticas_secciones es 
+             WHERE es.nombre_modalidad = rm.nombre_modalidad 
+             AND es.estudiantes_seccion = rm.max_estudiantes LIMIT 1) as seccion_mayor_matricula,
+            rm.max_estudiantes as estudiantes_seccion_mayor,
+            (SELECT nombre_completo_seccion FROM estadisticas_secciones es 
+             WHERE es.nombre_modalidad = rm.nombre_modalidad 
+             AND es.estudiantes_seccion = rm.min_estudiantes LIMIT 1) as seccion_menor_matricula,
+            rm.min_estudiantes as estudiantes_seccion_menor
+        FROM resumen_modalidad rm
+        ORDER BY rm.nombre_modalidad
+    ";
+    
+    let rows = db.query(query, &[])
+        .await
+        .map_err(|e| format!("Error obteniendo estadísticas compactas: {}", e))?;
+    
+    let estadisticas = rows.iter().map(|row| EstadisticasCursosCompacta {
+        modalidad: row.get("nombre_modalidad"),
+        total_secciones: row.get("total_secciones"),
+        total_estudiantes: row.get("total_estudiantes"),
+        promedio_por_seccion: row.get("promedio_por_seccion"),
+        seccion_mayor_matricula: row.get("seccion_mayor_matricula"),
+        estudiantes_seccion_mayor: row.get("estudiantes_seccion_mayor"),
+        seccion_menor_matricula: row.get("seccion_menor_matricula"),
+        estudiantes_seccion_menor: row.get("estudiantes_seccion_menor"),
+    }).collect();
+    
+    Ok(estadisticas)
+} 
+
+#[derive(Debug, serde::Serialize)]
+pub struct EstadisticasCursosResumen {
+    pub seccion_mayor_matricula: String,
+    pub estudiantes_mayor: i64,
+    pub seccion_menor_matricula: String,
+    pub estudiantes_menor: i64,
+    pub promedio_estudiantes_por_seccion: f64,
+}
+
+#[tauri::command]
+pub async fn obtener_estadisticas_cursos_resumen(state: State<'_, AppState>) -> Result<EstadisticasCursosResumen, String> {
+    let db = state.db.lock().await;
+    
+    println!("[DEBUG] Iniciando consulta de estadísticas resumen");
+    
+    // Primero, obtener todas las secciones con sus conteos
+    let query_secciones = "
+        SELECT 
+            CONCAT(g.nombre_grado, ' sección ', s.nombre_seccion) as nombre_completo_seccion,
+            COUNT(DISTINCT hge.id_estudiante) as estudiantes_seccion
+        FROM historial_grado_estudiantes hge
+        JOIN estudiantes e ON hge.id_estudiante = e.id
+        JOIN grado_secciones gs ON hge.id_grado_secciones = gs.id_grado_secciones
+        JOIN grados g ON gs.id_grado = g.id_grado
+        JOIN secciones s ON gs.id_seccion = s.id_seccion
+        WHERE hge.es_actual = true 
+            AND hge.estado = 'activo'
+            AND e.estado = 'Activo'
+        GROUP BY g.nombre_grado, s.nombre_seccion
+        ORDER BY estudiantes_seccion DESC
+    ";
+    
+    let rows = db.query(query_secciones, &[])
+        .await
+        .map_err(|e| {
+            println!("[DEBUG] Error en consulta de secciones: {}", e);
+            format!("Error obteniendo secciones: {}", e)
+        })?;
+    
+    println!("[DEBUG] Secciones encontradas: {}", rows.len());
+    
+    if rows.is_empty() {
+        println!("[DEBUG] No se encontraron secciones con datos");
+        return Ok(EstadisticasCursosResumen {
+            seccion_mayor_matricula: "Sin datos".to_string(),
+            estudiantes_mayor: 0,
+            seccion_menor_matricula: "Sin datos".to_string(),
+            estudiantes_menor: 0,
+            promedio_estudiantes_por_seccion: 0.0,
+        });
+    }
+    
+    // Obtener estadísticas
+    let total_estudiantes: i64 = rows.iter().map(|row| row.get::<_, i64>("estudiantes_seccion")).sum();
+    let promedio = total_estudiantes as f64 / rows.len() as f64;
+    
+    let seccion_mayor = &rows[0]; // Primera fila (ordenada DESC)
+    let seccion_menor = &rows[rows.len() - 1]; // Última fila
+    
+    let estadisticas = EstadisticasCursosResumen {
+        seccion_mayor_matricula: seccion_mayor.get("nombre_completo_seccion"),
+        estudiantes_mayor: seccion_mayor.get("estudiantes_seccion"),
+        seccion_menor_matricula: seccion_menor.get("nombre_completo_seccion"),
+        estudiantes_menor: seccion_menor.get("estudiantes_seccion"),
+        promedio_estudiantes_por_seccion: promedio,
+    };
+    
+    println!("[DEBUG] Estadísticas calculadas: {:?}", estadisticas);
+    
+    Ok(estadisticas)
+} 
+
+#[tauri::command]
+pub async fn debug_estadisticas_cursos(state: State<'_, AppState>) -> Result<serde_json::Value, String> {
+    let db = state.db.lock().await;
+    
+    // Debug 1: Verificar datos en historial_grado_estudiantes
+    let query1 = "
+        SELECT 
+            COUNT(*) as total_historial,
+            COUNT(DISTINCT id_grado_secciones) as grado_secciones_unicos,
+            COUNT(CASE WHEN es_actual = true THEN 1 END) as actuales,
+            COUNT(CASE WHEN estado = 'activo' THEN 1 END) as activos
+        FROM historial_grado_estudiantes
+    ";
+    
+    let row1 = db.query_one(query1, &[])
+        .await
+        .map_err(|e| format!("Error en debug 1: {}", e))?;
+    
+    // Debug 2: Verificar algunos registros de historial_grado_estudiantes
+    let query2 = "
+        SELECT 
+            hge.id_grado_secciones,
+            hge.es_actual,
+            hge.estado,
+            e.estado as estado_estudiante
+        FROM historial_grado_estudiantes hge
+        JOIN estudiantes e ON hge.id_estudiante = e.id
+        LIMIT 5
+    ";
+    
+    let rows2 = db.query(query2, &[])
+        .await
+        .map_err(|e| format!("Error en debug 2: {}", e))?;
+    
+    // Debug 3: Verificar grado_secciones
+    let query3 = "
+        SELECT 
+            gs.id_grado_secciones,
+            g.nombre_grado,
+            s.nombre_seccion,
+            m.nombre_modalidad
+        FROM grado_secciones gs
+        JOIN grados g ON gs.id_grado = g.id_grado
+        JOIN secciones s ON gs.id_seccion = s.id_seccion
+        JOIN modalidades m ON gs.id_modalidad = m.id_modalidad
+        LIMIT 5
+    ";
+    
+    let rows3 = db.query(query3, &[])
+        .await
+        .map_err(|e| format!("Error en debug 3: {}", e))?;
+    
+    let resultado = serde_json::json!({
+        "historial_grado_estudiantes": {
+            "total": row1.get::<_, i64>("total_historial"),
+            "grado_secciones_unicos": row1.get::<_, i64>("grado_secciones_unicos"),
+            "actuales": row1.get::<_, i64>("actuales"),
+            "activos": row1.get::<_, i64>("activos")
+        },
+        "muestras_historial": rows2.iter().map(|row| {
+            serde_json::json!({
+                "id_grado_secciones": row.get::<_, i32>("id_grado_secciones"),
+                "es_actual": row.get::<_, bool>("es_actual"),
+                "estado": row.get::<_, String>("estado"),
+                "estado_estudiante": row.get::<_, String>("estado_estudiante")
+            })
+        }).collect::<Vec<_>>(),
+        "muestras_grado_secciones": rows3.iter().map(|row| {
+            serde_json::json!({
+                "id_grado_secciones": row.get::<_, i32>("id_grado_secciones"),
+                "nombre_grado": row.get::<_, String>("nombre_grado"),
+                "nombre_seccion": row.get::<_, String>("nombre_seccion"),
+                "nombre_modalidad": row.get::<_, String>("nombre_modalidad")
+            })
+        }).collect::<Vec<_>>()
+    });
+    
+    Ok(resultado)
+} 
+
+#[tauri::command]
+pub async fn debug_estadisticas_modalidad(state: State<'_, AppState>) -> Result<serde_json::Value, String> {
+    let db = state.db.lock().await;
+    
+    // Consulta para diagnosticar el problema con las estadísticas por modalidad
+    let query = "
+        SELECT 
+            'total_estudiantes' as tipo,
+            COUNT(*) as valor
+        FROM estudiantes
+        
+        UNION ALL
+        
+        SELECT 
+            'estudiantes_en_historial' as tipo,
+            COUNT(DISTINCT hge.id_estudiante) as valor
+        FROM historial_grado_estudiantes hge
+        JOIN estudiantes e ON hge.id_estudiante = e.id
+        
+        UNION ALL
+        
+        SELECT 
+            'estudiantes_actuales' as tipo,
+            COUNT(DISTINCT hge.id_estudiante) as valor
+        FROM historial_grado_estudiantes hge
+        JOIN estudiantes e ON hge.id_estudiante = e.id
+        WHERE hge.es_actual = true
+        
+        UNION ALL
+        
+        SELECT 
+            'estudiantes_telematica' as tipo,
+            COUNT(DISTINCT hge.id_estudiante) as valor
+        FROM historial_grado_estudiantes hge
+        JOIN estudiantes e ON hge.id_estudiante = e.id
+        JOIN grado_secciones gs ON hge.id_grado_secciones = gs.id_grado_secciones
+        WHERE hge.es_actual = true 
+            AND gs.id_modalidad = 2
+            
+        UNION ALL
+        
+        SELECT 
+            'estudiantes_ciencias' as tipo,
+            COUNT(DISTINCT hge.id_estudiante) as valor
+        FROM historial_grado_estudiantes hge
+        JOIN estudiantes e ON hge.id_estudiante = e.id
+        JOIN grado_secciones gs ON hge.id_grado_secciones = gs.id_grado_secciones
+        WHERE hge.es_actual = true 
+            AND gs.id_modalidad = 1
+            
+        UNION ALL
+        
+        SELECT 
+            'grado_secciones_telematica' as tipo,
+            COUNT(*) as valor
+        FROM grado_secciones gs
+        WHERE gs.id_modalidad = 2
+        
+        UNION ALL
+        
+        SELECT 
+            'grado_secciones_ciencias' as tipo,
+            COUNT(*) as valor
+        FROM grado_secciones gs
+        WHERE gs.id_modalidad = 1
+        
+        UNION ALL
+        
+        SELECT 
+            'historial_con_grado_secciones' as tipo,
+            COUNT(*) as valor
+        FROM historial_grado_estudiantes hge
+        JOIN grado_secciones gs ON hge.id_grado_secciones = gs.id_grado_secciones
+        WHERE hge.es_actual = true AND hge.estado = 'activo'
+    ";
+    
+    let rows = db.query(query, &[])
+        .await
+        .map_err(|e| format!("Error en consulta de debug modalidad: {}", e))?;
+    
+    let mut resultado = serde_json::Map::new();
+    for row in rows {
+        let tipo: String = row.get("tipo");
+        let valor: i64 = row.get("valor");
+        resultado.insert(tipo, serde_json::Value::Number(serde_json::Number::from(valor)));
+    }
+    
+    Ok(serde_json::Value::Object(resultado))
+}
+
+#[tauri::command]
+pub async fn obtener_estadisticas_cursos_simple(state: State<'_, AppState>) -> Result<EstadisticasCursosResumen, String> {
+    let db = state.db.lock().await;
+    
+    println!("[DEBUG] Iniciando consulta simple");
+    
+    // 1. Contar cuántas veces aparece cada id_grado_secciones
+    let query_conteo = "
+        SELECT 
+            id_grado_secciones,
+            COUNT(*) as total_estudiantes
+        FROM historial_grado_estudiantes
+        GROUP BY id_grado_secciones
+        ORDER BY total_estudiantes DESC
+    ";
+    
+    let rows_conteo = db.query(query_conteo, &[])
+        .await
+        .map_err(|e| {
+            println!("[DEBUG] Error en conteo: {}", e);
+            format!("Error contando id_grado_secciones: {}", e)
+        })?;
+    
+    println!("[DEBUG] Secciones encontradas: {}", rows_conteo.len());
+    
+    if rows_conteo.is_empty() {
+        println!("[DEBUG] No hay datos en historial_grado_estudiantes");
+        return Ok(EstadisticasCursosResumen {
+            seccion_mayor_matricula: "Sin datos".to_string(),
+            estudiantes_mayor: 0,
+            seccion_menor_matricula: "Sin datos".to_string(),
+            estudiantes_menor: 0,
+            promedio_estudiantes_por_seccion: 0.0,
+        });
+    }
+    
+    // 2. Obtener información de la sección con más estudiantes
+    let id_mayor = rows_conteo[0].get::<_, i32>("id_grado_secciones");
+    let estudiantes_mayor = rows_conteo[0].get::<_, i64>("total_estudiantes");
+    
+    // 3. Obtener información de la sección con menos estudiantes
+    let id_menor = rows_conteo[rows_conteo.len() - 1].get::<_, i32>("id_grado_secciones");
+    let estudiantes_menor = rows_conteo[rows_conteo.len() - 1].get::<_, i64>("total_estudiantes");
+    
+    // 4. Hacer JOIN para obtener nombre de grado y sección del mayor
+    let query_mayor = "
+        SELECT 
+            CONCAT(g.nombre_grado, ' sección ', s.nombre_seccion) as nombre_completo_seccion
+        FROM grado_secciones gs
+        JOIN grados g ON gs.id_grado = g.id_grado
+        JOIN secciones s ON gs.id_seccion = s.id_seccion
+        WHERE gs.id_grado_secciones = $1
+    ";
+    
+    let row_mayor = db.query_one(query_mayor, &[&id_mayor])
+        .await
+        .map_err(|e| format!("Error obteniendo datos del mayor: {}", e))?;
+    
+    // 5. Hacer JOIN para obtener nombre de grado y sección del menor
+    let query_menor = "
+        SELECT 
+            CONCAT(g.nombre_grado, ' sección ', s.nombre_seccion) as nombre_completo_seccion
+        FROM grado_secciones gs
+        JOIN grados g ON gs.id_grado = g.id_grado
+        JOIN secciones s ON gs.id_seccion = s.id_seccion
+        WHERE gs.id_grado_secciones = $1
+    ";
+    
+    let row_menor = db.query_one(query_menor, &[&id_menor])
+        .await
+        .map_err(|e| format!("Error obteniendo datos del menor: {}", e))?;
+    
+    // 6. Calcular promedio
+    let total_estudiantes: i64 = rows_conteo.iter().map(|row| row.get::<_, i64>("total_estudiantes")).sum();
+    let promedio = total_estudiantes as f64 / rows_conteo.len() as f64;
+    
+    let estadisticas = EstadisticasCursosResumen {
+        seccion_mayor_matricula: row_mayor.get("nombre_completo_seccion"),
+        estudiantes_mayor,
+        seccion_menor_matricula: row_menor.get("nombre_completo_seccion"),
+        estudiantes_menor,
+        promedio_estudiantes_por_seccion: promedio,
+    };
+    
+    println!("[DEBUG] Estadísticas calculadas: {:?}", estadisticas);
+    
+    Ok(estadisticas)
+} 

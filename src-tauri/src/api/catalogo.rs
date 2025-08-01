@@ -316,3 +316,48 @@ pub async fn listar_secciones(state: tauri::State<'_, crate::AppState>) -> Resul
     }).collect();
     Ok(secciones)
 } 
+
+#[tauri::command]
+pub async fn obtener_estadisticas_docentes(state: State<'_, AppState>) -> Result<serde_json::Value, String> {
+    let db = state.db.lock().await;
+    
+    // Obtener docentes asignados como guías vs no asignados
+    let asignacion_result = db.query_one(
+        "SELECT 
+            COUNT(DISTINCT id_docente_guia) as asignados,
+            (SELECT COUNT(*) FROM docentes) - COUNT(DISTINCT id_docente_guia) as sin_asignar
+         FROM grado_secciones 
+         WHERE id_docente_guia IS NOT NULL",
+        &[]
+    ).await.map_err(|e| e.to_string())?;
+    
+    let asignados: i64 = asignacion_result.get("asignados");
+    let sin_asignar: i64 = asignacion_result.get("sin_asignar");
+    
+    // Obtener top especialidades
+    let especialidades_result = db.query(
+        "SELECT especialidad, COUNT(*) as cantidad
+         FROM docentes 
+         WHERE especialidad IS NOT NULL AND especialidad != ''
+         GROUP BY especialidad 
+         ORDER BY cantidad DESC, especialidad ASC
+         LIMIT 3",
+        &[]
+    ).await.map_err(|e| e.to_string())?;
+    
+    let mut especialidades = Vec::new();
+    for row in especialidades_result {
+        let especialidad: String = row.get("especialidad");
+        let cantidad: i64 = row.get("cantidad");
+        especialidades.push(serde_json::json!({
+            "especialidad": especialidad,
+            "cantidad": cantidad
+        }));
+    }
+    
+    Ok(serde_json::json!({
+        "asignados": asignados,
+        "sin_asignar": sin_asignar,
+        "especialidades": especialidades
+    }))
+} 

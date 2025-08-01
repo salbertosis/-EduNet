@@ -23,7 +23,7 @@ export function Layout() {
 const menuItems = [
   { 
     icon: <LayoutDashboard className="w-5 h-5" />, 
-    label: 'Dashboard', 
+    label: 'Inicio', 
     path: '/dashboard'
   },
   { 
@@ -56,6 +56,10 @@ const menuItems = [
     label: 'Configuración',
     children: [
       {
+        label: 'Datos Institucionales',
+        path: '/configuracion-institucion'
+      },
+      {
         label: 'Nuevo año escolar',
         path: '/nuevo-periodo'
       },
@@ -66,17 +70,13 @@ const menuItems = [
       {
         label: 'Guardar Historial',
         path: '/guardar-historial'
-      },
-      {
-        label: 'Configuración de la Institución',
-        path: '/configuracion-institucion'
       }
     ]
   },
 ];
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-dark-900">
+    <div className="min-h-screen bg-slate-50 dark:bg-dark-900">
       <header className="fixed top-0 left-0 right-0 h-20 bg-white dark:bg-gradient-to-r dark:from-dark-900 dark:via-dark-800 dark:to-emerald-900 dark:shadow-emerald-800/40 shadow-lg z-20 border-b-4 border-emerald-500">
         <div className="h-full px-8 flex items-center justify-between">
           <div className="flex items-center space-x-6">
@@ -99,7 +99,7 @@ const menuItems = [
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <nav className="p-6 space-y-3">
+        <nav className="p-6 space-y-2">
           {menuItems.map((item) => (
             item.children ? (
               <div key={item.label}>
@@ -112,7 +112,7 @@ const menuItems = [
                   <span className="ml-auto">{mostrarConfig ? '▲' : '▼'}</span>
                 </button>
                 {mostrarConfig && (
-                  <div className="ml-8 mt-2 space-y-2">
+                  <div className="ml-8 mt-2 space-y-1">
                     {item.children.map((child) => (
                       child.path ? (
                         <Link

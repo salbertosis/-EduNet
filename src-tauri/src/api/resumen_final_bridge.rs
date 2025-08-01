@@ -195,7 +195,11 @@ impl ResumenFinalAdapter {
         
         // Convertir a vector y asignar números
         let mut estudiantes: Vec<EstudianteResumenFinal> = estudiantes_map.into_values().collect();
-        estudiantes.sort_by(|a, b| a.cedula.cmp(&b.cedula));
+        estudiantes.sort_by(|a, b| {
+            let cedula_a = a.cedula.parse::<u64>().unwrap_or(0);
+            let cedula_b = b.cedula.parse::<u64>().unwrap_or(0);
+            cedula_a.cmp(&cedula_b)
+        });
         
         for (i, estudiante) in estudiantes.iter_mut().enumerate() {
             estudiante.numero = (i + 1) as i32;

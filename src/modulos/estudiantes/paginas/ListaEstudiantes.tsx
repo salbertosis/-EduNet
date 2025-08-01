@@ -238,32 +238,45 @@ export function ListaEstudiantes() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-400 bg-clip-text text-transparent drop-shadow-lg select-none">
-          Estudiantes
-        </h1>
-        <div className="flex items-center space-x-3">
-        <button
-          onClick={() => {
-            setEstudianteSeleccionado(null);
-            setMostrarFormulario(true);
-          }}
-            className="flex items-center space-x-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-cyan-600 text-white rounded-xl font-semibold shadow-lg hover:scale-105 hover:bg-emerald-700 transition-all"
-        >
-          <Plus className="w-5 h-5" />
-          <span>Nuevo Estudiante</span>
-        </button>
-          <label className="flex items-center space-x-2 px-5 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl font-semibold shadow-lg hover:scale-105 hover:bg-green-700 transition-all cursor-pointer">
-            <FileSpreadsheet className="w-5 h-5" />
-            <span>Cargar Excel</span>
-            <input
-              ref={inputExcelRef}
-              type="file"
-              accept=".xlsx,.xls"
-              style={{ display: 'none' }}
-              onChange={handleExcelUpload}
-            />
-          </label>
+             {/* Header elegante con gradiente */}
+       <div className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white p-8 rounded-2xl">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="bg-white/20 p-3 rounded-full">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" className="w-8 h-8" viewBox="0 0 20 20">
+                  <path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838l-2.727 1.17 1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3zM3.31 9.397L5 10.12v4.102a8.969 8.969 0 00-1.05-.174 1 1 0 01-.89-.89 11.115 11.115 0 01.25-3.762zM9.3 16.573A9.026 9.026 0 007 14.935v-3.957l1.818.78a3 3 0 002.364 0l5.508-2.361a11.026 11.026 0 01.25 3.762 1 1 0 01-.89.89 8.968 8.968 0 00-5.35 2.524 1 1 0 01-1.4 0zM6 18a1 1 0 001-1v-2.065a8.935 8.935 0 00-2-.712V17a1 1 0 001 1z"/>
+                </svg>
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold">Gestión de Estudiantes</h1>
+                <p className="text-emerald-100">Administra los estudiantes de la institución</p>
+              </div>
+            </div>
+            <div className="flex space-x-3">
+              <button 
+                onClick={() => {
+                  setEstudianteSeleccionado(null);
+                  setMostrarFormulario(true);
+                }}
+                className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-all duration-200"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Nuevo Estudiante</span>
+              </button>
+              <label className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-all duration-200 cursor-pointer">
+                <FileSpreadsheet className="w-4 h-4" />
+                <span>Cargar Excel</span>
+                <input
+                  ref={inputExcelRef}
+                  type="file"
+                  accept=".xlsx,.xls"
+                  style={{ display: 'none' }}
+                  onChange={handleExcelUpload}
+                />
+              </label>
+            </div>
+          </div>
         </div>
       </div>
 

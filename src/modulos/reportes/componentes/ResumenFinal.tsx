@@ -200,7 +200,7 @@ export default function ResumenFinal() {
     <div className="space-y-6">
       <div className="bg-white dark:bg-dark-700 p-6 rounded-xl shadow-sm">
         <h3 className="text-lg font-semibold mb-4 text-emerald-700 dark:text-emerald-300">
-          Generar Resumen Final del Rendimiento Estudiantil (PDF)
+          Generar Resumen Final del Rendimiento Estudiantil
         </h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -289,9 +289,9 @@ export default function ResumenFinal() {
 
         <div className="flex justify-center gap-4">
           <button
-            onClick={generarResumenFinal}
+            onClick={abrirModalHTML}
             disabled={cargando || !filtros.id_periodo || !filtros.id_modalidad || !filtros.id_grado || !filtros.id_seccion || filtros.id_seccion === 'todas' || !filtros.id_tipo_evaluacion}
-            className="px-8 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-lg font-medium"
+            className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-lg font-medium"
           >
             {cargando ? (
               <>
@@ -300,17 +300,9 @@ export default function ResumenFinal() {
               </>
             ) : (
               <>
-                📄 Generar PDF
+                📄 Generar Resumen
               </>
             )}
-          </button>
-          
-          <button
-            onClick={abrirModalHTML}
-            disabled={cargando || !filtros.id_periodo || !filtros.id_modalidad || !filtros.id_grado || !filtros.id_seccion || filtros.id_seccion === 'todas' || !filtros.id_tipo_evaluacion}
-            className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-lg font-medium"
-          >
-            🌐 Ver HTML
           </button>
         </div>
 

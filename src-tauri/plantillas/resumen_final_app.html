@@ -332,34 +332,48 @@
 
     /* === IMPRESIÓN === */
     @page {
-      size: 21.59cm 33.02cm;
+      size: 21.59cm 33.02cm; /* Oficio / Legal */
       margin: 0.5cm;
     }
     
     @media print {
-      body {
-        background: var(--color-background);
-        margin: 0;
-        padding: 0;
-        -webkit-text-size-adjust: 100%;
-        -ms-text-size-adjust: 100%;
-        text-size-adjust: 100%;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
+      /* 
+        Reglas de impresión hiper-específicas para forzar al navegador
+        a no escalar el contenido ("Shrink to Fit").
+        Se busca controlar el layout de forma absoluta.
+      */
+      * {
+        /* Asegura que el padding y el borde se incluyan en el ancho/alto total */
+        box-sizing: border-box !important; 
+      }
+
+      html, body {
+        background: var(--color-background) !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
       }
       
       .document-container {
-        box-shadow: none;
-        border-radius: 0;
-        max-width: none;
-        width: 100%;
-        margin: 0;
-        padding: 0;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        margin: 0 auto !important; /* Centrar el contenedor en el área de impresión */
+        padding: 0 !important;
+        width: var(--table-width) !important; /* Usar el ancho fijo definido */
+        max-width: var(--table-width) !important;
       }
 
       .mppe-header-container .logo-img {
-        width: 8cm;
-        height: 1.5cm;
+        width: 8cm !important;
+        height: 1.5cm !important;
+      }
+
+      /* Ocultar elementos no deseados en la impresión (si los hubiera) */
+      .no-print {
+        display: none !important;
       }
     }
 
